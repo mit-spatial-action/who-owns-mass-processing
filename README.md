@@ -12,7 +12,7 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 ## Getting Started
 
-This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`.
+This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`. If you are using Windows, you'll probably have to [install the `Rtools` bundle appropriate for your version of R](https://cran.r-project.org/bin/windows/Rtools/).
 
 Given the datasets we're currently working with, simply run `run.R` and execute `run()`. Note that it defaults to `test = TRUE` which will perform analysis on a small subset of assessors records in Massachusetts---namely, the records for Cambridge, Somerville, and Medford. To run for the entire state, execute `run(test = FALSE)`. This function automatically saves a simplified assessors table (`assess.txt`) with a column `id_corp` that links with the `id` column of `corps.txt`, and an individuals file (`inds.txt`) that contains a link to corporations (`id_corp`).
 
