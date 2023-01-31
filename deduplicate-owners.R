@@ -458,14 +458,16 @@ dedupe_text_mode <- function(df, group_col, cols) {
   #' @export
   df %>%
     filter(!is.na(get({{group_col}}))) %>%
+    # count(
+    #   get({{group_col}}), get({{cols}}), sort = TRUE)
+    group_by_at(c({{group_col}}, {{cols}})) %>%
+    summarize(
+      count = n()
+    ) %>%
+    arrange(get({{group_col}}), desc(count)) %>%
     group_by_at({{group_col}}) %>%
     summarize(
-      count = n(),
-      across({{cols}}, ~ case_when(
-        count > 1 ~ names(which.max(table(.))),
-        TRUE ~ .
-        )
-        )
+      across({{cols}}, ~first(.))
     )
 }
 
@@ -593,7 +595,7 @@ load_agents <- function(df, cols, drop_na_col) {
     filter(!is.na(get({{drop_na_col}})))
 }
 
-load_assess <- function(path, test = TRUE) {
+load_assess <- function(path, town_ids = NA) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
@@ -601,11 +603,11 @@ load_assess <- function(path, test = TRUE) {
   #' @param test Whether to only load a sample subset of rows.
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
-  if (test) {
-    assess_query <- paste(assess_query, "WHERE CITY IN ('SOMERVILLE', 'CAMBRIDGE', 'MEDFORD')")
+  if (length(town_ids) > 0) {
+    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", town_ids, ")")
   }
   st_read(
-      path, 
+      path,
       query = assess_query
     ) %>%
     rename_with(str_to_lower) %>%
@@ -723,7 +725,7 @@ process_corps <- function(df, id, name) {
     corp_rm_corp_sys(c({{name}}))
 }
 
-process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = TRUE) {
+process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids = NA) {
   #' Process assessors records, optionally downloading and imputing census ids.
   #' 
   #' @param sdf Spatial dataframe.
@@ -736,7 +738,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = T
   if (census) {
     library(tigris)
     parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
-    if (test) {
+    if (length(town_ids) > 0) {
       parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (274, 49, 176)")
     }
     df <- st_read(

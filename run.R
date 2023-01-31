@@ -5,12 +5,13 @@ DATA_DIR <- "data"
 INDS <- "CSC_CorporationsIndividualExport_VB.txt"
 CORPS <- "CSC_CorpDataExports_VB.txt"
 ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
+TOWN_CSV <- "ma_towns.csv"
 ASSESS_OUT_NAME <- "assess"
 CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
 RDATA_OUT_NAME <- "results"
 
-run <- function(test = TRUE, store_results = TRUE){
+run <- function(hns = TRUE, store_results = TRUE){
   # Create and open log file with timestamp name.
   lf <- log_open(file.path("logs", format(Sys.time(), "%Y-%m-%d_%H%M%S")))
   
@@ -24,11 +25,21 @@ run <- function(test = TRUE, store_results = TRUE){
   log_message("Reading and processing parcels and assessors table from GDB.")
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
-  assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), test = test) %>%
+  if (hns) {
+    town_ids <- read_csv(file.path(DATA_DIR, TOWN_CSV)) %>% 
+      pull(town_id) %>%
+      c(274, 49, 176) %>%
+      paste(collapse = ", ")
+  } else {
+    town_ids <- NA
+  }
+  town_ids <- "274"
+    
+  assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>%
     # Run string standardization procedures.
     # If census = TRUE, will join to parcels and link to census geographies.
     # Note that ^ this ^ adds a somewhat costly load-merge procedure.
-    process_assess(census = FALSE, test = test)
+    process_assess(census = FALSE, town_ids = town_ids)
   
   log_message("Deduplicating assessor's ownership information")
   # Initiate assessing deduplication.
@@ -91,8 +102,6 @@ run <- function(test = TRUE, store_results = TRUE){
         TRUE ~ group_naive
       )
     ) %>%
-    # Limit to only distinct rows.
-    distinct(id_corp, name_address, id) %>%
     # Join list of individuals to simplified name.
     # Name is based on the "modal text", i.e., text
     # that appears most frequently in a given group.
@@ -101,11 +110,10 @@ run <- function(test = TRUE, store_results = TRUE){
         rename(name_address_simp = name_address),
       by = "id"
     ) %>%
-    # Drop count column.
-    select(-c(count)) %>%
-    # Write delimited text file of individuals.
+    select(c(id_corp, id, name_address_simp)) %>%
+    # Write pipe-delimited text file of individuals.
     write_delim(
-      file.path(RESULTS_DIR, paste(INDS_OUT_NAME, "txt", sep = ".")), 
+      file.path(RESULTS_DIR, paste(INDS_OUT_NAME, "csv", sep = ".")), 
       delim = "|", quote = "needed"
       )
   
@@ -140,9 +148,9 @@ run <- function(test = TRUE, store_results = TRUE){
   corps_simp <- assess_network %>%
     dedupe_text_mode("id", c("owner1", "own_addr")) %>%
     rename(owner1_simp = owner1, own_addr_simp = own_addr) %>%
-    # Write delimited text file of corps.
+    # Write pipe-delimited text file of corps.
     write_delim(
-      file.path(RESULTS_DIR, paste(CORPS_OUT_NAME, "txt", sep = ".")), 
+      file.path(RESULTS_DIR, paste(CORPS_OUT_NAME, "csv", sep = ".")), 
       delim = "|", 
       quote = "needed"
       )
@@ -153,8 +161,15 @@ run <- function(test = TRUE, store_results = TRUE){
       corps_simp,
       by = "id"
     ) %>%
+    select(-c(group_naive, group_cosine, id_corp, group_network)) %>%
+    group_by(id) %>%
+    mutate(
+      count = n()
+    ) %>%
+    ungroup() %>%
+    # Write pipe-delimited text file of assessors records.
     write_delim(
-      file.path(RESULTS_DIR, paste(ASSESS_OUT_NAME, "txt", sep = ".")), 
+      file.path(RESULTS_DIR, paste(ASSESS_OUT_NAME, "csv", sep = ".")), 
       delim = "|", 
       quote = "needed"
       )
@@ -171,5 +186,5 @@ run <- function(test = TRUE, store_results = TRUE){
 }
 
 if (!interactive()) {
-  run(test = FALSE, store_results = FALSE)
+  run(hns = FALSE, store_results = FALSE)
 }
