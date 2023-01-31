@@ -22,7 +22,7 @@ The two databases necessary for this analysis are...
 
 + MassGIS. "Property Tax Parcels." https://www.mass.gov/info-details/massgis-data-property-tax-parcels. 
 
-  + We assume that you're using the statewide geodatabase.
+  + We assume that you're using the statewide geodatabase, which we encourage you to request from the state. (It's a very, very simple request form and the turnaround is essentially immediate.)
   
 + Massachusetts Secretary of the Commonwealth. "Corporate Database." [Public access to the database is provided by this interface](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx).
 
