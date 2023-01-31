@@ -12,6 +12,10 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 Given the datasets we're currently working with, simply run `run.R` and assign the output of `run()` to a variable. This will write the results to (by default) `results.RData` and a pipe-delimited text file called `results.txt`.
 
+## Getting Started
+
+This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`.
+
 ## Data
 
 We can provide data on request. Please get in touch with [ehuntley@mit.edu](mailto:ehuntley@.mit.edu) and [aizman@mit.edu](mailto:aizman@mit.edu).

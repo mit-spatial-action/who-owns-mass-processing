@@ -399,7 +399,7 @@ dedupe_naive <- function(df, str_field) {
   #' @export
   distinct <- df %>%
     group_by(across({{str_field}})) %>%
-    mutate(group_naive = paste("n", cur_group_id(), sep = "_")) %>%
+    mutate(group_naive = paste("naive", cur_group_id(), sep = "_")) %>%
     ungroup() %>%
     group_by(across({{str_field}}), group_naive) %>%
     summarize()
@@ -454,8 +454,12 @@ dedupe_text_mode <- function(df, group_col, cols) {
     filter(!is.na(get({{group_col}}))) %>%
     group_by_at({{group_col}}) %>%
     summarize(
-      across({{cols}}, ~ names(which.max(table(.)))),
-      count = n()
+      count = n(),
+      across({{cols}}, ~ case_when(
+        count > 1 ~ names(which.max(table(.))),
+        TRUE ~ .
+        )
+        )
     )
 }
 
@@ -497,7 +501,7 @@ dedupe_cosine <- function(df, str_field, group = "group_cosine", thresh = 0.75) 
     left_join(
       community %>%
         dedupe_community(
-          prefix = "c",
+          prefix = "cosine",
           name = str_field,
           membership = group
         ),
@@ -515,7 +519,7 @@ corp_rm_corp_sys <- function(df, cols) {
   df %>%
     mutate(
       across({{cols}}, ~ case_when(
-        str_detect(., "CORPORATION SYS") ~ NA_character_,
+        str_detect(., "CORPORATION (SYS)|(SER)") ~ NA_character_,
         TRUE ~ .
       )
       )
@@ -680,7 +684,7 @@ process_inds <- function(i_df, a_df, owners) {
           c(id_corp, fullname, address)
         )
     ) %>%
-    # Remove "Corporation Sys" and variants.
+    # Remove "Corporation Sys/Services" and variants.
     corp_rm_corp_sys(fullname) %>%
     # Split address line 2s.
     std_split_addresses("address", "unit") %>%

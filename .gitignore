@@ -7,3 +7,8 @@ renv/*
 .Rproj.user
 *.RData
 results/results.txt
+*.log
+*.msg
+results/assess.txt
+results/corps.txt
+results/inds.txt
