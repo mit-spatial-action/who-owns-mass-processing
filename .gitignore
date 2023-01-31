@@ -4,3 +4,6 @@ bos_neigh.csv
 renv/*
 .DS_Store
 .RProj.user/*
+.Rproj.user
+*.RData
+results/results.txt

@@ -582,47 +582,22 @@ load_agents <- function(df, cols, drop_na_col) {
     filter(!is.na(get({{drop_na_col}})))
 }
 
-load_assess_parc <- function(path, crs, test = TRUE) {
+load_assess_parc <- function(path, test = TRUE) {
   #' Load assessing table and parcels from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
   #' @param path Path to MassGIS Parcels GDB.
-  #' @param crs Coordinate system into which to project parcels
+  #' @param test Whether to only download a subset of parcels.
   #' @export
-  parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
   assess_query <- "SELECT * FROM L3_ASSESS"
   if (test) {
-    parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (274)")
-    assess_query <- paste(assess_query, "WHERE CITY IN ('SOMERVILLE')")
+    assess_query <- paste(assess_query, "WHERE CITY IN ('SOMERVILLE', 'CAMBRIDGE', 'MEDFORD')")
   }
   st_read(
       path, 
-      query = parcel_query
+      query = assess_query
     ) %>%
-    # Rename all columns to lowercase.
     rename_with(str_to_lower) %>%
-    # Correct weird naming conventions of GDB.
-    st_set_geometry("shape") %>%
-    st_set_geometry("geometry") %>%
-    # Select only unique id.
-    select(c(loc_id)) %>%
-    # Reproject to specified CRS.
-    st_transform(crs) %>%
-    # Cast from MULTISURFACE to MULTIPOLYGON.
-    mutate(
-      geometry = st_cast(geometry, "MULTIPOLYGON")
-    ) %>%
-    # Join to assessing table.
-    left_join(
-      select(
-        st_read(
-          path, 
-          query = assess_query
-        ) %>%
-          rename_with(str_to_lower), 
-        -c(zip)
-      ), 
-      by = c("loc_id" = "loc_id")) %>%
     parc_res("use_code")
 }
 
@@ -736,7 +711,7 @@ process_corps <- function(df, id, name) {
     corp_rm_corp_sys(c({{name}}))
 }
 
-process_parc <- function(sdf, crs = NA, census = FALSE) {
+process_parc <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = TRUE) {
   #' Process parcels, optionally downloading and imputing census ids.
   #' 
   #' @param sdf Spatial dataframe.
@@ -746,10 +721,37 @@ process_parc <- function(sdf, crs = NA, census = FALSE) {
   #' @export
   if (census) {
     library(tigris)
-    if (is.na(crs)) {
-      crs <- st_crs(sdf)
+    parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
+    if (test) {
+      parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (274, 49, 176)")
     }
-    sdf <- sdf %>%
+    df <- st_read(
+        gdb_path,
+        query = parcel_query
+      ) %>%
+      # Rename all columns to lowercase.
+      rename_with(str_to_lower) %>%
+      # Correct weird naming conventions of GDB.
+      st_set_geometry("shape") %>%
+      st_set_geometry("geometry") %>%
+      # Select only unique id.
+      select(c(loc_id)) %>%
+      # Reproject to specified CRS.
+      st_transform(crs) %>%
+      # Cast from MULTISURFACE to MULTIPOLYGON.
+      mutate(
+        geometry = st_cast(geometry, "MULTIPOLYGON")
+      ) %>%
+      # Join to assessing table.
+      left_join(
+        df,
+        by = c("loc_id" = "loc_id")
+        )
+    if (is.na(crs)) {
+      crs <- st_crs(df)
+    }
+    print("hi")
+    df <- df %>%
       st_get_zips("zip", crs = crs) %>%
       st_get_censusgeo(crs = crs) %>%
       select(
@@ -758,9 +760,10 @@ process_parc <- function(sdf, crs = NA, census = FALSE) {
           city, zip, owner1, own_addr, 
           own_city, own_zip, own_state, own_co, 
           geoid_t, geoid_bg)
-      )
+      )  %>% 
+      st_drop_geometry()
   } else {
-    sdf <- sdf %>%
+    df <- df %>%
       select(
         c(
           prop_id, loc_id, site_addr, location, 
@@ -768,8 +771,7 @@ process_parc <- function(sdf, crs = NA, census = FALSE) {
           own_city, own_zip, own_state, own_co)
       )
   }
-  sdf %>% 
-    st_drop_geometry() %>%
+  df %>%
     rename(
       unit = location
     ) %>%

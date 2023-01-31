@@ -16,8 +16,8 @@ run <- function(test = TRUE){
     process_corps(id = "id_corp", name = "entityname")
   
   log_message("Reading and processing parcels and assessors table from GDB.")
-  parc <- load_assess_parc(file.path(DATA_DIR, PARCELS_GDB), crs = 2249, test = test) %>%
-    process_parc()
+  parc <- load_assess_parc(file.path(DATA_DIR, PARCELS_GDB), test = test) %>%
+    process_parc(census = FALSE, test = test)
   
   log_message("Deduplicating assessor's ownership information")
   parc_dedupe <- parc %>%
