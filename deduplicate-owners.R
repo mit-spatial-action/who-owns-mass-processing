@@ -534,7 +534,7 @@ corp_rm_corp_sys <- function(df, cols) {
 }
 
 assess_res_filter <- function(df, col) {
-  #' Filter parcels by MA residential use codes.
+  #' Filter assessors records by MA residential use codes.
   #' https://www.mass.gov/files/documents/2016/08/wr/classificationcodebook.pdf
   #' 
   #' @param df A dataframe.
@@ -594,11 +594,11 @@ load_agents <- function(df, cols, drop_na_col) {
 }
 
 load_assess <- function(path, test = TRUE) {
-  #' Load assessing table and parcels from MassGIS geodatabase.
+  #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
   #' @param path Path to MassGIS Parcels GDB.
-  #' @param test Whether to only download a subset of parcels.
+  #' @param test Whether to only load a sample subset of rows.
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
   if (test) {
@@ -800,17 +800,17 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = T
     filter(!is.na(name_address))
 }
 
-merge_parcel_corp <- function(p_df, c_df, by, group, id_c) {
+merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
   #' Merge parcels with corporations on the basis of name.
   #' 
-  #' @param p_df Parcels dataframe.
+  #' @param a_df Assessors records dataframe.
   #' @param c_df Corportions dataframe.
   #' @param by A character vector of variables to join by.
   #' @param group String column identifying groups identified in previous processing.
   #' @param id_c Corporation id.
   #' @returns A dataframe.
   #' @export
-  joined <- p_df %>%
+  joined <- a_df %>%
     left_join(
       c_df, 
       by = by, 

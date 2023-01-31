@@ -49,7 +49,7 @@ run <- function(test = TRUE, store_results = TRUE){
     # link to the same company.
     # ===
     # TODO: Explore replacement with fuzzy matching.
-    merge_parcel_corp(
+    merge_assess_corp(
       select(corps, c(id_corp, entityname)), 
       by = c("owner1" = "entityname"), 
       group = "group_cosine", 
