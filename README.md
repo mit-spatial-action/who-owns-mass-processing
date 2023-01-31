@@ -18,7 +18,15 @@ Given the datasets we're currently working with, simply run `run.R` and execute 
 
 ## Data
 
-We can provide data on request. Please get in touch with Eric Robsky Huntley ([ehuntley@mit.edu](mailto:ehuntley@.mit.edu)) and Asya Aizman ([aizman@mit.edu](mailto:aizman@mit.edu)).
+The two databases necessary for this analysis are...
+
++ MassGIS. "Property Tax Parcels." https://www.mass.gov/info-details/massgis-data-property-tax-parcels. 
+
+  + We assume that you're using the statewide geodatabase.
+  
++ Massachusetts Secretary of the Commonwealth. "Corporate Database." [Public access to the database is provided by this interface](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx).
+
+  + We can provide a copy of the Secretary of the Commonwealth database on request. Please get in touch with Eric Robsky Huntley ([ehuntley@mit.edu](mailto:ehuntley@.mit.edu)) and Asya Aizman ([aizman@mit.edu](mailto:aizman@mit.edu)).
 
 ## Acknowledgements
 
