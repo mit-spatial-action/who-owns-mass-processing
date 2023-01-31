@@ -93,6 +93,12 @@ std_remove_special <- function(df, except){
 }
 
 std_remove_middle_initial <- function(df, name_col) {
+  #' Replace middle inital when formated like "ERIC R HUNTLEY"
+  #' 
+  #' @param df A dataframe.
+  #' @param except Column from which middle initials should be replaced.
+  #' @returns A dataframe.
+  #' @export
   df %>%
     mutate(
       across(
@@ -468,6 +474,7 @@ dedupe_cosine <- function(df, str_field, group = "group_cosine", thresh = 0.75) 
   #' 
   #' @param df A dataframe containing only string datatypes.
   #' @param str_field The column used for deduplication.
+  #' @param group Name for group column.
   #' @param thresh The minimum similarity threshold.
   #' @returns A dataframe.
   #' @export
@@ -526,7 +533,7 @@ corp_rm_corp_sys <- function(df, cols) {
     )
 }
 
-parc_res <- function(df, col) {
+assess_res_filter <- function(df, col) {
   #' Filter parcels by MA residential use codes.
   #' https://www.mass.gov/files/documents/2016/08/wr/classificationcodebook.pdf
   #' 
@@ -586,7 +593,7 @@ load_agents <- function(df, cols, drop_na_col) {
     filter(!is.na(get({{drop_na_col}})))
 }
 
-load_assess_parc <- function(path, test = TRUE) {
+load_assess <- function(path, test = TRUE) {
   #' Load assessing table and parcels from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
@@ -602,7 +609,7 @@ load_assess_parc <- function(path, test = TRUE) {
       query = assess_query
     ) %>%
     rename_with(str_to_lower) %>%
-    parc_res("use_code")
+    assess_res_filter("use_code")
 }
 
 load_inds <- function(path) {
@@ -630,6 +637,7 @@ process_inds <- function(i_df, a_df, owners) {
   #' 
   #' @param i_df Individuals dataframe. (Created by e.g., `load_inds`)
   #' @param a_df Agents dataframe. (Created by e.g., `load_agents`)
+  #' @param owners dataframe containing a vector of unique owner ids used to filter inds.
   #' @returns A dataframe.
   #' @export
   i_df %>%
@@ -715,12 +723,14 @@ process_corps <- function(df, id, name) {
     corp_rm_corp_sys(c({{name}}))
 }
 
-process_parc <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = TRUE) {
-  #' Process parcels, optionally downloading and imputing census ids.
+process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = TRUE) {
+  #' Process assessors records, optionally downloading and imputing census ids.
   #' 
   #' @param sdf Spatial dataframe.
   #' @param crs Integer representing coordinate reference system EPSG code.
   #' @param census Whether to download and impute census (e.g., tract, block group) ids.
+  #' @param gdb_path String representing path to geodatabase. (Required if `census = TRUE`).
+  #' @param test If `TRUE`, import only a subset of assessors records.
   #' @returns A dataframe.
   #' @export
   if (census) {
