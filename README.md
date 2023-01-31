@@ -10,12 +10,13 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 6. Identify communities within corporate-individual networks. (This is done using the `igraph` implementation of the fast greedy modularity optimization algorithm.)
 7. Assign each community a name based on the most common name of its members.
 
-Given the datasets we're currently working with, simply run `run.R` and assign the output of `run()` to a variable. This will write the results to (by default) `results.RData` and a pipe-delimited text file called `results.txt`.
-
 ## Getting Started
 
 This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`.
 
+Given the datasets we're currently working with, simply run `run.R` and execute `run()`. Note that it defaults to `test = TRUE` which will perform analysis on a small subset of assessors records in Massachusetts---namely, the records for Cambridge, Somerville, and Medford. To run for the entire state, execute `run(test = FALSE)`. This function automatically saves a simplified assessors table (`assess.txt`) with a column `id_corp` that links with the `id` column of `corps.txt`, and an individuals file (`inds.txt`) that contains a link to corporations (`id_corp`).
+
 ## Data
 
 We can provide data on request. Please get in touch with [ehuntley@mit.edu](mailto:ehuntley@.mit.edu) and [aizman@mit.edu](mailto:aizman@mit.edu).
+ 
