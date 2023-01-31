@@ -26,7 +26,7 @@ The two databases necessary for this analysis are...
   
 + Massachusetts Secretary of the Commonwealth. "Corporate Database." [Public access to the database is provided by this interface](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx).
 
-  + We can provide a copy of the Secretary of the Commonwealth database on request. Please get in touch with Eric Robsky Huntley ([ehuntley@mit.edu](mailto:ehuntley@.mit.edu)) and Asya Aizman ([aizman@mit.edu](mailto:aizman@mit.edu)).
+  + We can provide our copy of the Secretary of the Commonwealth database on request. Please get in touch with Eric Robsky Huntley ([ehuntley@mit.edu](mailto:ehuntley@.mit.edu)) and Asya Aizman ([aizman@mit.edu](mailto:aizman@mit.edu)). We make no guarantees as to its currency.
 
 ## Acknowledgements
 
