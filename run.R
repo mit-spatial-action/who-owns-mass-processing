@@ -10,8 +10,7 @@ CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
 RDATA_OUT_NAME <- "results"
 
-run <- function(test = TRUE){
-  test = TRUE
+run <- function(test = TRUE, store_results = TRUE){
   lf <- log_open(file.path("logs", format(Sys.time(), "%Y-%m-%d_%H%M%S")))
   
   log_message("Reading and processing corporations from delimited text.")
@@ -111,9 +110,11 @@ run <- function(test = TRUE){
   log_message("Finishing up.")
   save.image(file.path(RESULTS_DIR, paste(RDATA_OUT_NAME, "RData", sep = ".")))
   log_close()
-  list("assess" = assess, "inds" = inds, "corps" = corps_simp)
+  if (store_results == TRUE) {
+    list("assess" = assess, "inds" = inds, "corps" = corps_simp)
+  }
 }
 
 if (!interactive()) {
-  run(test = FALSE)
+  run(test = FALSE, store_results = FALSE)
 }
