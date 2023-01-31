@@ -1,4 +1,4 @@
-source("parcel_process.R")
+source("deduplicate-owners.R")
 
 RESULTS_DIR <- "results"
 DATA_DIR <- "data"
