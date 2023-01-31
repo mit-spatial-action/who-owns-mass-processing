@@ -18,7 +18,7 @@ Given the datasets we're currently working with, simply run `run.R` and execute 
 
 ## Data
 
-We can provide data on request. Please get in touch with [ehuntley@mit.edu](mailto:ehuntley@.mit.edu) and [aizman@mit.edu](mailto:aizman@mit.edu).
+We can provide data on request. Please get in touch with Eric Robsky Huntley ([ehuntley@mit.edu](mailto:ehuntley@.mit.edu)) and Asya Aizman ([aizman@mit.edu](mailto:aizman@mit.edu)).
 
 ## Acknowledgements
 
