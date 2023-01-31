@@ -28,7 +28,7 @@ run <- function(hns = TRUE, store_results = TRUE){
   if (hns) {
     town_ids <- read_csv(file.path(DATA_DIR, TOWN_CSV)) %>% 
       pull(town_id) %>%
-      c(274, 49, 176) %>%
+      c(274, 49, 176, 10, 26, 314, 46) %>%
       paste(collapse = ", ")
   } else {
     town_ids <- NA
@@ -43,7 +43,7 @@ run <- function(hns = TRUE, store_results = TRUE){
   log_message("Deduplicating assessor's ownership information")
   # Initiate assessing deduplication.
   assess_dedupe <- assess %>%
-    select(c(loc_id, owner1, own_addr, name_address)) %>%
+    select(c(loc_id, owner1, own_addr, own_city, own_state, own_zip, name_address)) %>%
     # Naive deduplication on prepared, concatenated name and address.
     dedupe_naive(str_field = "name_address") %>%
     # Cosine-similarity-based deduplication.
@@ -145,8 +145,14 @@ run <- function(hns = TRUE, store_results = TRUE){
   # Simplify names of corporate entities using modal text approach
   # described above.
   corps_simp <- assess_network %>%
-    dedupe_text_mode("id", c("owner1", "own_addr")) %>%
-    rename(owner1_simp = owner1, own_addr_simp = own_addr) %>%
+    dedupe_text_mode("id", c("owner1", "own_addr", "own_city", "own_state", "own_zip")) %>%
+    rename(
+      owner1_simp = owner1, 
+      own_addr_simp = own_addr, 
+      own_city_simp = own_city, 
+      own_state_simp = own_state, 
+      own_zip_simp = own_zip
+      ) %>%
     # Write pipe-delimited text file of corps.
     write_delim(
       file.path(RESULTS_DIR, paste(CORPS_OUT_NAME, "csv", sep = ".")), 
