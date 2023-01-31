@@ -1,6 +1,6 @@
 # Owner Deduplication
 
-This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and the [Secretary of the Commonwealth's Corporate Database](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx). The process is very  similar to that documented by Hangen and Williams (2022, in preprint). In outline...
+This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and the [Secretary of the Commonwealth's Corporate Database](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx). The process is very  similar to that documented by [Hangen and O'Brien (2022, in preprint)](https://osf.io/preprints/socarxiv/anvke/). In outline...
 
 1. Prepare data using a large number of string-standardizing functions, some of which are place-based. (In other words, when adapting to non-Massachusetts locations, you'll want to consider how to adapt our codebase to your locale.)
 2. Perform naive deduplication on assessors' tables using concatenated name and address.
