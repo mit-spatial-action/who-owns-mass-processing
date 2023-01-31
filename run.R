@@ -113,3 +113,7 @@ run <- function(test = TRUE){
   log_close()
   list("assess" = assess, "inds" = inds, "corps" = corps_simp)
 }
+
+if (!interactive()) {
+  run(test = FALSE)
+}
