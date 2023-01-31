@@ -739,7 +739,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
     library(tigris)
     parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
     if (length(town_ids) > 0) {
-      parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (274, 49, 176)")
+      parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (", town_ids, ")")
     }
     df <- st_read(
         gdb_path,

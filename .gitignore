@@ -10,3 +10,9 @@ renv/*
 *.msg
 results/*.csv
 *.qmd
+*.qgz
+*.cpg
+*.dbf
+*.prj
+*.shp
+*.shx
