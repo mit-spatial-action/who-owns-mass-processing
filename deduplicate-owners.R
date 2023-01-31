@@ -801,7 +801,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, test = T
 }
 
 merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
-  #' Merge parcels with corporations on the basis of name.
+  #' Merge assessors records with corporations on the basis of name.
   #' 
   #' @param a_df Assessors records dataframe.
   #' @param c_df Corportions dataframe.
