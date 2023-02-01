@@ -1,17 +1,32 @@
 source("deduplicate-owners.R")
 
-RESULTS_DIR <- "results"
+# Name of directory in which input data is stored.
 DATA_DIR <- "data"
+# Name of directory in which results are written.
+RESULTS_DIR <- "results"
+# Filename of delimited text file containing individuals.
 INDS <- "CSC_CorporationsIndividualExport_VB.txt"
+# Filename of delimited text file containing corporate entities.
 CORPS <- "CSC_CorpDataExports_VB.txt"
+# Filename of MassGIS Parcels geodatabase.
 ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
-TOWN_CSV <- "ma_towns.csv"
+# Name of CSV containing limited collection of HNS municipalities
+MUNI_CSV <- "hns_munis"
+# Name of delimited text output files.
 ASSESS_OUT_NAME <- "assess"
 CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
+# Name of RData image.
 RDATA_OUT_NAME <- "results"
 
 run <- function(hns = TRUE, store_results = TRUE){
+  #' Run complete owner deduplication process.
+  #' 
+  #' @param hns If `TRUE`, process only Healthy Neighborhoods Study areas (plus areas of interest to the author)
+  #' @param store_results If `TRUE`, return results in a named list. If `FALSE`, return nothing, saving output to delimited text and `*.RData` files.
+  #' @returns If `store_results` is `TRUE`, a named list of dataframes. Else, nothing.
+  #' @export
+  #' 
   # Create and open log file with timestamp name.
   lf <- log_open(file.path("logs", format(Sys.time(), "%Y-%m-%d_%H%M%S")))
   
@@ -26,7 +41,7 @@ run <- function(hns = TRUE, store_results = TRUE){
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
   if (hns) {
-    town_ids <- read_csv(file.path(DATA_DIR, TOWN_CSV)) %>% 
+    town_ids <- read_csv(file.path(DATA_DIR, paste(TOWN_CSV, "csv", sep = "."))) %>% 
       pull(town_id) %>%
       c(274, 49, 176, 10, 26, 314, 46) %>%
       paste(collapse = ", ")
@@ -190,6 +205,7 @@ run <- function(hns = TRUE, store_results = TRUE){
   }
 }
 
+# This is like if __name__ == "__main__" in python.
 if (!interactive()) {
   run(hns = FALSE, store_results = FALSE)
 }
