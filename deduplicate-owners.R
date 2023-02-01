@@ -603,7 +603,7 @@ load_assess <- function(path, town_ids = NA) {
   #' @param test Whether to only load a sample subset of rows.
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
-  if (length(town_ids) > 0) {
+  if (!is.na(town_ids)) {
     assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", town_ids, ")")
   }
   st_read(
@@ -738,7 +738,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
   if (census) {
     library(tigris)
     parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
-    if (length(town_ids) > 0) {
+    if (!is.na(town_ids)) {
       parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (", town_ids, ")")
     }
     df <- st_read(
