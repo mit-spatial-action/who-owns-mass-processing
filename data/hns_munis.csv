@@ -1,8 +1,8 @@
-id,town_id,pop1980,pop1990,pop2000,popch90_00,type,fourcolor,fips_stco,sum_acres,sum_square,pop2010,popch00_10,popch80_90,shape_leng,shape_area,district,mora_start,mora_end,ohs,mapctype,mapcsub,mora_c,mora_nf,mora_np,HNS
-BROCKTON,"44",95892,92788,94304,1516,C,"1",25023,13769.724,21.516,93810,-494,-3104,32616.9354866,55724091.4612,metrosouth,,,false,Regional Urban Centers,Major Regional Urban Centers,false,false,false,true
-BOSTON,"35",570719,574283,588957,14674,C,"1",25025,32104.34973,50.15997,617594,28637,3564,205312.529714,129519997.542,eastern,2021/08/31,2021/11/29,true,Inner Core,Metro Core,false,true,true,true
-EVERETT,"93",36511,35701,38037,2336,C,"2",25017,2200.438,3.438,41667,3630,-810,16974.4151982,8888277.0117,northeast,,,false,Inner Core,Metro Core,false,false,false,true
-LYNN,"163",79264,81245,89050,7805,C,"3",25009,7390.936,11.548,90329,1279,1981,31039.6810564,29910545.8331,northeast,,,false,Regional Urban Centers,Sub-Regional Urban Center,false,false,false,true
-FALL RIVER,"95",92038,92703,91938,-765,C,"3",25005,24668.089,38.544,88857,-3081,665,63846.2143379,99828191.0063,southeast,,,false,Regional Urban Centers,Major Regional Urban Centers,false,false,false,true
-CHELSEA,"57",26058,28710,35116,6406,C,"3",25025,1415.922,2.212,35177,61,2652,13754.0185118,5741348.53924,eastern,,,false,Inner Core,Metro Core,false,false,false,true
-NEW BEDFORD,"201",97738,99922,93768,-6154,C,"2",25005,12978.713,20.279,95072,1304,2184,53467.7027246,52522965.3551,southeast,,,false,Regional Urban Centers,Major Regional Urban Centers,false,false,false,true
+"id","town_id","fips_stco","district","mapctype","mapcsub"
+"BROCKTON","44",25023,"metrosouth","Regional Urban Centers","Major Regional Urban Centers"
+"BOSTON","35",25025,"eastern","Inner Core","Metro Core"
+"EVERETT","93",25017,"northeast","Inner Core","Metro Core"
+"LYNN","163",25009,"northeast","Regional Urban Centers","Sub-Regional Urban Center"
+"FALL RIVER","95",25005,"southeast","Regional Urban Centers","Major Regional Urban Centers"
+"CHELSEA","57",25025,"eastern","Inner Core","Metro Core"
+"NEW BEDFORD","201",25005,"southeast","Regional Urban Centers","Major Regional Urban Centers"

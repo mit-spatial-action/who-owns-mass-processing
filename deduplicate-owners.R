@@ -549,13 +549,23 @@ assess_res_filter <- function(df, col) {
         get({{col}}), paste(c(
           # Residential use codes.
           "^0?10[13-59][0-9A-Z]?$",
+          # Apartments.
           "^0?11[1-5][0-9A-Z]?$",
+          # Subsidized Housing.
+          "^0?12[5-7]",
           # Mixed use codes.
           "^0(1[0-9]|[1-9]1)[A-Z]?$",
-          # Hotel/Motel
-          # "^0?30[01]$",
+          # Boston Housing Authority.
+          "^908",
+          # Housing authority outside Boston.
           "^0?970",
+          # Section 121-A Property in Boston.
+          # (Tax-exempt 'blight' redevelopment.)
           "^0?907",
+          # Section 121-A Property outside Boston.
+          "^990",
+          # 'Other' Housing.
+          "^959",
           "^000"
         ), collapse="|")
         )
