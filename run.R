@@ -48,7 +48,6 @@ run <- function(hns = TRUE, store_results = TRUE){
   } else {
     town_ids <- NA
   }
-  town_ids <- 274
     
   assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>%
     # Run string standardization procedures.
