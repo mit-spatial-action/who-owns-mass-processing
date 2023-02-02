@@ -1,6 +1,5 @@
 *.gdb
 CSC*.txt
-bos_neigh.csv
 renv/*
 .DS_Store
 .RProj.user/*
