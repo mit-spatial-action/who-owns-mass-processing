@@ -59,7 +59,11 @@ run <- function(hns = TRUE, store_results = TRUE){
   log_message("Deduplicating assessor's ownership information")
   # Initiate assessing deduplication.
   assess_dedupe <- assess %>%
-    select(c(loc_id, fy, owner1, own_addr, own_city, own_state, own_zip, name_address)) %>%
+    select(c(
+      prop_id, loc_id, town_id, fy, owner1, 
+      own_addr, own_city, own_state, own_zip, 
+      name_address)
+      ) %>%
     # Naive deduplication on prepared, concatenated name and address.
     dedupe_naive(str_field = "name_address") %>%
     # Cosine-similarity-based deduplication.

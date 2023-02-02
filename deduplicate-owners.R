@@ -772,7 +772,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
       st_get_censusgeo(crs = crs) %>%
       select(
         c(
-          prop_id, loc_id, site_addr, location, 
+          prop_id, loc_id, town_id, fy, site_addr, location, 
           city, zip, owner1, own_addr, 
           own_city, own_zip, own_state, own_co, 
           geoid_t, geoid_bg)
@@ -782,7 +782,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
     df <- df %>%
       select(
         c(
-          prop_id, loc_id, site_addr, location, 
+          prop_id, loc_id, town_id, fy, site_addr, location, 
           city, owner1, own_addr, 
           own_city, own_zip, own_state, own_co)
       )
