@@ -19,7 +19,7 @@ INDS_OUT_NAME <- "inds"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
 
-run <- function(hns = TRUE, store_results = TRUE){
+run <- function(test = TRUE, hns = FALSE, store_results = TRUE){
   #' Run complete owner deduplication process.
   #' 
   #' @param hns If `TRUE`, process only Healthy Neighborhoods Study areas (plus areas of interest to the author)
@@ -45,6 +45,8 @@ run <- function(hns = TRUE, store_results = TRUE){
       pull(town_id) %>%
       c(274, 49, 176, 10, 26, 314, 46) %>%
       paste(collapse = ", ")
+  } else if (test) {
+    town_ids <- 274
   } else {
     town_ids <- NA
   }
