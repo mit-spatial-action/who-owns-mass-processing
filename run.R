@@ -41,13 +41,14 @@ run <- function(hns = TRUE, store_results = TRUE){
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
   if (hns) {
-    town_ids <- read_csv(file.path(DATA_DIR, paste(TOWN_CSV, "csv", sep = "."))) %>% 
+    town_ids <- read_csv(file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))) %>% 
       pull(town_id) %>%
       c(274, 49, 176, 10, 26, 314, 46) %>%
       paste(collapse = ", ")
   } else {
     town_ids <- NA
   }
+  town_ids <- 274
     
   assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>%
     # Run string standardization procedures.
@@ -58,7 +59,7 @@ run <- function(hns = TRUE, store_results = TRUE){
   log_message("Deduplicating assessor's ownership information")
   # Initiate assessing deduplication.
   assess_dedupe <- assess %>%
-    select(c(loc_id, owner1, own_addr, own_city, own_state, own_zip, name_address)) %>%
+    select(c(loc_id, fy, owner1, own_addr, own_city, own_state, own_zip, name_address)) %>%
     # Naive deduplication on prepared, concatenated name and address.
     dedupe_naive(str_field = "name_address") %>%
     # Cosine-similarity-based deduplication.
