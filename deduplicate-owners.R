@@ -5,7 +5,6 @@ library(readr)
 library(purrr)
 library(stringr)
 library(logr)
-
 # Spatial support.
 library(sf)
 
@@ -277,7 +276,7 @@ std_split_addresses <- function(df, addr_col, unit_col = "unit") {
     extract(
       {{addr_col}},
       c("addr", unit_col),
-      "([[:alnum:] ]*)[ ]+([0-9]+(?:TH|RD|ST) FLO?O?R)$",
+      "([[:alnum:] ]*)[ ]+([0-9]+(?:(?:TH|ND|RD|ST)?)+(?:[[:space:]])?(?:FLO?O?R?)?)$",
       remove = FALSE
     ) %>%
     mutate(
