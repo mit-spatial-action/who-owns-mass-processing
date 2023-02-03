@@ -19,11 +19,11 @@ INDS_OUT_NAME <- "inds"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
 
-run <- function(test = TRUE, hns = FALSE, store_results = TRUE){
+run <- function(subset = "test", return_results = TRUE){
   #' Run complete owner deduplication process.
   #' 
-  #' @param hns If `TRUE`, process only Healthy Neighborhoods Study areas (plus areas of interest to the author)
-  #' @param store_results If `TRUE`, return results in a named list. If `FALSE`, return nothing, saving output to delimited text and `*.RData` files.
+  #' @param subset If value is `"test"`, processes only Somerville. If value is `"hns"`, processes only HNS municipalities. If value is `"all"`, runs entire state. Otherwise, stops and generates an error.
+  #' @param store_results If `TRUE`, return results in a named list. If `FALSE`, return nothing. In either case, results are output to delimited text and `*.RData` files.
   #' @returns If `store_results` is `TRUE`, a named list of dataframes. Else, nothing.
   #' @export
   #' 
@@ -40,15 +40,16 @@ run <- function(test = TRUE, hns = FALSE, store_results = TRUE){
   log_message("Reading and processing parcels and assessors table from GDB.")
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
-  if (hns) {
-    town_ids <- read_csv(file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))) %>% 
+  if (subset == "hns") {
+    town_ids <- read_csv(file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))) %>%
       pull(town_id) %>%
-      c(274, 49, 176, 10, 26, 314, 46) %>%
       paste(collapse = ", ")
-  } else if (test) {
+  } else if (subset == "test") {
     town_ids <- 274
-  } else {
+  } else if (subset == "all") {
     town_ids <- NA
+  } else {
+    stop("Invalid subset.")
   }
     
   assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>%
@@ -206,12 +207,12 @@ run <- function(test = TRUE, hns = FALSE, store_results = TRUE){
   # Close logs.
   log_close()
   # If directed to store results, return them in a named list.
-  if (store_results == TRUE) {
+  if (return_results == TRUE) {
     list("assess" = assess, "inds" = inds, "corps" = corps_simp)
   }
 }
 
 # This is like if __name__ == "__main__" in python.
 if (!interactive()) {
-  run(hns = FALSE, store_results = FALSE)
+  run(subset = "all", return_results = FALSE)
 }
