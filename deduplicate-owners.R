@@ -537,8 +537,10 @@ corp_rm_corp_sys <- function(df, cols) {
 
 assess_res_filter <- function(df, col) {
   #' Filter assessors records by MA residential use codes.
+  #' Massachusetts Codebook
   #' https://www.mass.gov/files/documents/2016/08/wr/classificationcodebook.pdf
-  #' 
+  #' Boston Codebook
+  #' https://www.cityofboston.gov/Images_Documents/MA_OCCcodes_tcm3-16189.pdf
   #' @param df A dataframe.
   #' @param cols The columns containing the use codes.
   #' @returns A dataframe.
@@ -559,10 +561,11 @@ assess_res_filter <- function(df, col) {
           "^908",
           # Housing authority outside Boston.
           "^0?970",
-          # Section 121-A Property in Boston.
+          # Section 121-A Property...
           # (Tax-exempt 'blight' redevelopment.)
+          # in Boston
           "^0?907",
-          # Section 121-A Property outside Boston.
+          # outside Boston.
           "^990",
           # 'Other' Housing.
           "^959",
