@@ -26,17 +26,6 @@ run <- function(subset = "test", return_results = TRUE){
   #' @param store_results If `TRUE`, return results in a named list. If `FALSE`, return nothing. In either case, results are output to delimited text and `*.RData` files.
   #' @returns If `store_results` is `TRUE`, a named list of dataframes. Else, nothing.
   #' @export
-  #' 
-  # Create and open log file with timestamp name.
-  lf <- log_open(file.path("logs", format(Sys.time(), "%Y-%m-%d_%H%M%S")))
-  
-  log_message("Reading and processing corporations from delimited text.")
-  # Load corporations from delimited text.
-  # DATA_DIR and CORPS set globally above.
-  corps <- load_corps(file.path(DATA_DIR, CORPS)) %>%
-    # Run string standardization procedures on entity name.
-    process_corps(id = "id_corp", name = "entityname")
-  
   log_message("Reading and processing parcels and assessors table from GDB.")
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
@@ -51,12 +40,21 @@ run <- function(subset = "test", return_results = TRUE){
   } else {
     stop("Invalid subset.")
   }
-    
+  
   assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>%
     # Run string standardization procedures.
     # If census = TRUE, will join to parcels and link to census geographies.
     # Note that ^ this ^ adds a somewhat costly load-merge procedure.
     process_assess(census = FALSE, town_ids = town_ids)
+  # Create and open log file with timestamp name.
+  lf <- log_open(file.path("logs", format(Sys.time(), "%Y-%m-%d_%H%M%S")))
+  
+  log_message("Reading and processing corporations from delimited text.")
+  # Load corporations from delimited text.
+  # DATA_DIR and CORPS set globally above.
+  corps <- load_corps(file.path(DATA_DIR, CORPS)) %>%
+    # Run string standardization procedures on entity name.
+    process_corps(id = "id_corp", name = "entityname")
   
   log_message("Deduplicating assessor's ownership information")
   # Initiate assessing deduplication.
