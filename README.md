@@ -14,7 +14,25 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`. If you are using Windows, you'll probably have to [install the `Rtools` bundle appropriate for your version of R](https://cran.r-project.org/bin/windows/Rtools/).
 
-Given the datasets we're currently working with, simply run `run.R` and execute `run()`. Note that it defaults to `test = TRUE` which will perform analysis on a small subset of assessors records in Massachusetts---namely, the records for Cambridge, Somerville, and Medford. To run for the entire state, execute `run(test = FALSE)`. This function automatically saves a simplified assessors table (`assess.txt`) with a column `id_corp` that links with the `id` column of `corps.txt`, and an individuals file (`inds.txt`) that contains a link to corporations (`id_corp`).
+We provide an onmibus `run()` function in `run.R`. It takes two parameters:
+
+1. `subset`: If value is `"test"` (default), processes only Somerville. If value is `"hns"`, processes only HNS municipalities. If value is `"all"`, runs entire state. Otherwise, it stops and generates an error.
+2. `return_results`:   If `TRUE` (default), return results in a named list. If `FALSE`, return nothing. In either case, results are output to delimited text and `*.RData` files.
+
+In other words...
+
+```r
+# Runs on Somerville.
+run(subset = "test")
+# Runs on Healthy Neighborhoods municipalities.
+run(subset = "hns")
+# Runs on entire state.
+run(subset = "all")
+```
+
+If `run.R` is executed from a non-interactive environment (i.e., a terminal), it will run on the entire state. (In other words: don't do this unless you want to wait 8 hours for results.)
+
+This function automatically saves a simplified assessors table (`assess.csv`) with a column `id_corp` that links with the `id` column of `corps.csv`, and an individuals file (`inds.csv`) that contains a link to corporations (`id_corp`).
 
 ## Data
 
