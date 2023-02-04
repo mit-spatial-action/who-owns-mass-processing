@@ -60,7 +60,7 @@ run <- function(subset = "test", return_results = TRUE){
   # Initiate assessing deduplication.
   assess_dedupe <- assess %>%
     select(c(
-      prop_id, loc_id, town_id, fy, owner1, 
+      prop_id, loc_id, town_id, fy, site_addr, city, owner1, 
       own_addr, own_city, own_state, own_zip, 
       name_address)
       ) %>%
