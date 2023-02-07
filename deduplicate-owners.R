@@ -15,6 +15,8 @@ library(quanteda.textstats)
 # For network-based community detection.
 library(igraph)
 
+boston <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
+
 std_uppercase_all <- function(df, except){
   #' Uppercase all strings
   #' 
@@ -778,7 +780,6 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
     if (is.na(crs)) {
       crs <- st_crs(df)
     }
-    print("hi")
     df <- df %>%
       st_get_zips("zip", crs = crs) %>%
       st_get_censusgeo(crs = crs) %>%
@@ -840,6 +841,14 @@ merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
     bind_rows(no_group)
 }
   
+clean_cities <- function(df) {
+  df %>% mutate(df, city_cleaned = case_when(
+    (city %in% boston$Name) ~ "BOSTON",
+    !(city %in% boston$Name) ~ city,
+    (city == "ROXBURY CROSSING") ~ "BOSTON",
+    (city == "DORCHESTER CENTER") ~ "BOSTON"))
+}
+
 log_message <- function(status) {
     #' Print message to `logr` logs.
     #' 

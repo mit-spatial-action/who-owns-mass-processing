@@ -18,6 +18,7 @@ CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
+BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 
 run <- function(subset = "test", return_results = TRUE){
   #' Run complete owner deduplication process.
