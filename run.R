@@ -18,6 +18,8 @@ CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
+# CSV containing Boston Neighborhoods
+BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 
 run <- function(subset = "test", return_results = TRUE){
   #' Run complete owner deduplication process.
@@ -60,7 +62,7 @@ run <- function(subset = "test", return_results = TRUE){
   # Initiate assessing deduplication.
   assess_dedupe <- assess %>%
     select(c(
-      prop_id, loc_id, town_id, fy, owner1, 
+      prop_id, loc_id, town_id, fy, site_addr, city, owner1, 
       own_addr, own_city, own_state, own_zip, 
       name_address)
       ) %>%

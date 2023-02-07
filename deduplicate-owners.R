@@ -5,7 +5,6 @@ library(readr)
 library(purrr)
 library(stringr)
 library(logr)
-
 # Spatial support.
 library(sf)
 
@@ -15,6 +14,8 @@ library(quanteda.textstats)
 
 # For network-based community detection.
 library(igraph)
+
+BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
 
 std_uppercase_all <- function(df, except){
   #' Uppercase all strings
@@ -277,7 +278,7 @@ std_split_addresses <- function(df, addr_col, unit_col = "unit") {
     extract(
       {{addr_col}},
       c("addr", unit_col),
-      "([[:alnum:] ]*)[ ]+([0-9]+(?:TH|RD|ST) FLO?O?R)$",
+      "([[:alnum:] ]*)[ ]+([0-9]+(?:(?:TH|ND|RD|ST)?)+(?:[[:space:]])?(?:FLO?O?R?)?)$",
       remove = FALSE
     ) %>%
     mutate(
@@ -779,7 +780,6 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
     if (is.na(crs)) {
       crs <- st_crs(df)
     }
-    print("hi")
     df <- df %>%
       st_get_zips("zip", crs = crs) %>%
       st_get_censusgeo(crs = crs) %>%
@@ -841,6 +841,16 @@ merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
     bind_rows(no_group)
 }
   
+clean_cities <- function(df) {
+  #' Move Boston neighborhoods to Boston
+  #' Update some other common neighborhoods
+  df %>% mutate(df, city_cleaned = case_when(
+    (city %in% c(BOSTON_NEIGHS$Name, c("ROXBURY CROSSING" , "DORCHESTER CENTER"))) ~ "BOSTON",
+    (city == "NORTHWEST BEDFORD") ~ "BEDFORD",
+    !(city %in% BOSTON_NEIGHS$Name) ~ city
+    ))
+}
+
 log_message <- function(status) {
     #' Print message to `logr` logs.
     #' 
