@@ -618,7 +618,7 @@ load_assess <- function(path, town_ids = NA) {
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
   if (!is.na(town_ids)) {
-    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", town_ids, ")")
+    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", paste(town_ids, collapse=", "), ")")
   }
   st_read(
       path,
