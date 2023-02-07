@@ -15,6 +15,10 @@ library(quanteda.textstats)
 # For network-based community detection.
 library(igraph)
 
+# Name of directory in which input data is stored.
+DATA_DIR <- "data"
+# CSV containing Boston Neighborhoods
+BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
 
 std_uppercase_all <- function(df, except){
@@ -119,7 +123,7 @@ std_replace_blank <- function(df, except) {
   df %>%
     mutate(
       across(-c({{except}}), ~case_when(
-        str_detect(., "^X+$") ~ NA_character_,
+        str_detect(., "^X+$|^NONE$|^UNKNOWN$|^N$") ~ NA_character_,
         TRUE ~ str_squish(.)
       )
       )
@@ -160,6 +164,35 @@ std_char <- function(df, id, except){
     std_the({{id}})
 }
 
+std_small_numbers <- function(df, cols) {
+  #' Convert alphanumeric small numbers to numbers.
+  #' 
+  #' @param df A dataframe.
+  #' @param cols The columns to be standardized.
+  #' @returns A dataframe.
+  #' @export
+  df %>%
+    mutate(
+      across({{cols}}, ~ str_replace_all(
+        ., 
+        c(
+          "(?<=^| )ZERO(?= |$)" = "0",
+          "(?<=^| )ONE(?= |$)" = "1",
+          "(?<=^| )TWO(?= |$)" = "2",
+          "(?<=^| )THREE(?= |$)" = "3",
+          "(?<=^| )FOUR(?= |$)" = "4",
+          "(?<=^| )FIVE(?= |$)" = "5",
+          "(?<=^| )SIX(?= |$)" = "6", 
+          "(?<=^| )SEVEN(?= |$)" = "7",
+          "(?<=^| )EIGHT(?= |$)" = "8",
+          "(?<=^| )NINE(?= |$)" = "9",
+          "(?<=^| )TEN(?= |$)" = "10"
+        )
+      )
+      )
+    )
+}
+
 std_street_types <- function(df, addr_col) {
   #' Standardize street types.
   #' 
@@ -186,8 +219,8 @@ std_street_types <- function(df, addr_col) {
           "(?<= )SQR?(?=$|\\s|\\.)" = "SQUARE",
           "(?<= )HG?WY(?=$|\\s|\\.)" = "HIGHWAY",
           "(?<= )FR?WY(?=$|\\s|\\.)" = "FREEWAY",
-          "(?<= )CRT(?=$|\\s|\\.)" = "COURT",
-          "(?<= )PLZ(?=$|\\s|\\.)" = "PLAZA",
+          "(?<= )CR?T(?=$|\\s|\\.)" = "COURT",
+          "(?<= )PLZ?(?=$|\\s|\\.)" = "PLAZA",
           "(?<= )W[HR]+F(?=$|\\s|\\.)" = "WHARF",
           "(?<= |^)P.? ?O.?[ ]+BO?X(?=$|\\s|\\.)" = "PO BOX"
         )
@@ -529,7 +562,7 @@ corp_rm_corp_sys <- function(df, cols) {
   df %>%
     mutate(
       across({{cols}}, ~ case_when(
-        str_detect(., "CORPORATION (SYS)|(SER)") ~ NA_character_,
+        str_detect(., "CORP(ORATION)? (SYS)|(SER)") ~ NA_character_,
         TRUE ~ .
       )
       )
@@ -618,7 +651,7 @@ load_assess <- function(path, town_ids = NA) {
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
   if (!is.na(town_ids)) {
-    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", town_ids, ")")
+    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", paste(town_ids, collapse = ","), ")")
   }
   st_read(
       path,

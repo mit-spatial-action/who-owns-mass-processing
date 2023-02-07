@@ -1,13 +1,18 @@
-*.gdb
+# Corporate database copy.
 CSC*.txt
-renv/*
+# macOS finder file
 .DS_Store
+# Rproj/renv stuff
+renv/*
 .RProj.user/*
 .Rproj.user
 *.RData
+# logr logs
 *.log
 *.msg
+# Results
 results/*.csv
+# Spatial/GIS formats.
 *.qmd
 *.qgz
 *.cpg
@@ -15,4 +20,6 @@ results/*.csv
 *.prj
 *.shp
 *.shx
+*.geojson
 *.gpkg
+*.gdb
