@@ -845,7 +845,7 @@ clean_cities <- function(df) {
   #' Move Boston neighborhoods to Boston
   #' Update some other common neighborhoods
   df %>% mutate(df, city_cleaned = case_when(
-    (city %in% BOSTON_NEIGHS$Name | (city %in% c("ROXBURY CROSSING" , "DORCHESTER CENTER"))) ~ "BOSTON",
+    (city %in% c(BOSTON_NEIGHS$Name, c("ROXBURY CROSSING" , "DORCHESTER CENTER"))) ~ "BOSTON",
     (city == "NORTHWEST BEDFORD") ~ "BEDFORD",
     !(city %in% BOSTON_NEIGHS$Name) ~ city
     ))
