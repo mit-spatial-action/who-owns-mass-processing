@@ -119,7 +119,7 @@ std_replace_blank <- function(df, except) {
   df %>%
     mutate(
       across(-c({{except}}), ~case_when(
-        str_detect(., "^X+$") ~ NA_character_,
+        str_detect(., "^X+$|^NONE$|^UNKNOWN$|AS ABOVE") ~ NA_character_,
         TRUE ~ str_squish(.)
       )
       )
@@ -529,7 +529,7 @@ corp_rm_corp_sys <- function(df, cols) {
   df %>%
     mutate(
       across({{cols}}, ~ case_when(
-        str_detect(., "CORPORATION (SYS)|(SER)") ~ NA_character_,
+        str_detect(., "CORP(ORATION)? (SYS)|(SER)") ~ NA_character_,
         TRUE ~ .
       )
       )
