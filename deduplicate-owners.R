@@ -842,8 +842,11 @@ merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
 }
   
 clean_cities <- function(df) {
+  #' Move Boston neighborhoods to Boston
+  #' Update some other common neighborhoods
   df %>% mutate(df, city_cleaned = case_when(
     (city %in% boston$Name | (city == "ROXBURY CROSSING" ) | (city == "DORCHESTER CENTER")) ~ "BOSTON",
+    (city == "NORTHWEST BEDFORD") ~ "BEDFORD",
     !(city %in% boston$Name) ~ city
     ))
 }
