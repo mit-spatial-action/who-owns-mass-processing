@@ -841,7 +841,7 @@ merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
     bind_rows(no_group)
 }
   
-clean_cities <- function(df) {
+std_cities <- function(df) {
   #' Move Boston neighborhoods to Boston
   #' Update some other common neighborhoods
   df %>% mutate(df, city_cleaned = case_when(
