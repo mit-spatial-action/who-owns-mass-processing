@@ -164,6 +164,35 @@ std_char <- function(df, id, except){
     std_the({{id}})
 }
 
+std_small_numbers <- function(df, cols) {
+  #' Convert alphanumeric small numbers to numbers.
+  #' 
+  #' @param df A dataframe.
+  #' @param cols The columns to be standardized.
+  #' @returns A dataframe.
+  #' @export
+  df %>%
+    mutate(
+      across({{cols}}, ~ str_replace_all(
+        ., 
+        c(
+          "(?<=^| )ZERO(?= |$)" = "0",
+          "(?<=^| )ONE(?= |$)" = "1",
+          "(?<=^| )TWO(?= |$)" = "2",
+          "(?<=^| )THREE(?= |$)" = "3",
+          "(?<=^| )FOUR(?= |$)" = "4",
+          "(?<=^| )FIVE(?= |$)" = "5",
+          "(?<=^| )SIX(?= |$)" = "6", 
+          "(?<=^| )SEVEN(?= |$)" = "7",
+          "(?<=^| )EIGHT(?= |$)" = "8",
+          "(?<=^| )NINE(?= |$)" = "9",
+          "(?<=^| )TEN(?= |$)" = "10"
+        )
+      )
+      )
+    )
+}
+
 std_street_types <- function(df, addr_col) {
   #' Standardize street types.
   #' 
