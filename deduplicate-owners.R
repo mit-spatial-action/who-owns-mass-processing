@@ -15,7 +15,7 @@ library(quanteda.textstats)
 # For network-based community detection.
 library(igraph)
 
-boston <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
+BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
 
 std_uppercase_all <- function(df, except){
   #' Uppercase all strings
@@ -845,9 +845,9 @@ clean_cities <- function(df) {
   #' Move Boston neighborhoods to Boston
   #' Update some other common neighborhoods
   df %>% mutate(df, city_cleaned = case_when(
-    (city %in% boston$Name | (city == "ROXBURY CROSSING" ) | (city == "DORCHESTER CENTER")) ~ "BOSTON",
+    (city %in% BOSTON_NEIGHS$Name | (city %in% c("ROXBURY CROSSING" , "DORCHESTER CENTER"))) ~ "BOSTON",
     (city == "NORTHWEST BEDFORD") ~ "BEDFORD",
-    !(city %in% boston$Name) ~ city
+    !(city %in% BOSTON_NEIGHS$Name) ~ city
     ))
 }
 
