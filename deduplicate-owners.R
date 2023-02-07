@@ -843,10 +843,9 @@ merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
   
 clean_cities <- function(df) {
   df %>% mutate(df, city_cleaned = case_when(
-    (city %in% boston$Name) ~ "BOSTON",
-    !(city %in% boston$Name) ~ city,
-    (city == "ROXBURY CROSSING") ~ "BOSTON",
-    (city == "DORCHESTER CENTER") ~ "BOSTON"))
+    (city %in% boston$Name | (city == "ROXBURY CROSSING" ) | (city == "DORCHESTER CENTER")) ~ "BOSTON",
+    !(city %in% boston$Name) ~ city
+    ))
 }
 
 log_message <- function(status) {
