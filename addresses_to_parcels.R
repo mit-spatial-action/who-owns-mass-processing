@@ -2,7 +2,8 @@ source("deduplicate-owners.R")
 library(RPostgreSQL)
 library(dplyr)
 library(tidyr)
-
+DATA_DIR <- "data"
+BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 local_db_name <- "eviction_local"
 
 # ---------- Connecting to local DB ---------- #
@@ -18,5 +19,8 @@ filings <-
 # ---------- Cleaning addresses ---------- #
 filings <- std_uppercase_all(filings)
 filings <- std_char(filings)
+filings <- std_remove_special(filings)
 filings <- std_split_addresses(filings, "street")
 filings <- std_street_types(filings, "street")
+filings <- clean_cities(filings)
+joined <- left_join(assess, filings, by=c("site_addr"="street", "city"="city_cleaned"))
