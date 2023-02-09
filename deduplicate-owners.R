@@ -285,7 +285,8 @@ std_split_addresses <- function(df, addr_col, unit_col = "unit") {
         ")[ ]+(#?[A-Z]?[0-9]*(?:[A-Z]|(?:ABC)?)$)"
         ),
       remove = FALSE
-    ) %>%
+    ) %>% st_set_geometry("geometry") %>%
+    st_drop_geometry("geometry") %>%
     mutate(
       across({{addr_col}}, ~case_when(
         addr != "" ~ addr,
