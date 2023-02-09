@@ -15,8 +15,6 @@ library(quanteda.textstats)
 # For network-based community detection.
 library(igraph)
 
-BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
-
 std_uppercase_all <- function(df, except){
   #' Uppercase all strings
   #' 
@@ -29,6 +27,12 @@ std_uppercase_all <- function(df, except){
       across(-c({{except}}), str_to_upper),
     )
 }
+# Name of directory in which input data is stored.
+DATA_DIR <- "data"
+# CSV containing Boston Neighborhoods
+BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
+BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
+
 
 std_directions <- function(df, except) {
   #' Standardizes abbreviated cardinal directions.
@@ -736,7 +740,9 @@ process_corps <- function(df, id, name) {
     std_char(c({{id}})) %>%
     std_massachusetts(c({{name}})) %>%
     std_street_types(c({{name}})) %>%
-    corp_rm_corp_sys(c({{name}}))
+    corp_rm_corp_sys(c({{name}})) %>%
+    std_small_numbers(c({{name}}))
+    
 }
 
 process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids = NA) {
@@ -808,6 +814,7 @@ process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids
     std_char(c(prop_id, loc_id), owner1) %>%
     std_massachusetts(c(owner1, site_addr, own_addr)) %>%
     std_street_types(c(owner1, site_addr, own_addr)) %>%
+    std_small_numbers(c(owner1, site_addr, own_addr)) %>%
     std_split_addresses("own_addr", "own_unit") %>%
     mutate(
       name_address = str_c(owner1, own_addr, sep = " ")
