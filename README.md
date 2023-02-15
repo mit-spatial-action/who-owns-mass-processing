@@ -5,10 +5,13 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 1. Prepare data using a large number of string-standardizing functions, some of which are place-based. (In other words, when adapting to non-Massachusetts locations, you'll want to consider how to adapt our codebase to your locale.)
 2. Perform naive deduplication on assessors' tables using concatenated name and address.
 3. Perform cosine-similarity-based deduplication on assessors' tables using concatenated name and address.
-4. Join parcels to corporations using simple string matching. Note that here, when an owner fails to match within a cosine-similarity group that contains successful matches (see step 3), the owners that fail to match are assigned to the corporation id of one of the successful matches.
-5. Deduplicate individuals associated with corporations that match parcel owners using both naive and cosine similarity methods.
-6. Identify communities within corporate-individual networks. (This is done using the `igraph` implementation of the fast greedy modularity optimization algorithm.)
-7. Assign each community a name based on the most common name of its members.
+4. Join parcels to companies using simple string matching. Note that here, when an owner fails to match within a cosine-similarity group that contains successful matches (see step 3), the owners that fail to match are assigned to the company id of one of the successful matches.
+
+    + TODO: replace this step with efficient fuzzy-matching (we're probably losing a fair number of matches here).
+  
+5. Identify agents of companies that are companies themselves (distinguishing between law firms and other companies) and agents of companies that are individuals.
+6. Deduplicate individuals (including individual agents) associated with companies that match parcel owners using both naive and cosine similarity methods.
+7. Identify communities within corporate-individual networks. (This is done using the `igraph` implementation of the fast greedy modularity optimization algorithm.)
 
 ## Getting Started
 
@@ -32,7 +35,13 @@ run(subset = "all")
 
 If `run.R` is executed from a non-interactive environment (i.e., a terminal), it will run on the entire state. (In other words: don't do this unless you want to wait 8 hours for results.)
 
-This function automatically saves a simplified assessors table (`assess.csv`) with a column `id_corp` that links with the `id` column of `corps.csv`, and an individuals file (`inds.csv`) that contains a link to corporations (`id_corp`).
+This function automatically saves its results to... 
+
++ a simplified table of owners (by default, `owners.csv`, set using the `OWNERS_OUT_NAME` global variable at the top of `run.R`),
++ a table of matched companies (by default, `corps.csv`, set using the `CORPS_OUT_NAME` global variable at the top of `run.R`),
++ a table of individuals (by default, `inds.csv`, set using the `INDS_OUT_NAME` global variable at the top of `run.R`),
++ + a table of assessors records, supplemened by owner-occupancy flag (by default, `assess.csv`, set using the `ASSESS_OUT_NAME` global variable at the top of `run.R`),
++ a simplified `igraph` `community` object (by default, `community.csv`, set using the `COMMUNITY_OUT_NAME` global variable at the top of `run.R`),
 
 ## Data
 
