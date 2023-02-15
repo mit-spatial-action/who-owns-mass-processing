@@ -40,7 +40,7 @@ This function automatically saves its results to...
 + a simplified table of owners (by default, `owners.csv`, set using the `OWNERS_OUT_NAME` global variable at the top of `run.R`),
 + a table of matched companies (by default, `corps.csv`, set using the `CORPS_OUT_NAME` global variable at the top of `run.R`),
 + a table of individuals (by default, `inds.csv`, set using the `INDS_OUT_NAME` global variable at the top of `run.R`),
-+ a table of individuals (by default, `inds.csv`, set using the `INDS_OUT_NAME` global variable at the top of `run.R`),
++ + a table of assessors records, supplemened by owner-occupancy flag (by default, `assess.csv`, set using the `ASSESS_OUT_NAME` global variable at the top of `run.R`),
 + a simplified `igraph` `community` object (by default, `community.csv`, set using the `COMMUNITY_OUT_NAME` global variable at the top of `run.R`),
 
 ## Data
