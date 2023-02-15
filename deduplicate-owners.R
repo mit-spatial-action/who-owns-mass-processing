@@ -5,6 +5,7 @@ library(readr)
 library(purrr)
 library(stringr)
 library(logr)
+library(tidyselect)
 # Spatial support.
 library(sf)
 
@@ -18,27 +19,29 @@ library(igraph)
 # Name of directory in which input data is stored.
 DATA_DIR <- "data"
 # CSV containing Boston Neighborhoods
-BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
-BOSTON_NEIGHS <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOSTON_NEIGHBORHOODS)))
+BOS_NBHD <- "bos_neigh.csv"
 
-std_uppercase_all <- function(df, except){
+std_uppercase_all <- function(df, except_cols = c()){
   #' Uppercase all strings
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
+  #' @param except Column or columns to remain untouched.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
-      across(-c({{except}}), str_to_upper),
+      across(
+        where(is.character) & !all_of(except_cols),
+        str_to_upper
+      ),
     )
 }
 
-std_directions <- function(df, except) {
+std_directions <- function(df, cols) {
   #' Standardizes abbreviated cardinal directions.
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
   replace <- c(
@@ -55,18 +58,18 @@ std_directions <- function(df, except) {
   df %>%
     mutate(
       across(
-        -c({{except}}), 
+        where(is.character) & all_of(cols), 
         ~str_trim(str_replace_all(., replace))
       )
     )
 }
 
-std_andslash <- function(df, except) {
+std_andslash <- function(df, cols) {
   #' Standardizes slashes to have a space on either side and
   #' replaces all instances of an ampersand with the word "AND"
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
   replace <- c(
@@ -78,133 +81,191 @@ std_andslash <- function(df, except) {
   df %>%
     mutate(
       across(
-        -c({{except}}), 
+        where(is.character) & all_of(cols),
         ~str_replace_all(., replace)
       )
     )
 }
 
-std_remove_special <- function(df, except){
-  #' Removes all special characters from columns, except slash
+std_onewordaddress <- function(df, cols) {
+  #' Currently, std_simplify address just strips numbers from the end of
+  #' address fields that contain only e.g., "APT" and #. This is a cludgy
+  #' clean-up.
+  #' TODO: Replace with better regex in std_simplify ::shrug::
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
+  replace <- c(
+    # Put space around slashes
+    "^[A-Z0-9]+$" = NA_character_
+  )
   df %>%
     mutate(
-      across(-c({{except}}), ~gsub("[^[:alnum:][:space:]/]", "", .))
+      across(
+        where(is.character) & all_of(cols),
+        ~str_replace_all(., replace)
+      )
     )
 }
 
-std_remove_middle_initial <- function(df, name_col) {
+std_trailingwords <- function(df, cols) {
+  #' Standardizes slashes to have a space on either side and
+  #' replaces all instances of an ampersand with the word "AND"
+  #' 
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  replace <- c(
+    # Put space around slashes
+    " OF$" ="", 
+    # Replace & with AND
+    " AND$" = "",
+    "^THE " = ""
+  )
+  df %>%
+    mutate(
+      across(
+        where(is.character) & all_of(cols),
+        ~str_replace_all(., replace)
+      )
+    )
+}
+
+std_remove_special <- function(df, cols){
+  #' Removes all special characters from columns, except slash
+  #' 
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  replace <- c(
+    "[^[:alnum:][:space:]/-]" = ""
+  )
+  df %>%
+    mutate(
+      across(
+        where(is.character) & all_of(cols),
+        ~str_replace_all(., replace)
+      )
+    )
+}
+
+std_small_numbers <- function(df, cols){
+  #' Standardize small leading numbers.
+  #' 
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  replace <- c(
+    "^ZERO(?=[ -])" = "0",
+    "^ONE(?=[ -])" = "1",
+    "^TWO(?=[ -])" = "2",
+    "^THREE(?=[ -])" = "3",
+    "^FOUR(?=[ -])" = "4",
+    "^FIVE(?=[ -])" = "5",
+    "^SIX(?=[ -])" = "6",
+    "^SEVEN(?=[ -])" = "7",
+    "^EIGHT(?=[ -])" = "8",
+    "^NINE(?=[ -])" = "9",
+    "^TEN(?=[ -])" = "10",
+    "(?<= |^)FIRST(?= )" = "1ST",
+    "(?<= |^)SECOND(?= )" = "2ND",
+    "(?<= |^)THIRD(?= )" = "3RD",
+    "(?<= |^)FOURTH(?= )" = "4TH",
+    "(?<= |^)FIFTH(?= )" = "5TH",
+    "(?<= |^)SIXTH(?= )" = "6TH",
+    "(?<= |^)SEVENTH(?= )" = "7TH",
+    "(?<= |^)EIGHTH(?= )" = "8TH",
+    "(?<= |^)NINTH(?= )" = "9TH",
+    "(?<= |^)TENTH(?= )" = "10TH"
+  )
+  df %>%
+    mutate(
+      across(
+        where(is.character) & all_of(cols),
+        ~str_replace_all(., replace)
+      )
+    )
+}
+
+std_remove_middle_initial <- function(df, cols) {
   #' Replace middle inital when formated like "ERIC R HUNTLEY"
   #' 
   #' @param df A dataframe.
-  #' @param except Column from which middle initials should be replaced.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
       across(
-        c({{name_col}}), 
+        where(is.character) & all_of(cols), 
         ~str_replace(., "(?<=[A-Z] )[A-Z] (?=[A-Z])", "")
       )
     )
 }
 
-std_replace_blank <- function(df, except) {
-  #' Replace blank string with NA.
+
+
+std_replace_blank <- function(df, except_cols = c()) {
+  #' Replace blank string with NA and remove leading and trailing whitespace.
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
-      across(-c({{except}}), ~case_when(
-        str_detect(., "^X+$|^NONE$|^UNKNOWN$|^N$") ~ NA_character_,
-        TRUE ~ str_squish(.)
+      across(
+        where(is.character) & !all_of(except_cols), 
+        ~case_when(
+          str_detect(., "^X+$|^N(ONE)?$|^UNKNOWN$|ABOVE|^N / A$|^[- ]*SAME( ADDRESS)?") ~ NA_character_,
+          TRUE ~ str_squish(.)
       )
       )
     )
 }
 
-std_the <- function(df, except){
-  #' Takes appended ", THE" and places it at the front.
+std_the <- function(df, cols){
+  #' Strips away leading or trailing the
   #' 
   #' @param df A dataframe containing only string datatypes.
-  #' @param except Columns to remain untouched.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
-      across(-c({{except}}), ~case_when(
-        substr(., nchar(.) - 3, nchar(.)) == " THE" ~ paste("THE", substr(., 1, nchar(.) - 3)),
-        TRUE ~ .
-      )
-      )
-    )
-}
-
-std_char <- function(df, id, except){
-  #' Run a series of string standardizing functions.
-  #' 
-  #' @param df A dataframe containing only string datatypes.
-  #' @param id The column containing the id which will remain untouched by all functions.
-  #' @param except Columns that should be left alone by more descructive functions.
-  #' @returns A dataframe.
-  #' @export
-  df %>%
-    std_uppercase_all({{id}}) %>%
-    std_directions(c({{id}}, {{except}})) %>%
-    std_andslash({{id}}) %>%
-    std_remove_special({{id}}) %>%
-    std_replace_blank({{id}}) %>%
-    std_the({{id}})
-}
-
-std_small_numbers <- function(df, cols) {
-  #' Convert alphanumeric small numbers to numbers.
-  #' 
-  #' @param df A dataframe.
-  #' @param cols The columns to be standardized.
-  #' @returns A dataframe.
-  #' @export
-  df %>%
-    mutate(
-      across({{cols}}, ~ str_replace_all(
-        ., 
-        c(
-          "(?<=^| )ZERO(?= |$)" = "0",
-          "(?<=^| )ONE(?= |$)" = "1",
-          "(?<=^| )TWO(?= |$)" = "2",
-          "(?<=^| )THREE(?= |$)" = "3",
-          "(?<=^| )FOUR(?= |$)" = "4",
-          "(?<=^| )FIVE(?= |$)" = "5",
-          "(?<=^| )SIX(?= |$)" = "6", 
-          "(?<=^| )SEVEN(?= |$)" = "7",
-          "(?<=^| )EIGHT(?= |$)" = "8",
-          "(?<=^| )NINE(?= |$)" = "9",
-          "(?<=^| )TEN(?= |$)" = "10"
+      across(
+        where(is.character) & all_of(cols), 
+        ~str_replace_all(
+          .,
+          c(
+            " THE$" = "",
+            "^THE " = "")
         )
       )
-      )
     )
 }
 
-std_street_types <- function(df, addr_col) {
+std_street_types <- function(df, cols) {
   #' Standardize street types.
   #' 
   #' @param df A dataframe.
-  #' @param addr_col The column containing the address to be standardized.
+  #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
-      across({{addr_col}}, ~ str_replace_all(
+      across(
+        where(is.character) & all_of(cols), 
+        ~ str_replace_all(
         ., 
         c(
+          # Correct for spaces between numbers and suffixes.
+          # (This prevents errors like 3 RD > 3 ROAD after type standardization.)
+          "(?<=[1-9 ][1-9]) (?=(ST|RD|TH|ND) |$)" = "",
           "(?<= )ST(?=$|\\s|\\.)" = "STREET", 
           "(?<= )AVE?(?=$|\\s|\\.)" = "AVENUE", 
           "(?<= )LA?N(?=$|\\s|\\.)" = "LANE",
@@ -212,7 +273,7 @@ std_street_types <- function(df, addr_col) {
           "(?<= )PR?KWA?Y(?=$|\\s|\\.)" = "PARKWAY",
           "(?<= )DRV?(?=$|\\s|\\.)" = "DRIVE",
           "(?<= )RD(?=$|\\s|\\.)" = "ROAD",
-          "(?<= )TE?[R]+C?E?(?=$|\\s|\\.)" = "TERRACE",
+          "(?<= )TE?[R]+CE?(?=$|\\s|\\.)" = "TERRACE",
           "(?<= )PLC?E?(?=$|\\s|\\.)" = "PLACE",
           "(?<= )(CI?RC?)(?=$|\\s|\\.)" = "CIRCLE",
           "(?<= )A[L]+E?Y(?=$|\\s|\\.)" = "ALLEY",
@@ -222,108 +283,260 @@ std_street_types <- function(df, addr_col) {
           "(?<= )CR?T(?=$|\\s|\\.)" = "COURT",
           "(?<= )PLZ?(?=$|\\s|\\.)" = "PLAZA",
           "(?<= )W[HR]+F(?=$|\\s|\\.)" = "WHARF",
-          "(?<= |^)P.? ?O.?[ ]+BO?X(?=$|\\s|\\.)" = "PO BOX"
+          "(?<= |^)P.? ?O.? ?BO?X(?=$|\\s|\\.)" = "PO BOX"
         )
       )
       )
     )
 }
 
-std_simplify_zip <- function(df, zip_col) {
+std_simplify_zip <- function(df, cols) {
   #' Standardize and simplify (i.e., remove 4-digit suffix) US Postal codes.
   #' 
   #' @param df A dataframe.
-  #' @param zip_col The column containing the ZIP code to be simplified.
+  #' @param cols Column or columns containing the ZIP code to be simplified.
   #' @returns A dataframe.
   #' @export
   df %>%
     mutate(
-      across({{zip_col}}, ~ case_when(
-        str_detect(., "[0-9] [0-9]") ~ str_extract(
-          ., 
-          ".*(?=\\ )"
-        ),
-        str_detect(., "-") ~ str_extract(
-          ., 
-          ".*(?=\\-)"
-        ),
-        str_detect(., "^0+$") ~ NA_character_,
-        TRUE ~ .
+      across(
+        where(is.character) & all_of(cols), ~ case_when(
+          str_detect(., "[0-9] [0-9]") ~ str_extract(
+            ., 
+            ".*(?=\\ )"
+          ),
+          str_detect(., "-") ~ str_extract(
+            ., 
+            ".*(?=\\-)"
+          ),
+          str_detect(., "^0+$") ~ NA_character_,
+          TRUE ~ .
         )
       )
     )
 }
 
-std_split_addresses <- function(df, addr_col, unit_col = "unit") {
-  #' Split 'second-line' address components into separate field.
+std_massachusetts <- function(df, cols) {
+  #' Replace "MASS" with "MASSACHUSETTS"
   #' 
   #' @param df A dataframe.
-  #' @param addr_col Address column to standardize.
-  #' @param unit_col Name of column used to store unit.
+  #' @param cols Column or columns in which to replace "MASS"
   #' @returns A dataframe.
   #' @export
-  bldg_loc_words <- paste(
-    "BLDG", "UN?I?T", "SUITE", "APT", "NO", "P ?O BOX", "FLOOR", "R(?:OO)?M", "PMB", "NO",
-    sep = "|"
+  
+  replace <- c(
+    # Unabbreviate mass ave.
+    "MASS " = "MASSACHUSETTS "
   )
-  df <- df %>%
+  df %>%
     mutate(
-      pobox = case_when(
-        str_detect(get({{addr_col}}), "^PO BOX") ~ TRUE,
+      across(
+        where(is.character) & all_of(cols),
+        ~str_replace_all(., replace)
+      )
+    )
+}
+
+std_cities <- function(df, cols) {
+  #' Move Boston neighborhoods to Boston
+  #' Update some other common neighborhoods
+  
+  # where(is.character) & !all_of(except_cols), 
+  # ~case_when(
+  #   str_detect(., "^X+$|^NONE$|^UNKNOWN$|AS ABOVE") ~ NA_character_,
+  #   TRUE ~ str_squish(.)
+  # )
+  neighs <- std_uppercase_all(read.csv(file.path(DATA_DIR, BOS_NBHD)))
+  df %>% 
+    mutate(
+      across(
+        where(is.character) & all_of(cols),
+        ~case_when(
+          . %in% c(neighs$Name, c("ROXBURY CROSSING" , "DORCHESTER CENTER")) ~ "BOSTON",
+          . %in% c("NORTHWEST BEDFORD") ~ "BEDFORD",
+          TRUE ~ .
+        )
+    )
+  )
+}
+
+
+std_simplify_address <- function(df, cols) {
+  #' Standardize street types.
+  #' 
+  #' @param df A dataframe.
+  #' @param col Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  # bldg_loc_words <- paste(
+  #   "BLDG", "UN?I?T", "S(?:UI)?TE", "AP(ARTMEN)?T", "NO", "P ?O BOX", "FLOOR", "R(?:OO)?M", "PMB",
+  #   sep = "|"
+  # )
+  replace <- c(
+    # Matching unit word.
+    "[ -]+((BLDG)|(UN?I?T)|(S(UI)?T?E)|(AP(ARTMEN)?T)|(NO)|(P ?O BOX)|(FLO?O?R)|(R(OO)?M)|(PMB))( *#?[A-Z]?[0-9-]*([A-Z]|([A-Z][A-Z])|(ABC))? ?$)" = "",
+    # NTH FLOOR
+    "[ -]+[1-9]+((ND)|(ST)|(RD)|(TH))? (FLO?O?R?)" = "",
+    # Ends with series of letters and numbers.
+    "[ -]+[A-Z]?[0-9-]+([A-Z]|(ABC))? ?$" = "",
+    # Ends with a single number or letter.
+    "[ -]+[A-Z0-9-]$" = ""
+  )
+  
+  for (col in cols) {
+    # Flag PO Boxes.
+    df <- df %>%
+      mutate(
+        pobox = case_when(
+          str_detect(get({{col}}), "^PO BOX") ~ TRUE,
+          TRUE ~ FALSE
+        )
+      )
+    po_box <- filter(df, pobox)
+    df <- filter(df, !pobox) %>%
+      mutate(
+        across(
+          matches(col),
+          ~str_replace_all(., replace)
+        )
+      ) %>%
+      bind_rows(po_box)
+  }
+  df %>%
+    select(-c(pobox))
+}
+
+std_corp_types <- function(df, cols) {
+  #' Standardize street types.
+  #' 
+  #' @param df A dataframe.
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  replace <- c(
+    "LIMITED PARTNER?(SHIP)?" = "LP",
+    "LIMITED LIABILITY PARTNER?(SHIP)?" = "LLP",
+    "LIMITED LIABILITY (COMPANY|CORPORATION)" = "LLC",
+    "PRIVATE LIMITED" = "LTD",
+    "INCO?R?P?O?R?A?T?E?D ?$" = "INC",
+    "CORPO?R?A?T?I?O?N ?$" = "CORP",
+    "COMP(ANY)? ?$" = "CO",
+    "LIMITED$" = "LTD",
+    " TRU?S?T?E?E?S?( OF)?$" = " TRUST"
+  )
+  df %>%
+    mutate(
+      across(
+        all_of(cols),
+        ~str_replace_all(., replace)
+      )
+    )
+}
+
+flag_lawyers <- function(df, cols) {
+  df %>% 
+    mutate(
+      lawyer = case_when(
+        if_any(
+          cols,
+          ~str_detect(
+            ., 
+            "( (PC)|([A-Z]+ AND [A-Z]+ LLP)|(ESQ(UIRE)?$)|(LAW (OFFICES?|LLC|LLP|GROUP))|(ATTORNEY))"
+          )
+        ) ~ TRUE,
         TRUE ~ FALSE
       )
     )
+}
+
+std_remove_co <- function(df, cols) {
+  df %>%
+    # Remove "C / O" prefix.
+    mutate(
+      across(
+        cols,
+        ~ str_replace_all(., " ?C / O? ?", "")
+      )
+    )
+}
+
+std_hyphenated_numbers <- function(df, cols) {
+  df %>%
+    # Remove "C / O" prefix.
+    mutate(
+      across(
+        cols,
+        ~ str_replace_all(
+            str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
+            "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
+            ""
+        )
+      )
+    )
+}
+
+process_records <- function(df, cols, zip_cols = FALSE, city_cols = FALSE, addr_cols = FALSE, name_cols = FALSE, keep_cols = FALSE){
+  #' Run a series of string standardizing functions.
+  #' 
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed by `std_directions`, `std_andslash`, `std_remove_special`, and `std_the`.
+  #' @param zip_cols Column or columns to be processed by `std_directions`, `std_andslash`, `std_remove_special`, and `std_the`.
+  #' @returns A dataframe.
+  #' @export
+  all_cols <- cols
+  if (!isFALSE(keep_cols)) {
+    all_cols <- c(keep_cols, all_cols)
+  } else {
+    keep_cols <- c()
+  }
+  if (!isFALSE(zip_cols)) {
+    all_cols <- c(all_cols, zip_cols)
+  }
+  if (!isFALSE(city_cols)) {
+    all_cols <- c(all_cols, city_cols)
+  }
+  if (!isFALSE(addr_cols)) {
+    all_cols <- c(all_cols, addr_cols)
+  }
+  if (!isFALSE(name_cols)) {
+    all_cols <- c(all_cols, name_cols)
+  }
+  all_cols <- unique(all_cols)
   
-  po_box <- filter(df, pobox)
-  filter(df, !pobox) %>%
-    extract(
-      {{addr_col}}, 
-      c("addr", unit_col), 
-      paste0(
-        "([[:alnum:] ]*)[ ]+(?:",
-        bldg_loc_words,
-        ")[ ]+(#?[A-Z]?[0-9]*(?:[A-Z]|(?:ABC)?)$)"
-        ),
-      remove = FALSE
+  df <- df %>%
+    select(
+      all_of(all_cols)
     ) %>%
-    mutate(
-      across({{addr_col}}, ~case_when(
-        addr != "" ~ addr,
-        TRUE ~ .
-      )
-      )
-    ) %>%
-    select(-c(addr)) %>%
-    extract(
-      {{addr_col}},
-      c("addr", unit_col),
-      "([[:alnum:] ]*)[ ]+([A-Z]?[0-9]+(?:[A-Z]|(?:ABC)?)$)",
-      remove = FALSE
-    ) %>%
-    mutate(
-      across({{addr_col}}, ~case_when(
-        addr != "" ~ addr,
-        TRUE ~ .
-      )
-      )
-    ) %>%
-    select(-c(addr)) %>%
-    extract(
-      {{addr_col}},
-      c("addr", unit_col),
-      "([[:alnum:] ]*)[ ]+([0-9]+(?:(?:TH|ND|RD|ST)?)+(?:[[:space:]])?(?:FLO?O?R?)?)$",
-      remove = FALSE
-    ) %>%
-    mutate(
-      across({{addr_col}}, ~case_when(
-        addr != "" ~ addr,
-        TRUE ~ .
-      )
-      )
-    ) %>%
-    select(-c(addr)) %>%
-    bind_rows(po_box) %>%
-    select(-c(pobox))
+    std_uppercase_all(keep_cols) %>%
+    std_andslash(cols) %>%
+    std_remove_special(cols) %>%
+    std_replace_blank(keep_cols) %>%
+    std_the(cols) %>%
+    std_massachusetts(cols) %>%
+    std_small_numbers(cols) %>%
+    std_trailingwords(cols)
+  if (!isFALSE(zip_cols)) {
+    df <- df %>%
+      std_simplify_zip(zip_cols)
+  }
+  if (!isFALSE(city_cols)) {
+    df <- df %>%
+      std_cities(city_cols)
+  }
+  if (!isFALSE(addr_cols)) {
+    df <- df %>%
+      std_street_types(addr_cols) %>%
+      std_simplify_address(addr_cols) %>%
+      std_directions(addr_cols) %>%
+      std_hyphenated_numbers(addr_cols) %>%
+      std_onewordaddress(addr_cols)
+  }
+  if (!isFALSE(name_cols)) {
+    df <- df %>%
+      std_corp_types(name_cols) %>%
+      std_corp_rm_sys(name_cols)
+  }
+  df
 }
 
 std_select_address <- function(df, addr_col1, addr_col2, output_col = "address") {
@@ -341,27 +554,6 @@ std_select_address <- function(df, addr_col1, addr_col2, output_col = "address")
         str_detect(get({{addr_col2}}), "^[0-9]") & !str_detect(get({{addr_col1}}), "^[0-9]") ~ get({{addr_col2}}),
         str_detect(get({{addr_col2}}), "^[0-9]") & str_detect(get({{addr_col1}}), "LLC") ~ get({{addr_col2}}),
         TRUE ~ get({{addr_col1}})
-      )
-    )
-}
-
-std_massachusetts <- function(df, cols) {
-  #' Replace "MASS" with "MASSACHUSETTS"
-  #' 
-  #' @param df A dataframe.
-  #' @param cols Columns in which to replace "MASS"
-  #' @returns A dataframe.
-  #' @export
-  
-  replace <- c(
-    # Unabbreviate mass ave.
-    "MASS " = "MASSACHUSETTS "
-  )
-  df %>%
-    mutate(
-      across(
-        c({{cols}}), 
-        ~str_replace_all(., replace)
       )
     )
 }
@@ -447,20 +639,21 @@ dedupe_naive <- function(df, str_field) {
     left_join(distinct, by = str_field)
 }
 
-dedupe_community <- function(df, prefix, name, membership) {
+dedupe_community <- function(df, prefix, name, membership, nodes = NULL) {
   #' Identifies communities using igraph community detection.
   #' 
-  #' @param df A dataframe containing only string datatypes.
+  #' @param df A dataframe containing edges.
+  #' @param df A dataframe containing nodes.
   #' @param prefix Prefix for group ids.
   #' @param name id column.
   #' @param membership Name for community column.
   #' @returns A dataframe.
   #' @export
   g <- df %>%
-    drop_na() %>%
     # Create igraph from data frame.
     # This is how we identify groups of owners.
     graph_from_data_frame(
+      vertices = nodes,
       directed = FALSE
     ) %>%
     # Finds a community using modularity score.
@@ -552,7 +745,7 @@ dedupe_cosine <- function(df, str_field, group = "group_cosine", thresh = 0.75) 
     )
 }
 
-corp_rm_corp_sys <- function(df, cols) {
+std_corp_rm_sys <- function(df, cols) {
   #' Replace variations on "CORPORATION SYSTEMS" with NA in corp addresses.
   #' 
   #' @param df A dataframe.
@@ -561,10 +754,12 @@ corp_rm_corp_sys <- function(df, cols) {
   #' @export
   df %>%
     mutate(
-      across({{cols}}, ~ case_when(
-        str_detect(., "CORP(ORATION)? (SYS)|(SER)") ~ NA_character_,
-        TRUE ~ .
-      )
+      across(
+        all_of(cols), 
+        ~ case_when(
+          str_detect(., "(((CORP(ORATION)?)|(LLC)|) (SYS)|(SER))|(AGENT)|(BUSINESS FILINGS)") ~ NA_character_,
+          TRUE ~ .
+        )
       )
     )
 }
@@ -621,7 +816,7 @@ load_corps <- function(path) {
       col_select = 
         c(DataID, EntityName,
           AgentName, AgentAddr1, AgentAddr2, AgentCity, 
-          AgentState, AgentPostalCode)
+          AgentState, AgentPostalCode, ActiveFlag)
     ) %>%
     rename(
       id_corp = DataID
@@ -638,11 +833,11 @@ load_agents <- function(df, cols, drop_na_col) {
   #' @returns A dataframe of corporate agents.
   #' @export
   df %>%
-    select({{cols}}) %>%
+    select(all_of(cols)) %>%
     filter(!is.na(get({{drop_na_col}})))
 }
 
-load_assess <- function(path, town_ids = NA) {
+load_assess <- function(path, town_ids = FALSE) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
@@ -650,8 +845,8 @@ load_assess <- function(path, town_ids = NA) {
   #' @param test Whether to only load a sample subset of rows.
   #' @export
   assess_query <- "SELECT * FROM L3_ASSESS"
-  if (!is.na(town_ids)) {
-    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", paste(town_ids, collapse = ","), ")")
+  if (!isFALSE(town_ids)) {
+    assess_query <- paste(assess_query, "WHERE TOWN_ID IN (", paste(town_ids, collapse=", "), ")")
   }
   st_read(
       path,
@@ -681,207 +876,66 @@ load_inds <- function(path) {
     rename_with(str_to_lower)
 }
 
-process_inds <- function(i_df, a_df, owners) {
-  #' Process Individuals, merging individuals with agents.
-  #' 
-  #' @param i_df Individuals dataframe. (Created by e.g., `load_inds`)
-  #' @param a_df Agents dataframe. (Created by e.g., `load_agents`)
-  #' @param owners dataframe containing a vector of unique owner ids used to filter inds.
-  #' @returns A dataframe.
-  #' @export
-  i_df %>%
-    filter(
-      id_corp %in% discard(pull(owners, id_corp), is.na)
-    ) %>%
-    filter(
-      # Remove cases of missing names and addresses.
-      busaddr1 != "SAME"
-      & firstname != "NONE"
-      # Filter out corportions not present in data.
-      # Remove null firstname and addresses.
-      & !is.na(firstname)
-      & (!is.na(busaddr1) | !is.na(resaddr1))
-    ) %>%
-    # Standardize strings, excluding ID corp.
-    std_char(c(id_corp)) %>%
-    # Standardize street types (e.g., ST > STREET)
-    std_street_types(c(busaddr1, resaddr1)) %>%
-    mutate(
-      # Concatenate fullname.
-      fullname = paste(firstname, lastname),
-      # Choose address.
-      address = case_when(
-        !is.na(busaddr1) & is.na(resaddr1) ~ busaddr1,
-        is.na(busaddr1) & !is.na(resaddr1) ~ resaddr1,
-        is.na(busaddr1) & is.na(resaddr1) ~ NA_character_,
-        TRUE ~ busaddr1
-      )
-    ) %>%
-    select(c(id_corp, fullname, address)) %>%
-    # Bind processed agents, following similar logic.
-    bind_rows(
-      a_df %>%
-        rename(
-          fullname = agentname,
-          address = agentaddr1
-        ) %>%
-        filter(id_corp %in% discard(pull(owners, id_corp), is.na)) %>%
-        filter(
-          !is.na(fullname) 
-          & fullname != "NONE"
-        ) %>%
-        std_char(c(id_corp)) %>%
-        std_street_types(c(address, agentaddr2)) %>%
-        std_select_address(
-          "address", "agentaddr2"
-        ) %>%
-        # remove middle initials
-        std_remove_middle_initial("fullname") %>%
-        select(
-          c(id_corp, fullname, address)
-        )
-    ) %>%
-    # Remove "Corporation Sys/Services" and variants.
-    corp_rm_corp_sys(fullname) %>%
-    # Split address line 2s.
-    std_split_addresses("address", "unit") %>%
-    # Remove unit.
-    select(-c(unit)) %>%
-    # Standardize instances of "MASS"
-    std_massachusetts(c(fullname, address)) %>%
-    # Concatenate name_address
-    mutate(
-      name_address = str_c(fullname, address, sep = " ")
-    ) %>%
-    # Keep only distinct pairs of names and corporate ids.
-    distinct(id_corp, name_address)
-}
+#' @param crs Integer representing coordinate reference system EPSG code.
+#' @param census Whether to download and impute census (e.g., tract, block group) ids.
+#' @param gdb_path String representing path to geodatabase. (Required if `census = TRUE`).
+# if (census & gdb_path) {
+#   library(tigris)
+#   town_ids <- distinct(df, town_id)
+#   parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
+#   if (!is.na(town_ids)) {
+#     parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (", town_ids, ")")
+#   }
+#   df <- st_read(
+#     gdb_path,
+#     query = parcel_query
+#   ) %>%
+#     # Rename all columns to lowercase.
+#     rename_with(str_to_lower) %>%
+#     # Correct weird naming conventions of GDB.
+#     st_set_geometry("shape") %>%
+#     st_set_geometry("geometry") %>%
+#     # Select only unique id.
+#     select(c(loc_id)) %>%
+#     # Reproject to specified CRS.
+#     st_transform(crs) %>%
+#     # Cast from MULTISURFACE to MULTIPOLYGON.
+#     mutate(
+#       geometry = st_cast(geometry, "MULTIPOLYGON")
+#     ) %>%
+#     # Join to assessing table.
+#     left_join(
+#       df,
+#       by = c("loc_id" = "loc_id")
+#     )
+#   if (is.na(crs)) {
+#     crs <- st_crs(df)
+#   }
+#   df <- df %>%
+#     st_get_zips("zip", crs = crs) %>%
+#     st_get_censusgeo(crs = crs) %>%
+#     select(
+#       c(
+#         prop_id, loc_id, town_id, fy, site_addr, unit, 
+#         city, zip, owner1, own_addr, 
+#         own_city, own_zip, own_state, own_co, 
+#         geoid_t, geoid_bg)
+#     )  %>% 
+#     st_drop_geometry()
+# } else {
 
-process_corps <- function(df, id, name) {
-  #' Process corps, primarily cleaning names.
+fill_group <- function(df, group, fill_col) {
+  #' Fill group rows with no corporate matches with in-group corporate matches.
   #' 
-  #' @param df Corps dataframe.
-  #' @param id ID field to be excluded from data preparation.
-  #' @param name Name field to be prepared.
+  #' @param df A dataframe.
+  #' @param group Column identifying group.
+  #' @param fill_col Column containing data to be filled.
   #' @returns A dataframe.
   #' @export
   df %>%
-    std_char(c({{id}})) %>%
-    std_massachusetts(c({{name}})) %>%
-    std_street_types(c({{name}})) %>%
-    corp_rm_corp_sys(c({{name}}))
-}
-
-process_assess <- function(df, crs = NA, census = FALSE, gdb_path = NA, town_ids = NA) {
-  #' Process assessors records, optionally downloading and imputing census ids.
-  #' 
-  #' @param sdf Spatial dataframe.
-  #' @param crs Integer representing coordinate reference system EPSG code.
-  #' @param census Whether to download and impute census (e.g., tract, block group) ids.
-  #' @param gdb_path String representing path to geodatabase. (Required if `census = TRUE`).
-  #' @param test If `TRUE`, import only a subset of assessors records.
-  #' @returns A dataframe.
-  #' @export
-  if (census) {
-    library(tigris)
-    parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
-    if (!is.na(town_ids)) {
-      parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (", town_ids, ")")
-    }
-    df <- st_read(
-        gdb_path,
-        query = parcel_query
-      ) %>%
-      # Rename all columns to lowercase.
-      rename_with(str_to_lower) %>%
-      # Correct weird naming conventions of GDB.
-      st_set_geometry("shape") %>%
-      st_set_geometry("geometry") %>%
-      # Select only unique id.
-      select(c(loc_id)) %>%
-      # Reproject to specified CRS.
-      st_transform(crs) %>%
-      # Cast from MULTISURFACE to MULTIPOLYGON.
-      mutate(
-        geometry = st_cast(geometry, "MULTIPOLYGON")
-      ) %>%
-      # Join to assessing table.
-      left_join(
-        df,
-        by = c("loc_id" = "loc_id")
-        )
-    if (is.na(crs)) {
-      crs <- st_crs(df)
-    }
-    df <- df %>%
-      st_get_zips("zip", crs = crs) %>%
-      st_get_censusgeo(crs = crs) %>%
-      select(
-        c(
-          prop_id, loc_id, town_id, fy, site_addr, location, 
-          city, zip, owner1, own_addr, 
-          own_city, own_zip, own_state, own_co, 
-          geoid_t, geoid_bg)
-      )  %>% 
-      st_drop_geometry()
-  } else {
-    df <- df %>%
-      select(
-        c(
-          prop_id, loc_id, town_id, fy, site_addr, location, 
-          city, owner1, own_addr, 
-          own_city, own_zip, own_state, own_co)
-      )
-  }
-  df %>%
-    rename(
-      unit = location
-    ) %>%
-    std_simplify_zip(c(own_zip)) %>%
-    std_char(c(prop_id, loc_id), owner1) %>%
-    std_massachusetts(c(owner1, site_addr, own_addr)) %>%
-    std_street_types(c(owner1, site_addr, own_addr)) %>%
-    std_split_addresses("own_addr", "own_unit") %>%
-    mutate(
-      name_address = str_c(owner1, own_addr, sep = " ")
-    ) %>%
-    filter(!is.na(name_address))
-}
-
-merge_assess_corp <- function(a_df, c_df, by, group, id_c) {
-  #' Merge assessors records with corporations on the basis of name.
-  #' 
-  #' @param a_df Assessors records dataframe.
-  #' @param c_df Corportions dataframe.
-  #' @param by A character vector of variables to join by.
-  #' @param group String column identifying groups identified in previous processing.
-  #' @param id_c Corporation id.
-  #' @returns A dataframe.
-  #' @export
-  joined <- a_df %>%
-    left_join(
-      c_df, 
-      by = by, 
-      na_matches = "never"
-    )
-  no_group <- joined %>%
-    filter(is.na(get({{group}})))
-  joined %>%
-    filter(!is.na(get({{group}}))) %>%
     group_by_at(group) %>%
-    fill({{id_c}}, .direction = "updown") %>%
-    ungroup() %>%
-    bind_rows(no_group)
-}
-  
-std_cities <- function(df) {
-  #' Move Boston neighborhoods to Boston
-  #' Update some other common neighborhoods
-  df %>% mutate(df, city_cleaned = case_when(
-    (city %in% c(BOSTON_NEIGHS$Name, c("ROXBURY CROSSING" , "DORCHESTER CENTER"))) ~ "BOSTON",
-    (city == "NORTHWEST BEDFORD") ~ "BEDFORD",
-    !(city %in% BOSTON_NEIGHS$Name) ~ city
-    ))
+    fill({{fill_col}}, .direction = "updown") %>%
+    ungroup()
 }
 
 log_message <- function(status) {
