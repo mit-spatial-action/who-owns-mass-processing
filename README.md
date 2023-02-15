@@ -6,9 +6,6 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 2. Perform naive deduplication on assessors' tables using concatenated name and address.
 3. Perform cosine-similarity-based deduplication on assessors' tables using concatenated name and address.
 4. Join parcels to companies using simple string matching. Note that here, when an owner fails to match within a cosine-similarity group that contains successful matches (see step 3), the owners that fail to match are assigned to the company id of one of the successful matches.
-
-    + TODO: replace this step with efficient fuzzy-matching (we're probably losing a fair number of matches here).
-  
 5. Identify agents of companies that are companies themselves (distinguishing between law firms and other companies) and agents of companies that are individuals.
 6. Deduplicate individuals (including individual agents) associated with companies that match parcel owners using both naive and cosine similarity methods.
 7. Identify communities within corporate-individual networks. (This is done using the `igraph` implementation of the fast greedy modularity optimization algorithm.)
