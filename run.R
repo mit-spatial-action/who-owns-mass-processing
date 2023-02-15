@@ -13,7 +13,7 @@ ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
 # Name of CSV containing limited collection of HNS municipalities
 MUNI_CSV <- "hns_munis"
 # Name of delimited text output files.
-ASSESS_OUT_NAME <- "owners"
+ASSESS_OUT_NAME <- "assess"
 OWNERS_OUT_NAME <- "owners"
 CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
