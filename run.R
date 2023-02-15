@@ -41,7 +41,7 @@ run <- function(subset = "test", return_results = TRUE){
   } else if (subset == "test") {
     town_ids <- c(274, 49)
   } else if (subset == "all") {
-    town_ids <- NA
+    town_ids <- FALSE
   } else {
     stop("Invalid subset.")
   }
