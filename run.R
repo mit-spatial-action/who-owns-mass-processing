@@ -13,6 +13,7 @@ ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
 # Name of CSV containing limited collection of HNS municipalities
 MUNI_CSV <- "hns_munis"
 # Name of delimited text output files.
+ASSESS_OUT_NAME <- "owners"
 OWNERS_OUT_NAME <- "owners"
 CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
@@ -76,7 +77,12 @@ run <- function(subset = "test", return_results = TRUE){
         own_addr == site_addr ~ TRUE,
         TRUE ~ FALSE
       )
-    )
+    ) %>%
+      # Write pipe-delimited text file of edges.
+      write_delim(
+        file.path(RESULTS_DIR, paste(ASSESS_OUT_NAME, "csv", sep = ".")),
+        delim = "|", quote = "needed"
+      )
   
   # Separate owners from assessors records.
   owners <- assess %>%
@@ -90,19 +96,19 @@ run <- function(subset = "test", return_results = TRUE){
       )
     ) %>%
     select(-c(site_addr, ooc))
-  
+
   rm(assess)
-  
+
   log_message("Deduplicating ownership based on listed name and address...")
   owners <- owners %>%
     # Naive deduplication on prepared, concatenated name and address.
     dedupe_naive(str_field = "name_address") %>%
     # Cosine-similarity-based deduplication.
     dedupe_cosine(
-      str_field = "name_address", 
-      group = "group_cosine", 
+      str_field = "name_address",
+      group = "group_cosine",
       thresh = 0.75
-    ) %>% 
+    ) %>%
     mutate(
       group = case_when(
         !is.na(group_cosine) ~ group_cosine,
@@ -110,10 +116,10 @@ run <- function(subset = "test", return_results = TRUE){
       )
     ) %>%
     select(-c(group_cosine, group_naive))
-  
+
   log_message("Reading corporations from delimited text...")
   corps <- load_corps(file.path(DATA_DIR, CORPS))
-  
+
   log_message("Processing corporation records...")
   corps <- corps %>%
     process_records(
@@ -126,12 +132,12 @@ run <- function(subset = "test", return_results = TRUE){
       keep_cols = c("id_corp", "activeflag")
     ) %>%
     drop_na("entityname")
-  
+
   log_message("Matching owners in assessors records to corps table, distinguishing between lawyers and non-lawyers...")
   corps_active <- corps %>%
     filter(activeflag == "Y") %>%
     select(c(id_corp, entityname))
-  
+
   owners <- owners %>%
     # Flag lawyers.
     flag_lawyers(
@@ -175,13 +181,13 @@ run <- function(subset = "test", return_results = TRUE){
     drop_na(id_corp) %>%
     pull(id_corp) %>%
     unique()
-  
+
   log_message("Identifying individual agents and matching company agents to corps table, distinguishing between lawyers and non-lawyers...")
   agents <- load_agents(
-      corps, 
-      cols = c("id_corp", "agentname", "agentaddr1", "agentaddr2"), 
+      corps,
+      cols = c("id_corp", "agentname", "agentaddr1", "agentaddr2"),
       drop_na_col = "agentname"
-    ) %>% 
+    ) %>%
     filter(id_corp %in% corps_list) %>%
     # Flag lawyers.
     flag_lawyers(
@@ -194,17 +200,17 @@ run <- function(subset = "test", return_results = TRUE){
     std_trailingwords(c("agentname", "agentaddr1", "agentaddr2")) %>%
     left_join(
       corps_active %>%
-        rename(id_agentname = id_corp), 
+        rename(id_agentname = id_corp),
       by = c("agentname" = "entityname")
     ) %>%
     left_join(
       corps_active %>%
-        rename(id_agentaddr1 = id_corp), 
+        rename(id_agentaddr1 = id_corp),
       by = c("agentaddr1" = "entityname")
     ) %>%
     left_join(
       corps_active %>%
-        rename(id_agentaddr2 = id_corp), 
+        rename(id_agentaddr2 = id_corp),
       by = c("agentaddr2" = "entityname")
     ) %>%
     mutate(
@@ -216,9 +222,9 @@ run <- function(subset = "test", return_results = TRUE){
       )
     ) %>%
     select(-c(id_agentname, id_agentaddr1, id_agentaddr2))
-  
+
   rm(corps_active)
-  
+
   # Initiate individual deduplication.
   corps_from_agents <- agents %>%
     filter(
@@ -226,7 +232,7 @@ run <- function(subset = "test", return_results = TRUE){
     ) %>%
     select(c(id_corp, id_link)) %>%
     distinct()
-  
+
   corps_list <- c(
     corps_from_agents %>%
       pull(id_corp) %>%
@@ -236,7 +242,7 @@ run <- function(subset = "test", return_results = TRUE){
       unique(),
     corps_list) %>%
     unique()
-  
+
   inds_from_agents <- agents %>%
     filter(
       is.na(id_link) & !lawyer
@@ -261,17 +267,17 @@ run <- function(subset = "test", return_results = TRUE){
     ) %>%
     select(c(id_corp, fullname, address, name_address)) %>%
     distinct()
-    
+
   # law_from_agents <- agents %>%
   #   filter(lawyer) %>%
   #   select(-c(lawyer))
-  
+
   rm(agents)
-  
+
   log_message("Deduplicating individuals and isolating companies.")
   # Initiate individual deduplication.
   inds <- load_inds(file.path(DATA_DIR, INDS))
-    
+
   inds <- inds %>%
     filter(id_corp %in% corps_list) %>%
     process_records(
@@ -322,24 +328,24 @@ run <- function(subset = "test", return_results = TRUE){
       corps %>%
         filter(activeflag == "Y") %>%
         select(c(id_corp, entityname)) %>%
-        rename(id_fullname = id_corp), 
+        rename(id_fullname = id_corp),
       by = c("fullname" = "entityname")
     ) %>%
     left_join(
       corps %>%
         filter(activeflag == "Y") %>%
         select(c(id_corp, entityname)) %>%
-        rename(id_address = id_corp), 
+        rename(id_address = id_corp),
       by = c("address" = "entityname")
     ) %>%
     left_join(
       corps %>%
         filter(activeflag == "Y") %>%
         select(c(id_corp, entityname)) %>%
-        rename(id_co = id_corp), 
+        rename(id_co = id_corp),
       by = c("co" = "entityname")
     )
-  
+
   corps_from_inds <- inds %>%
     filter((!is.na(id_fullname) | !is.na(id_address) | !is.na(id_co)) & !lawyer) %>%
     pivot_longer(
@@ -350,7 +356,7 @@ run <- function(subset = "test", return_results = TRUE){
     ) %>%
     select(c(id_corp, id_link)) %>%
     distinct()
-  
+
   corps_list <- c(
     corps_from_inds %>%
       pull(id_corp) %>%
@@ -360,7 +366,7 @@ run <- function(subset = "test", return_results = TRUE){
       unique(),
     corps_list) %>%
     unique()
-  
+
   inds_from_inds <- inds %>%
     filter((is.na(id_fullname) & is.na(id_address) & is.na(id_co)) & !lawyer) %>%
     select(c(id_corp, fullname, address)) %>%
@@ -374,9 +380,9 @@ run <- function(subset = "test", return_results = TRUE){
     ) %>%
     select(c(id_corp, fullname, address, name_address)) %>%
     distinct()
-  
+
   log_message("Parsing data into nodes and vertices...")
-  
+
   inds_links <- inds_from_inds %>%
     bind_rows(inds_from_agents) %>%
     distinct() %>%
@@ -404,12 +410,12 @@ run <- function(subset = "test", return_results = TRUE){
           ),
       by = "id_link"
     )
-  
+
   corps_links <- corps_from_inds %>%
     rbind(corps_from_agents) %>%
     distinct() %>%
     mutate(relation = "LINKED_TO")
-  
+
   inds_nodes <- inds_links %>%
     rename(
       id = id_link,
@@ -419,7 +425,7 @@ run <- function(subset = "test", return_results = TRUE){
     mutate(
       label = "inds"
     )
-  
+
   corps_nodes <- corps %>%
     rename(
       id = id_corp
@@ -429,7 +435,7 @@ run <- function(subset = "test", return_results = TRUE){
     mutate(
       label = "corps"
     )
-  
+
   edges <- inds_links %>%
     select(id_link, id_corp) %>%
     distinct() %>%
@@ -437,13 +443,13 @@ run <- function(subset = "test", return_results = TRUE){
       relation = "AGENT_OF"
     ) %>%
     bind_rows(corps_links)
-  
+
   log_message("Identifying community and writing to delimited file...")
   community <- edges %>%
     dedupe_community(
       nodes = bind_rows(inds_nodes, corps_nodes),
-      prefix = "network", 
-      name = "id", 
+      prefix = "network",
+      name = "id",
       membership = "group_network"
     ) %>%
     # Write pipe-delimited text file of edges.
@@ -451,7 +457,7 @@ run <- function(subset = "test", return_results = TRUE){
       file.path(RESULTS_DIR, paste(COMMUNITY_OUT_NAME, "csv", sep = ".")),
       delim = "|", quote = "needed"
     )
-  
+
   log_message("Writing corporate nodes to delimited file...")
   corps_nodes <- corps_nodes %>%
     left_join(
@@ -463,7 +469,7 @@ run <- function(subset = "test", return_results = TRUE){
       file.path(RESULTS_DIR, paste(CORPS_OUT_NAME, "csv", sep = ".")),
       delim = "|", quote = "needed"
     )
-  
+
   log_message("Writing indiviudals nodes to delimited file...")
   inds_nodes <- inds_nodes %>%
     left_join(
@@ -475,12 +481,12 @@ run <- function(subset = "test", return_results = TRUE){
       file.path(RESULTS_DIR, paste(INDS_OUT_NAME, "csv", sep = ".")),
       delim = "|", quote = "needed"
     )
-  
+
   log_message("Writing deduplicated ownership to delimited file...")
   owners <- owners %>%
-    # Join 
+    # Join
     left_join(
-      community, 
+      community,
       by = c("id_corp" = "id")
     ) %>%
     # Assign id based on priority.
@@ -502,7 +508,7 @@ run <- function(subset = "test", return_results = TRUE){
       file.path(RESULTS_DIR, paste(OWNERS_OUT_NAME, "csv", sep = ".")),
       delim = "|", quote = "needed"
     )
-  
+
   log_message("Finishing up.")
   # Save RData image.
   save.image(file.path(RESULTS_DIR, paste(RDATA_OUT_NAME, "RData", sep = ".")))
