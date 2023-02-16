@@ -17,7 +17,8 @@ ASSESS_OUT_NAME <- "assess"
 OWNERS_OUT_NAME <- "owners"
 CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
-COMMUNITY_OUT_NAME <- "community"
+NODES_OUT_NAME <- "nodes"
+EDGES_OUT_NAME <- "edges"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
 
@@ -488,20 +489,33 @@ run <- function(subset = "test", return_results = TRUE) {
     mutate(
       relation = "AGENT_OF"
     ) %>%
-    bind_rows(corps_links)
+    bind_rows(corps_links) %>%
+    # Write pipe-delimited text file of edges.
+    write_delim(
+      file.path(
+        RESULTS_DIR, 
+        paste(EDGES_OUT_NAME, "csv", sep = ".")
+      ),
+      delim = "|", quote = "needed"
+    )
+  
+  nodes <- bind_rows(inds_nodes, corps_nodes) %>%
+    # Write pipe-delimited text file of corporations.
+    write_delim(
+      file.path(
+        RESULTS_DIR, 
+        paste(NODES_OUT_NAME, "csv", sep = ".")
+      ),
+      delim = "|", quote = "needed"
+    )
 
   log_message("Identifying community and writing to delimited file...")
   community <- edges %>%
     dedupe_community(
-      nodes = bind_rows(inds_nodes, corps_nodes),
+      nodes = nodes,
       prefix = "network",
       name = "id",
       membership = "group_network"
-    ) %>%
-    # Write pipe-delimited text file of edges.
-    write_delim(
-      file.path(RESULTS_DIR, paste(COMMUNITY_OUT_NAME, "csv", sep = ".")),
-      delim = "|", quote = "needed"
     )
 
   log_message("Writing corporate nodes to delimited file...")
@@ -512,7 +526,10 @@ run <- function(subset = "test", return_results = TRUE) {
     ) %>%
     # Write pipe-delimited text file of corporations.
     write_delim(
-      file.path(RESULTS_DIR, paste(CORPS_OUT_NAME, "csv", sep = ".")),
+      file.path(
+        RESULTS_DIR, 
+        paste(CORPS_OUT_NAME, "csv", sep = ".")
+        ),
       delim = "|", quote = "needed"
     )
 
@@ -524,7 +541,10 @@ run <- function(subset = "test", return_results = TRUE) {
     ) %>%
     # Write pipe-delimited text file of individuals.
     write_delim(
-      file.path(RESULTS_DIR, paste(INDS_OUT_NAME, "csv", sep = ".")),
+      file.path(
+        RESULTS_DIR, 
+        paste(INDS_OUT_NAME, "csv", sep = ".")
+        ),
       delim = "|", quote = "needed"
     )
 
@@ -551,7 +571,10 @@ run <- function(subset = "test", return_results = TRUE) {
     ungroup() %>%
     # Write pipe-delimited text file of ownership.
     write_delim(
-      file.path(RESULTS_DIR, paste(OWNERS_OUT_NAME, "csv", sep = ".")),
+      file.path(
+        RESULTS_DIR, 
+        paste(OWNERS_OUT_NAME, "csv", sep = ".")
+        ),
       delim = "|", quote = "needed"
     )
 
@@ -570,6 +593,8 @@ run <- function(subset = "test", return_results = TRUE) {
       "corps" = corps_nodes, 
       "community" = community
       )
+  } else {
+    NULL
   }
 }
 
