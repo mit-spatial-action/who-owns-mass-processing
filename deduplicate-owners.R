@@ -702,8 +702,6 @@ dedupe_text_mode <- function(df, group_col, cols) {
   #' @export
   df %>%
     filter(!is.na(get({{ group_col }}))) %>%
-    # count(
-    #   get({{group_col}}), get({{cols}}), sort = TRUE)
     group_by(across(c({{ group_col }}, {{ cols }}))) %>%
     summarize(
       count = n()
