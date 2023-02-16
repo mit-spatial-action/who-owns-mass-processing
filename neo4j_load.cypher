@@ -5,7 +5,7 @@ MATCH (n) DETACH DELETE n;
 CREATE CONSTRAINT UniqueIndividuals FOR (i:Individuals) REQUIRE i.id_ind IS UNIQUE;
 
 :auto
-LOAD CSV  WITH HEADERS FROM 'file:///inds.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///inds.csv' AS row
 FIELDTERMINATOR '|'
 CALL {
   WITH row
@@ -16,7 +16,7 @@ CALL {
 CREATE CONSTRAINT UniqueCorps FOR (c:Corps) REQUIRE c.id_corp IS UNIQUE;
 
 :auto
-LOAD CSV  WITH HEADERS FROM 'file:///corps.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///corps.csv' AS row
 FIELDTERMINATOR '|'
 CALL {
   WITH row
@@ -25,7 +25,7 @@ CALL {
 } IN TRANSACTIONS OF 5000 ROWS;
 
 :auto
-LOAD CSV  WITH HEADERS FROM 'file:///edges.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///edges.csv' AS row
 FIELDTERMINATOR '|'
 CALL {
   WITH row
@@ -35,13 +35,11 @@ CALL {
 } IN TRANSACTIONS OF 5000 ROWS;
 
 :auto
-LOAD CSV  WITH HEADERS FROM 'file:///edges.csv' AS row
+LOAD CSV WITH HEADERS FROM 'file:///edges.csv' AS row
 FIELDTERMINATOR '|'
 CALL {
   WITH row
-  MATCH (c1:Corps {id_corp: row.id_corp})
-  MATCH (c2:Corps {id_corp: row.id_link})
+  MATCH (c:Corps {id_corp: row.id_corp})
   MATCH (i:Individuals {id_ind: row.id_link})
-  MERGE (c1)-[:RELATED]-(c2)
-  MERGE (i)-[:AGENT_OF]->(c1)
+  MERGE (i)-[:AGENT_OF]->(c)
 } IN TRANSACTIONS OF 5000 ROWS;
