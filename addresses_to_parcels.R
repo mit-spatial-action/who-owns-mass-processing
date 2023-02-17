@@ -25,7 +25,7 @@ assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49))
 # process assess records (see run.R)
   
 # ---------- Cleaning addresses ---------- #
-process_records(filings, cols=c("street", "city", "zip", "name", "case_type", "docket_id", "def_attorney_id", "ptf_attorney_id"), addr_cols=c("street"), name_cols=c("name"))
+filings <- process_records(filings, cols=c("street", "city", "zip", "name", "case_type", "docket_id", "def_attorney_id", "ptf_attorney_id"), addr_cols=c("street"), name_cols=c("name"))
 filings <- std_cities(filings, cols=c("city"))
  
 # filings <- std_split_addresses(filings, "street")
@@ -59,6 +59,7 @@ join_assess_to_parcels <- function(crs=2249, census=2249, gdb_path=file.path(DAT
 
 assess_with_geometry <- join_assess_to_parcels()
 assess_with_geometry <- process_records(assess_with_geometry, cols=c(colnames(assess_with_geometry)))
+
 filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249)
 found_addresses <- st_join(assess_with_geometry, filings, join=st_contains, 
                            k = 3,
@@ -66,7 +67,15 @@ found_addresses <- st_join(assess_with_geometry, filings, join=st_contains,
                            progress = FALSE
 )
 
-found_addresses$own_addr[!is.null(found_addresses$own_addr)]
+found_adds_not_null <- found_addresses %>% filter(!is.na(name))
 
+joined_by_name <- st_join(filings, assess_with_geometry, by=c("name"="owner1"))
+joined_by_name %>% filter(!is.na(town_id))
 
+filings_with_geometry <- filings %>% filter(!st_is_empty(geometry))
+assess_with_geometry_not_null <- assess_with_geometry %>% filter(!st_is_empty(geometry))
+assess_and_filings <- st_join(assess_with_geometry_not_null, filings_with_geometry, join=st_nn, 
+                           k = 2,
+                           progress = FALSE
+)
 
