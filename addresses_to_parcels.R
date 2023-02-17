@@ -19,18 +19,18 @@ connect <- dbConnect(RPostgres::Postgres(),
 query <- "select * from filings as f left join plaintiffs as p on p.docket_id = f.docket_id"
 
 filings <- st_read(connect, query=query) %>% st_set_geometry("geometry") %>%
-  modify_at("docket_id.1", ~NULL) %>% modify_at("id", ~NULL) %>% modify_at("id.1", ~NULL)# remove duplicate docket_id, remove one of the `id` columns too
+  select(-contains('..')) # remove all duplicate columns    
+# filings_backup <- filings
 assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49))
 # process assess records (see run.R)
-assess <- std_char(assess)
   
 # ---------- Cleaning addresses ---------- #
-filings <- std_char(filings)
-filings <- std_remove_special(filings)
-filings <- std_split_addresses(filings, "street")
-filings <- std_street_types(filings, "street")
+process_records(filings, cols=c("street", "city", "zip", "name", "case_type", "docket_id", "def_attorney_id", "ptf_attorney_id"), addr_cols=c("street"), name_cols=c("name"))
 filings <- std_cities(filings, cols=c("city"))
-joined <- left_join(assess, filings, by=c("site_addr"="street", "city"="city"))
+ 
+# filings <- std_split_addresses(filings, "street")
+# filings <- std_street_types(filings, "street")
+joined <- left_join(filings, assess, by=c("street"="site_addr", "city"="city"))
 
 
 join_assess_to_parcels <- function(crs=2249, census=2249, gdb_path=file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49)) {
@@ -51,11 +51,14 @@ join_assess_to_parcels <- function(crs=2249, census=2249, gdb_path=file.path(DAT
     mutate(
       geometry = st_cast(geometry, "MULTIPOLYGON")
     ) 
-  st_get_censusgeo(df)
+  df <- st_get_censusgeo(df)
+  assess <- std_char(assess)
+  
   left_join(df, assess, by = c("loc_id" = "loc_id"))
 }
 
-assess_with_geometry <- join_assess_to_parcels
+assess_with_geometry <- join_assess_to_parcels()
+assess_with_geometry <- process_records(assess_with_geometry, cols=c(colnames(assess_with_geometry)))
 filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249)
 found_addresses <- st_join(assess_with_geometry, filings, join=st_contains, 
                            k = 3,
@@ -63,8 +66,7 @@ found_addresses <- st_join(assess_with_geometry, filings, join=st_contains,
                            progress = FALSE
 )
 
-
-length(found_addresses$own_addr[length(found_addresses$own_addr)>0])
+found_addresses$own_addr[!is.null(found_addresses$own_addr)]
 
 
 
