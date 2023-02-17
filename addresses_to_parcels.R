@@ -74,8 +74,10 @@ joined_by_name %>% filter(!is.na(town_id))
 
 filings_with_geometry <- filings %>% filter(!st_is_empty(geometry))
 assess_with_geometry_not_null <- assess_with_geometry %>% filter(!st_is_empty(geometry))
-assess_and_filings <- st_join(assess_with_geometry_not_null, filings_with_geometry, join=st_nn, 
-                           k = 2,
-                           progress = FALSE
-)
+assess_and_filings <- st_join(assess_with_geometry_not_null, 
+                              filings_with_geometry, 
+                              join=st_nn, 
+                              maxdist=5280, 
+                              k = 2,
+                              progress = FALSE)
 
