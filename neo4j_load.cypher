@@ -1,5 +1,5 @@
-DROP CONSTRAINT UniqueIndividuals;
-DROP CONSTRAINT UniqueCorps;
+DROP CONSTRAINT UniqueIndividuals IF EXISTS;
+DROP CONSTRAINT UniqueCorps IF EXISTS;
 MATCH (n) DETACH DELETE n;
 
 CREATE CONSTRAINT UniqueIndividuals FOR (i:Individuals) REQUIRE i.id_ind IS UNIQUE;
