@@ -63,7 +63,6 @@ assess_with_geometry <- process_records(assess_with_geometry, cols=c(colnames(as
 filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249)
 found_addresses <- st_join(assess_with_geometry, filings, join=st_contains, 
                            k = 3,
-                           maxdist = knn_bw * 5280,
                            progress = FALSE
 )
 
