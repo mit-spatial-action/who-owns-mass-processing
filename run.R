@@ -1,4 +1,5 @@
 source("deduplicate-owners.R")
+source("addresses-to-parcels.R")
 
 # Name of directory in which input data is stored.
 DATA_DIR <- "data"
