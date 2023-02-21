@@ -35,47 +35,45 @@ joined <- left_join(filings, assess, by=c("street"="site_addr", "city"="city"))
 parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
 
 join_assess_to_parcels <- function(gdb_path=file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49)) {
-  parcels <- load_parcels(gdb_path, town_ids = town_ids)
-  # TODO: figure out why this fails sometimes:
-  # Error in `auto_copy()`:
-  # ! `x` and `y` must share the same src.
-  # ℹ set `copy` = TRUE (may be slow).
-  parcels <- st_get_censusgeo(parcels) %>% filter(!st_is_empty(geometry))
+  parcels <- load_parcels(gdb_path, town_ids = town_ids) %>% 
+    st_get_censusgeo() %>% 
+    filter(!st_is_empty(geometry))
   left_join(parcels, assess, by = c("loc_id" = "loc_id"))
 }
 
 assess <- join_assess_to_parcels(gdb_path=file.path(DATA_DIR, ASSESS_GDB),
                                  town_ids = c(274, 49))
 
-assess <- process_records(assess,  cols=c("owner1"),
+assess <- process_records(assess, cols=c("owner1"),
                             addr_cols=c("own_addr"),
                             keep_cols=c("prop_id", "ma_prop_id", "own_addr", 
                                         "own_city", "own_zip", "own_state", 
-                                        "loc_id"))
+                                        "loc_id")) %>% filter(!st_is_empty(geometry))
 
 # transform filings to correct geometry
-filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249)
+filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249) %>% filter(!st_is_empty(geometry))
 
 # found assess parcels that contain filings
-found_addresses <- st_join(assess_geo, filings, join=st_contains) %>% filter(!is.na(name))
+found_addresses <- st_join(assess, filings, join=st_contains) %>% filter(!is.na(name))
 
 # simple join by evictor name to parcel owner
-joined_by_name <- st_join(filings, assess_geo, by=c("name"="owner1")) %>% filter(!is.na(owner1))
+joined_by_name <- st_join(filings, assess, by=c("name"="owner1")) %>% filter(!is.na(owner1))
 
-filings_with_geometry <- filings %>% filter(!st_is_empty(geometry))
-assess_with_geometry_not_null <- assess_with_geometry 
 # reprojecting assess geometries to points
-assess_points <- st_point_on_surface(assess_with_geometry_not_null)
-# finding nearby filings
+assess_points <- st_point_on_surface(assess)
+
+# finding nearby filings to assess points 
+mile_multiplier <- 0.1
 assess_and_filings <- st_join(assess_points, 
                               filings_with_geometry, 
                               join=st_nn, 
-                              maxdist=5280 * 0.1, 
+                              maxdist=5280 * mile_multiplier, 
                               k = 2,
                               progress = FALSE) %>% 
   filter(!st_is_empty(geometry)) %>% 
   filter(!is.na(street))
 
+# standardizing filing name column
 filing_names <- filings %>% filter(!is.na(name)) %>% unique('docket_id') %>% 
   std_remove_special(c('name')) %>%
   std_remove_middle_initial(c('name')) %>%
@@ -84,7 +82,8 @@ filing_names <- filings %>% filter(!is.na(name)) %>% unique('docket_id') %>%
   mutate(name_simple=str_remove(str_to_upper(name), " LLC| AS | LP"))
 #         name_simple=str_extract_all(name_simple, '([\\w]+(?:[a-zA-Z]))')
 
-assess_names <- assess_with_geometry %>% filter(!is.na(owner1)) %>%
+# standardizing assess owner name column
+assess_names <- assess %>% filter(!is.na(owner1)) %>%
   std_remove_special(c('owner1')) %>%
   std_remove_middle_initial(c('owner1')) %>%
   std_the(c('owner1')) %>%
