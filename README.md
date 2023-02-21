@@ -1,14 +1,11 @@
 # Deduplicate Owners
 
-This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and the [Secretary of the Commonwealth's Corporate Database](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx). The process is very  similar to that documented by [Hangen and O'Brien (2022, in preprint)](https://osf.io/preprints/socarxiv/anvke/), which itself is similar (though not identical) to methods used by Henry Gomory 2021 and the Anti-Eviction Mapping Project's Evictorbook (see e.g., McElroy and Amir-Ghassemi 2021). In outline...
+This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and the [Secretary of the Commonwealth's Corporate Database](https://corp.sec.state.ma.us/corpweb/CorpSearch/CorpSearch.aspx). The process builds on [Hangen and O'Brien's methods (2022, in preprint)](https://osf.io/preprints/socarxiv/anvke/), which are themselves similar (though not identical) to methods used by Henry Gomory (2021) and the Anti-Eviction Mapping Project's Evictorbook (see e.g., McElroy and Amir-Ghassemi 2021). In outline...
 
 1. Prepare data using a large number of string-standardizing functions, some of which are place-based. (In other words, when adapting to non-Massachusetts locations, you'll want to consider how to adapt our codebase to your locale.)
 2. Perform naive deduplication on assessors' tables using concatenated name and address.
 3. Perform cosine-similarity-based deduplication on assessors' tables using concatenated name and address.
 4. Join parcels to companies using simple string matching. Note that here, when an owner fails to match within a cosine-similarity group that contains successful matches (see step 3), the owners that fail to match are assigned to the company id of one of the successful matches.
-
-    + TODO: replace this step with efficient fuzzy-matching (we're probably losing a fair number of matches here).
-  
 5. Identify agents of companies that are companies themselves (distinguishing between law firms and other companies) and agents of companies that are individuals.
 6. Deduplicate individuals (including individual agents) associated with companies that match parcel owners using both naive and cosine similarity methods.
 7. Identify communities within corporate-individual networks. (This is done using the `igraph` implementation of the fast greedy modularity optimization algorithm.)
