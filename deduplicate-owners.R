@@ -858,6 +858,36 @@ load_assess <- function(path, town_ids = FALSE) {
     assess_res_filter("use_code")
 }
 
+load_parcels <- function(path, town_ids=FALSE) {
+  #' Load assessing table from MassGIS geodatabase.
+  #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
+  #' 
+  #' @param path Path to MassGIS Parcels GDB.
+  #' @param test Whether to only load a sample subset of rows.
+  #' @export
+  parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
+  if (!isFALSE(town_ids)) {
+    parcel_query <- paste(parcel_query, "WHERE TOWN_ID IN (", paste(town_ids, collapse=", "), ")")
+  }
+  st_read(
+    path,
+    query = parcel_query
+  ) %>%
+    rename_with(str_to_lower) %>% 
+    # Correct weird naming conventions of GDB.
+    st_set_geometry("shape") %>%
+    st_set_geometry("geometry") %>%
+    # Select only unique id.
+    select(c(loc_id)) %>%
+    # Reproject to specified CRS.
+    st_transform(crs) %>%
+    # Cast from MULTISURFACE to MULTIPOLYGON.
+    mutate(
+      geometry = st_cast(geometry, "MULTIPOLYGON")
+    )
+ 
+}
+
 load_inds <- function(path) {
   #' Load individuals from corporate db, sourced from the MA Secretary of the Commonwealth.
   #' 
