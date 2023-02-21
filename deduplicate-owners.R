@@ -193,7 +193,7 @@ std_small_numbers <- function(df, cols){
 }
 
 std_remove_middle_initial <- function(df, cols) {
-  #' Replace middle inital when formated like "ERIC R HUNTLEY"
+  #' Replace middle initial when formatted like "ERIC R HUNTLEY"
   #' 
   #' @param df A dataframe.
   #' @param cols Column or columns to be processed.
@@ -244,6 +244,27 @@ std_the <- function(df, cols){
           c(
             " THE$" = "",
             "^THE " = "")
+        )
+      )
+    )
+}
+
+std_and <- function(df, cols){
+  #' Strips away leading or trailing and
+  #' 
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  df %>%
+    mutate(
+      across(
+        where(is.character) & all_of(cols), 
+        ~str_replace_all(
+          .,
+          c(
+            " AND$" = "",
+            "^AND " = "")
         )
       )
     )
