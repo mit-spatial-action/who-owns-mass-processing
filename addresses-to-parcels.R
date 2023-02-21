@@ -27,11 +27,14 @@ assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49))
 # ---------- Cleaning addresses ---------- #
 filings <- process_records(filings, cols=c("street", "city", "zip", "name", "case_type"), 
                            addr_cols=c("street"), name_cols=c("name"), 
-                           keep_cols=c("def_attorney_id", "ptf_attorney_id", "docket_id", "street", "city", "zip", "name", "case_type"))
-filings <- std_cities(filings, cols=c("city"))
- 
-joined <- left_join(filings, assess, by=c("street"="site_addr", "city"="city"))
+                           keep_cols=c("def_attorney_id", "ptf_attorney_id", 
+                                       "docket_id", "street", "city", 
+                                       "zip", "name", "case_type")) %>% 
+  std_cities(c("city"))
 
+by_street <- left_join(filings, assess, by=c("street"="site_addr", "city"="city")) %>% filter(!is.na(owner1))
+
+# set up parcels, join asses records to parcel geometry 
 parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
 
 join_assess_to_parcels <- function(gdb_path=file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49)) {
@@ -94,27 +97,5 @@ assess_names <- assess %>% filter(!is.na(owner1)) %>%
 filing_assess_names <- st_join(filing_names, assess_names, by=c('name_simple'='name_simple')) %>% 
   filter(!is.na(owner1)) %>% distinct()
 
-length(unique(filing_assess_names$docket_id)) # 314 records
+length(unique(filing_assess_names$docket_id))
 
-# unnest_tokens(name, text, token = "regex", pattern='([\\w]+(?:[a-zA-Z]))')
-
-# add back in joining on street and city 
-# possible you're getting many to ones (many assessors to one eviction)
-# pretty rare but edge case
-# ascending order of costlinesse
-# column join on address and town
-# where that fails, spatial join
-# where that fails, try k nearest
-# in a lot of cases the geocoder doesn't nail right on parcel
-# of those in proximity, are there any we can reasonably think are tied? 
-# knn_bw is a fraction of a mile 
-# shrinking bandwidth will speed things up
-# casting geometry to point will be a lot faster
-# st_point_on_surface (or something) adds a requirement that point inside of polygon
-# re: names, currently all of our joins are simple joins, but 
-# would make sense to implement token based system
-# use levenstein distance 
-
-# column names to keep: 
-# anything that's a result of a data cleaning process (like vectorizing names)
-# including docket_id, parcel_id
