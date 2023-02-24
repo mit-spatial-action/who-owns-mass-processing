@@ -315,28 +315,36 @@ load_agents <- function(df, cols, drop_na_col) {
     filter(!is.na(get({{ drop_na_col }})))
 }
 
-load_assess <- function(path, town_ids = FALSE) {
+load_assess <- function(path = ".", town_ids = FALSE, write=TRUE) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #'
   #' @param path Path to MassGIS Parcels GDB.
-  #' @param test Whether to only load a sample subset of rows.
+  #' @param town_ids list of town IDs
+  #' @param write write a new file or use the written file in RESULTS_DIR
   #' @export
-  assess_query <- "SELECT * FROM L3_ASSESS"
-  if (!isFALSE(town_ids)) {
-    assess_query <- paste(
-      assess_query,
-      "WHERE TOWN_ID IN (",
-      paste(town_ids, collapse = ", "),
-      ")"
-      )
+  if (file.exists(file.path(RESULTS_DIR, paste(ASSESS_OUT_NAME, "csv", sep = "."))) & write == FALSE) {
+    read_delim(
+      file.path(RESULTS_DIR, paste(ASSESS_OUT_NAME, "csv", sep = ".")),
+      delim = "|", quote = "needed"
+    )
+  } else {
+    assess_query <- "SELECT * FROM L3_ASSESS"
+    if (!isFALSE(town_ids)) {
+      assess_query <- paste(
+        assess_query,
+        "WHERE TOWN_ID IN (",
+        paste(town_ids, collapse = ", "),
+        ")"
+        )
+    }
+    st_read(
+        path,
+        query = assess_query
+      ) %>%
+      rename_with(str_to_lower) %>%
+      assess_res_filter("use_code")
   }
-  st_read(
-      path,
-      query = assess_query
-    ) %>%
-    rename_with(str_to_lower) %>%
-    assess_res_filter("use_code")
 }
 
 load_parcels <- function(path, town_ids=FALSE) {

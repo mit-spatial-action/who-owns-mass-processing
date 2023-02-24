@@ -21,7 +21,7 @@ query <- "select * from filings as f left join plaintiffs as p on p.docket_id = 
 
 filings <- st_read(connect, query=query) %>% st_set_geometry("geometry") %>%
   select(-contains('..')) # remove all duplicate columns    
-assess <- load_assess(file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49))
+assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), write=FALSE)
 # process assess records (see run.R)
   
 # ---------- Cleaning addresses ---------- #
