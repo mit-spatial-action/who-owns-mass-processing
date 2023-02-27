@@ -1,7 +1,7 @@
 library(dplyr)
 library(tidyr)
 
-std_uppercase_all <- function(df, except_cols = c()) {
+std_uppercase_all <- function(df, cols, except_cols = c()) {
   #' Uppercase all strings
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -571,4 +571,85 @@ std_corp_rm_sys <- function(df, cols) {
         )
       )
     )
+}
+
+std_owner_name <- function(df, col) {
+  print(col)
+  df %>% std_remove_special(col) %>%
+    std_remove_middle_initial(col) %>%
+    std_the(col) %>%
+    std_and(col)
+}
+
+process_records <- function(df,
+                            cols,
+                            zip_cols = FALSE,
+                            city_cols = FALSE,
+                            addr_cols = FALSE,
+                            name_cols = FALSE,
+                            keep_cols = FALSE) {
+  #' Run a series of string standardizing functions.
+  #'
+  #' @param df A dataframe containing only string datatypes.
+  #' @param cols Column or columns to be processed by
+  #'  `std_directions`, `std_andslash`, `std_remove_special`,
+  #'  and `std_the`.
+  #' @param zip_cols Column or columns to be processed by
+  #'  `std_directions`, `std_andslash`, `std_remove_special`,
+  #'  and `std_the`.
+  #' @returns A dataframe.
+  #' @export
+  all_cols <- cols
+  if (!isFALSE(keep_cols)) {
+    all_cols <- c(keep_cols, all_cols)
+  } else {
+    keep_cols <- c()
+  }
+  if (!isFALSE(zip_cols)) {
+    all_cols <- c(all_cols, zip_cols)
+  }
+  if (!isFALSE(city_cols)) {
+    all_cols <- c(all_cols, city_cols)
+  }
+  if (!isFALSE(addr_cols)) {
+    all_cols <- c(all_cols, addr_cols)
+  }
+  if (!isFALSE(name_cols)) {
+    all_cols <- c(all_cols, name_cols)
+  }
+  all_cols <- unique(all_cols)
+  df <- df %>%
+    select(
+      all_of(all_cols)
+    ) %>%
+    std_andslash(cols) %>%
+    std_remove_special(cols) %>%
+    std_replace_blank(keep_cols) %>%
+    std_the(cols) %>%
+    std_massachusetts(cols) %>%
+    std_small_numbers(cols) %>%
+    std_trailingwords(cols) %>%
+    std_uppercase_all(cols)
+  if (!isFALSE(zip_cols)) {
+    df <- df %>%
+      std_simplify_zip(zip_cols)
+  }
+  if (!isFALSE(city_cols)) {
+    df <- df %>%
+      std_cities(city_cols)
+  }
+  if (!isFALSE(addr_cols)) {
+    df <- df %>%
+      std_street_types(addr_cols) %>%
+      std_simplify_address(addr_cols) %>%
+      std_directions(addr_cols) %>%
+      std_hyphenated_numbers(addr_cols) %>%
+      std_onewordaddress(addr_cols)
+  }
+  if (!isFALSE(name_cols)) {
+    df <- df %>%
+      std_corp_types(name_cols) %>%
+      std_corp_rm_sys(name_cols)
+  }
+  df
 }
