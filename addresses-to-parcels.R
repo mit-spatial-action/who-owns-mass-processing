@@ -73,10 +73,17 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
                                 "loc_id"))
   
   log_message("Step 1. Join by address strings")
-  df <- join_by_address_strings()
+  joined_by_address_strings <- join_by_address_strings() %>% 
+    distinct(docket_id, .keep_all = TRUE) %>% st_drop_geometry('geometry')
   # simple join by evictor name to parcel owner
-  joined_by_name <- left_join(filings, assess, by=c("name"="owner1")) %>% filter(!is.na(own_addr))
- 
+  joined_by_name <- left_join(filings, assess, by=c("name"="owner1")) %>% 
+    filter(!is.na(name)) %>% filter(!is.na(own_addr)) %>% 
+    distinct(docket_id, .keep_all = TRUE) %>% st_drop_geometry('geometry')
+  joined_by_name <- cbind(owner1=joined_by_name$name, joined_by_name)
+  
+  # merge two dataframes
+  df <- full_join(joined_by_address_strings, joined_by_name) %>% distinct(docket_id, .keep_all = TRUE) 
+  # %>% distinct(docket_id, .keep_all = TRUE)
    # log_message("-------- Standardize filing name column")
   # filing_names <- filings %>% std_owner_name(c('name')) %>% 
   #   mutate(name_simple=str_remove(str_to_upper(name), " LLC| AS | LP")) %>% 
@@ -90,20 +97,40 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
   #   filter(!is.na(owner1)) %>% distinct()
 
   log_message("-------- Add parcels to assessors")
-  assess <- add_parcels_to_assessors(town_ids = town_ids) %>% filter(!st_is_empty(geometry))
+  assess <- add_parcels_to_assessors(town_ids = town_ids) %>% 
+    filter(!st_is_empty(geometry))
   
   log_message("-------- Transform filings to correct geometry")
   filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249) %>% 
     filter(!st_is_empty(geometry))
   
+  # log_message("-------- Add parcels to joined by name from step 1")
+  # joined_by_name <- st_join(joined_by_name, assess, join=st_contains) 
+  
   log_message("Step 2. Find assess parcels that contain filings") 
-  found_addresses <- st_join(assess, filings, join=st_contains) %>% filter(!is.na(name)) 
+  found_addresses <- st_join(assess, filings, join=st_contains) %>% 
+    filter(!is.na(name)) %>% st_drop_geometry('geometry') 
+  
+  # remove extra geo columns
+  drops <- c("geoid_bg","geoid_t")
+  found_addresses <- found_addresses[ , !(names(found_addresses) %in% drops)]
+  
+  # merge found_addresses to df 
+  df <- full_join(df, found_addresses)
   
   log_message("-------- Reproject assess geometries to points")
   assess_points <- st_point_on_surface(assess)
   
   log_message(glue::glue("Step 3. Match filings to {mile_multiplier}ft away from assessor parcel point")) 
-  nearby_filings <- match_nearby_filings(assess_points, mile_multiplier = mile_multiplier)
-  
+  nearby_filings <- match_nearby_filings(assess_points, mile_multiplier = mile_multiplier) %>% 
+    st_drop_geometry('geometry')
+  # drop extra geo columns
+  nearby_filings <- nearby_filings[ , !(names(nearby_filings) %in% drops)]
+  # merge last dataframe to big one and write to file
+  df <- full_join(df, nearby_filings) %>% 
+  write_delim(
+    file.path(RESULTS_DIR, paste(EVICTORS_OUT_NAME, "csv", sep = ".")),
+    delim = "|", quote = "needed"
+  )
 }
 

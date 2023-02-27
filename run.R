@@ -20,6 +20,7 @@ CORPS_OUT_NAME <- "corps"
 INDS_OUT_NAME <- "inds"
 NODES_OUT_NAME <- "nodes"
 EDGES_OUT_NAME <- "edges"
+EVICTORS_OUT_NAME <- "evictors"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
 
