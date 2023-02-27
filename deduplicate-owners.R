@@ -280,13 +280,6 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   #' @returns If `store_results` is `TRUE`, a named
   #'  list of dataframes. Else, nothing
   #' @export
-  # Create and open log file with timestamp name.
-  lf <- log_open(
-    file.path(
-      "logs",
-      format(Sys.time(), "%Y-%m-%d_%H%M%S")
-    )
-  )
   # Load assessors table.
   # DATA_DIR and ASSESS_GDB set globally above.
   log_message("Reading assessors table from GDB...")
@@ -812,8 +805,6 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   save.image(
     file.path(RESULTS_DIR, paste(RDATA_OUT_NAME, "RData", sep = "."))
   )
-  # Close logs.
-  log_close()
   # If directed to store results, return them in a named list.
   if (return_results == TRUE) {
     list(

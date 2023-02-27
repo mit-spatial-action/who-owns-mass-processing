@@ -24,6 +24,13 @@ EDGES_OUT_NAME <- "edges"
 RDATA_OUT_NAME <- "results"
 
 run <- function(subset = "test", deduplicate_owners=TRUE, connect_evictors=TRUE, return_results = TRUE) {
+  # Create and open log file with timestamp name.
+  lf <- log_open(
+    file.path(
+      "logs",
+      format(Sys.time(), "%Y-%m-%d_%H%M%S")
+    )
+  )
   if (subset == "hns") {
     town_ids <- read_csv(
       file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))
@@ -43,6 +50,8 @@ run <- function(subset = "test", deduplicate_owners=TRUE, connect_evictors=TRUE,
   if (connect_evictors) {
     connect_evictors(town_ids = town_ids)
   }
+  # Close logs.
+  log_close()
 }
 
 # This is like if __name__ == "__main__" in python.
