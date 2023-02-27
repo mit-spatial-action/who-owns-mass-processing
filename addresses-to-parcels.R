@@ -1,4 +1,7 @@
-source("deduplicate-owners.R")
+source("log.R")
+source("std_helpers.R")
+source("assess_helpers.R")
+
 install.packages("nngeo")
 library(nngeo)
 library(RPostgres)
@@ -13,89 +16,94 @@ BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 local_db_name <- "evictions_local"
 
 # ---------- Connecting to local DB ---------- #
-connect <- dbConnect(RPostgres::Postgres(), 
-                     dbname=local_db_name,
-                     host="localhost",
-                     port=5432)
-query <- "select * from filings as f left join plaintiffs as p on p.docket_id = f.docket_id"
 
-filings <- st_read(connect, query=query) %>% st_set_geometry("geometry") %>%
-  select(-contains('..')) # remove all duplicate columns    
-assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), write=FALSE)
-# process assess records (see run.R)
+get_filings <- function() {
+  connect <- dbConnect(RPostgres::Postgres(), 
+                       dbname=local_db_name,
+                       host="localhost",
+                       port=5432)
+  query <- "select * from filings as f left join plaintiffs as p on p.docket_id = f.docket_id"
+  filings <- st_read(connect, query=query) %>% st_set_geometry("geometry") %>%
+    select(-contains('..'))  %>% 
+    process_records(cols=c("street", "city", "zip", "name", "case_type"), 
+                    addr_cols=c("street"), name_cols=c("name"), 
+                    keep_cols=c("def_attorney_id", "ptf_attorney_id", 
+                                "docket_id", "street", "city", 
+                                "zip", "name", "case_type")) %>% 
+    std_cities(c("city"))
   
-# ---------- Cleaning addresses ---------- #
-filings <- process_records(filings, cols=c("street", "city", "zip", "name", "case_type"), 
-                           addr_cols=c("street"), name_cols=c("name"), 
-                           keep_cols=c("def_attorney_id", "ptf_attorney_id", 
-                                       "docket_id", "street", "city", 
-                                       "zip", "name", "case_type")) %>% 
-  std_cities(c("city"))
+  
+  }
 
-by_street <- left_join(filings, assess, by=c("street"="site_addr", "city"="city")) %>% filter(!is.na(owner1))
+join_by_address_strings <- function() {
+  left_join(filings, assess, by=c("street"="own_addr", "city"="own_city")) %>% filter(!is.na(owner1))
+}
 
-# set up parcels, join asses records to parcel geometry 
-parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
-
-join_assess_to_parcels <- function(gdb_path=file.path(DATA_DIR, ASSESS_GDB), town_ids = c(274, 49)) {
-  parcels <- load_parcels(gdb_path, town_ids = town_ids) %>% 
+add_parcels_to_assessors <- function(town_ids = c(274)) {
+  # set up parcels, join asses records to parcel geometry 
+  parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
+  parcels <- load_parcels(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>% 
     st_get_censusgeo() %>% 
     filter(!st_is_empty(geometry))
   left_join(parcels, assess, by = c("loc_id" = "loc_id"))
 }
 
-assess <- join_assess_to_parcels(gdb_path=file.path(DATA_DIR, ASSESS_GDB),
-                                 town_ids = c(274, 49))
-
-assess <- process_records(assess, cols=c("owner1"),
-                            addr_cols=c("own_addr"),
-                            keep_cols=c("prop_id", "ma_prop_id", "own_addr", 
-                                        "own_city", "own_zip", "own_state", 
-                                        "loc_id")) %>% filter(!st_is_empty(geometry))
-
-# transform filings to correct geometry
-filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249) %>% filter(!st_is_empty(geometry))
-
-# found assess parcels that contain filings
-found_addresses <- st_join(assess, filings, join=st_contains) %>% filter(!is.na(name))
-
-# simple join by evictor name to parcel owner
-joined_by_name <- st_join(filings, assess, by=c("name"="owner1")) %>% filter(!is.na(owner1))
-
-# reprojecting assess geometries to points
-assess_points <- st_point_on_surface(assess)
-
 # finding nearby filings to assess points 
-mile_multiplier <- 0.1
-assess_and_filings <- st_join(assess_points, 
-                              filings_with_geometry, 
-                              join=st_nn, 
-                              maxdist=5280 * mile_multiplier, 
-                              k = 2,
-                              progress = FALSE) %>% 
-  filter(!st_is_empty(geometry)) %>% 
-  filter(!is.na(street))
+match_nearby_filings <- function(assess_points_df, mile_multiplier = 0.1) {
+  assess_and_filings <- st_join(assess_points_df, 
+                                filings_with_geometry, 
+                                join=st_nn, 
+                                maxdist=5280 * mile_multiplier, 
+                                k = 2,
+                                progress = FALSE) %>% 
+    filter(!st_is_empty(geometry)) %>% 
+    filter(!is.na(street))
+}
 
-# standardizing filing name column
-filing_names <- filings %>% filter(!is.na(name)) %>% unique('docket_id') %>% 
-  std_remove_special(c('name')) %>%
-  std_remove_middle_initial(c('name')) %>%
-  std_the(c('name')) %>%
-  std_and(c('name')) %>%
-  mutate(name_simple=str_remove(str_to_upper(name), " LLC| AS | LP"))
-#         name_simple=str_extract_all(name_simple, '([\\w]+(?:[a-zA-Z]))')
 
-# standardizing assess owner name column
-assess_names <- assess %>% filter(!is.na(owner1)) %>%
-  std_remove_special(c('owner1')) %>%
-  std_remove_middle_initial(c('owner1')) %>%
-  std_the(c('owner1')) %>%
-  std_and(c('owner1')) %>%
-  mutate(name_simple=str_remove(owner1, " LLC| AS | LP"),
-  ) 
+connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
+  filings <- get_filings()
+  
+  log_message("-------- Reading assessors table from file")
+  assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), write=FALSE) 
+  assess <- assess %>% process_records(cols=c("owner1"),
+                    addr_cols=c("own_addr"),
+                    keep_cols=c("prop_id", "own_addr", 
+                                "own_city", "own_zip", "own_state", 
+                                "loc_id"))
+  
+  log_message("Step 1. Join by address strings")
+  df <- join_by_address_strings()
+  # simple join by evictor name to parcel owner
+  joined_by_name <- left_join(filings, assess, by=c("name"="owner1")) %>% filter(!is.na(own_addr))
+ 
+   # log_message("-------- Standardize filing name column")
+  # filing_names <- filings %>% std_owner_name(c('name')) %>% 
+  #   mutate(name_simple=str_remove(str_to_upper(name), " LLC| AS | LP")) %>% 
+  #   filter(!is.na(owner1))
+  # assess_names <- assess %>% std_owner_name(c('owner1')) %>%
+  #   mutate(name_simple=str_remove(str_to_upper(owner1), " LLC| AS | LP")) %>% 
+  #   filter(!is.na(owner1))
+  # 
+  # log_message("Step 2. Join clean names")
+  # filing_assess_names <- left_join(filing_names, assess_names, by=c('name_simple'='name_simple')) %>% 
+  #   filter(!is.na(owner1)) %>% distinct()
 
-filing_assess_names <- st_join(filing_names, assess_names, by=c('name_simple'='name_simple')) %>% 
-  filter(!is.na(owner1)) %>% distinct()
-
-length(unique(filing_assess_names$docket_id))
+  log_message("-------- Add parcels to assessors")
+  assess <- add_parcels_to_assessors(town_ids = town_ids) %>% filter(!st_is_empty(geometry))
+  
+  log_message("-------- Transform filings to correct geometry")
+  filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249) %>% 
+    filter(!st_is_empty(geometry))
+  
+  log_message("Step 2. Find assess parcels that contain filings") 
+  found_addresses <- st_join(assess, filings, join=st_contains) %>% filter(!is.na(name)) 
+  
+  log_message("-------- Reproject assess geometries to points")
+  assess_points <- st_point_on_surface(assess)
+  
+  log_message(glue::glue("Step 3. Match filings to {mile_multiplier}ft away from assessor parcel point")) 
+  nearby_filings <- match_nearby_filings(assess_points, mile_multiplier = mile_multiplier)
+  
+}
 
