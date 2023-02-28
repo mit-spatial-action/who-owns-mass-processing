@@ -342,7 +342,7 @@ std_massachusetts <- function(df, cols) {
 std_cities <- function(df, cols) {
   #' Replace Boston neighborhoods with Boston
   #' @param df A dataframe.
-  #' @param col Columns to be processed.
+  #' @param cols Columns to be processed.
   #' @returns A dataframe.
   neighs <- std_uppercase_all(
     read_delim(file.path(DATA_DIR, BOS_NBHD), delim = ",")
@@ -368,7 +368,7 @@ std_simplify_address <- function(df, cols) {
   #' Standardize street types.
   #'
   #' @param df A dataframe.
-  #' @param col Columns to be processed.
+  #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
   replace <- c(
@@ -432,8 +432,12 @@ std_corp_types <- function(df, cols) {
 }
 
 std_remove_co <- function(df, cols) {
+  #' Remove "C / O" prefix.
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df %>%
-    # Remove "C / O" prefix.
     mutate(
       across(
         where(is.character) & all_of(cols),
@@ -443,15 +447,20 @@ std_remove_co <- function(df, cols) {
 }
 
 std_hyphenated_numbers <- function(df, cols) {
+  #' Strips away second half of hyphenated number
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df %>%
     # Remove "C / O" prefix.
     mutate(
       across(
         where(is.character) & all_of(cols),
         ~ str_replace_all(
-          str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
-          "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
-          ""
+            str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
+            "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
+            ""
         )
       )
     )
@@ -495,8 +504,6 @@ st_get_zips <- function(sdf, zip_col, state = "MA", crs = 2249) {
   #' @param crs EPSG code of appropriate coordinate reference system.
   #' @returns A dataframe.
   #' @export
-  library(tigris)
-  options(tigris_use_cache = TRUE)
   sdf %>%
     mutate(
       point = st_point_on_surface(geometry)
@@ -524,9 +531,7 @@ st_get_censusgeo <- function(sdf, state = "MA", crs = 2249) {
   #' @param state State of your study. (TODO: multiple states?)
   #' @param crs EPSG code of appropriate coordinate reference system.
   #' @returns A dataframe.
-  #' @exportx
-  library(tigris)
-  options(tigris_use_cache = TRUE)
+  #' @export
   censusgeo <- block_groups(state = state) %>%
     st_transform(crs) %>%
     rename(
@@ -573,6 +578,11 @@ std_corp_rm_sys <- function(df, cols) {
 }
 
 std_flow_strings <- function(cols) {
+  #' Generic string standardization workflow.
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df %>%
     std_andslash(cols) %>%
     std_remove_special(cols) %>%
@@ -584,6 +594,11 @@ std_flow_strings <- function(cols) {
 }
 
 std_flow_addresses <- function(cols) {
+  #' Address standardization workflow.
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df <- df %>%
     std_street_types(cols) %>%
     std_simplify_address(cols) %>%
@@ -594,6 +609,11 @@ std_flow_addresses <- function(cols) {
 }
 
 std_flow_names <- function(cols) {
+  #' Name standardization workflow.
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df <- df %>%
     std_corp_types(cols) %>%
     std_corp_rm_sys(cols) %>%

@@ -7,6 +7,8 @@ library(tidyselect)
 library(stringr)
 library(RPostgres)
 library(sf)
+library(tigris)
+options(tigris_use_cache = TRUE)
 
 DATA_DIR <- "data"
 # Name of directory in which results are written.
