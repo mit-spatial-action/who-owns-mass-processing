@@ -55,17 +55,17 @@ assess_res_filter <- function(df, col) {
           # Mixed use codes.
           "^0(1[0-9]|[1-9]1)[A-Z]?$",
           # Boston Housing Authority.
-          "^908",
+          "^908[A-Z]?",
           # Housing authority outside Boston.
-          "^0?970",
+          "^0?970[A-Z]?",
           # Section 121-A Property...
           # (Tax-exempt 'blight' redevelopment.)
           # in Boston
-          "^0?907",
+          "^0?907[A-Z]?",
           # outside Boston.
-          "^990",
+          "^990[A-Z]?",
           # 'Other' Housing.
-          "^959",
+          "^959[A-Z]?",
           "^000"
         ), collapse = "|")
       )
