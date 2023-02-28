@@ -2,7 +2,6 @@ source("log.R")
 source("std_helpers.R")
 source("assess_helpers.R")
 
-install.packages("nngeo")
 library(nngeo)
 library(RPostgres)
 library(dplyr)
@@ -15,9 +14,11 @@ DATA_DIR <- "data"
 BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
 local_db_name <- "evictions_local"
 
-# ---------- Connecting to local DB ---------- #
-
 get_filings <- function() {
+  #' Pulls eviction filings from database.
+  #'
+  #' @returns A dataframe.
+  #' @export
   connect <- dbConnect(RPostgres::Postgres(), 
                        dbname=local_db_name,
                        host="localhost",
@@ -35,12 +36,20 @@ get_filings <- function() {
   
   }
 
-join_by_address_strings <- function() {
+join_by_address <- function() {
+  #' Joins filing to assessors table by address strings.
+  #'
+  #' @returns A dataframe.
+  #' @export
   left_join(filings, assess, by=c("street"="own_addr", "city"="own_city")) %>% filter(!is.na(owner1))
 }
 
 add_parcels_to_assessors <- function(town_ids = c(274)) {
-  # set up parcels, join asses records to parcel geometry 
+  #' Set up parcels, join asses records to parcel geometry.
+  #'
+  #' @param town_ids List of numerical town ids.
+  #' @returns A dataframe.
+  #' @export
   parcel_query <- "SELECT * FROM L3_TAXPAR_POLY"
   parcels <- load_parcels(file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids) %>% 
     st_get_censusgeo() %>% 
@@ -48,12 +57,17 @@ add_parcels_to_assessors <- function(town_ids = c(274)) {
   left_join(parcels, assess, by = c("loc_id" = "loc_id"))
 }
 
-# finding nearby filings to assess points 
-match_nearby_filings <- function(assess_points_df, mile_multiplier = 0.1) {
+match_nearby_filings <- function(parcel_points_df, mile_multiplier = 0.1) {
+  #' Match filings to nearby parcels.
+  #'
+  #' @param parcel_points_df Dataframe containing parcel centroids.
+  #' @param mile_multiplier Bandwidth distance, in miles.
+  #' @returns A dataframe.
+  #' @export
   assess_and_filings <- st_join(assess_points_df, 
                                 filings_with_geometry, 
-                                join=st_nn, 
-                                maxdist=5280 * mile_multiplier, 
+                                join = st_nn, 
+                                maxdist = 5280 * mile_multiplier, 
                                 k = 2,
                                 progress = FALSE) %>% 
     filter(!st_is_empty(geometry)) %>% 
@@ -62,6 +76,12 @@ match_nearby_filings <- function(assess_points_df, mile_multiplier = 0.1) {
 
 
 connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
+  #' Workflow to connect evictions to assessors records.
+  #'
+  #' @param town_ids List of numerical town ids.
+  #' @param mile_multiplier Bandwidth distance, in miles.
+  #' @returns A dataframe.
+  #' @export
   filings <- get_filings()
   
   log_message("-------- Reading assessors table from file")
@@ -73,7 +93,7 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
                                 "loc_id"))
   
   log_message("Step 1. Join by address strings")
-  joined_by_address_strings <- join_by_address_strings() %>% 
+  joined_by_address <- join_by_address() %>% 
     distinct(docket_id, .keep_all = TRUE) %>% st_drop_geometry('geometry')
   # simple join by evictor name to parcel owner
   joined_by_name <- left_join(filings, assess, by=c("name"="owner1")) %>% 
@@ -82,7 +102,7 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
   joined_by_name <- cbind(owner1=joined_by_name$name, joined_by_name)
   
   # merge two dataframes
-  df <- full_join(joined_by_address_strings, joined_by_name) %>% distinct(docket_id, .keep_all = TRUE) 
+  df <- full_join(joined_by_address, joined_by_name) %>% distinct(docket_id, .keep_all = TRUE) 
   # %>% distinct(docket_id, .keep_all = TRUE)
    # log_message("-------- Standardize filing name column")
   # filing_names <- filings %>% std_owner_name(c('name')) %>% 
