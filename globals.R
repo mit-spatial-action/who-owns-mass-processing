@@ -21,6 +21,8 @@ CORPS <- "CSC_CorpDataExports_VB.txt"
 ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
 # Name of CSV containing limited collection of HNS municipalities
 MUNI_CSV <- "hns_munis"
+# Name of CSV containing Boston neighborhood names.
+BOS_NBHD <- "bos_neigh"
 # Name of delimited text output files.
 ASSESS_OUT_NAME <- "assess"
 OWNERS_OUT_NAME <- "owners"
@@ -31,5 +33,3 @@ EDGES_OUT_NAME <- "edges"
 EVICTORS_OUT_NAME <- "evictors"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
-# CSV containing Boston neighborhood names.
-BOS_NBHD <- "bos_neigh.csv"

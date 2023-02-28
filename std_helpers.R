@@ -345,7 +345,7 @@ std_cities <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   neighs <- std_uppercase_all(
-    read_delim(file.path(DATA_DIR, BOS_NBHD), delim = ",")
+    read_delim(file.path(DATA_DIR, paste(BOS_NBHD, "csv", sep = ".")), delim = ",")
   ) %>%
     pull(Name)
   df %>%
