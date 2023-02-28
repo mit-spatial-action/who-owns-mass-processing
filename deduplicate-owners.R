@@ -10,11 +10,17 @@ library(quanteda.textstats)
 library(igraph)
 
 flag_lawyers <- function(df, cols) {
+  #' Flags likely law offices and lawyers.
+  #'
+  #' @param df A dataframe.
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
   df %>%
     mutate(
       lawyer = case_when(
         if_any(
-          cols,
+          any_of(cols),
           ~str_detect(
             .,
             "( (PC)|([A-Z]+ AND [A-Z]+ LLP)|(ESQ(UIRE)?$)|(LAW (OFFICES?|LLC|LLP|GROUP))|(ATTORNEY))"
@@ -273,10 +279,10 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   assess <- assess %>%
     # Run string standardization procedures.
     std_flow_strings(c("owner1", "own_addr", "site_addr", "own_zip")) %>%
-    std_zip("own_zip") %>% 
-    std_flow_addresses("own_addr", "site_addr") %>%
-    std_cities("own_city") %>%
-    std_flow_names("owner1", "own_addr") %>%
+    std_zip(c("own_zip")) %>% 
+    std_flow_addresses(c("own_addr", "site_addr")) %>%
+    std_cities(c("own_city")) %>%
+    std_flow_names(c("owner1", "own_addr")) %>%
     # Extract 'care of' entities to co and remove from own_addr.
     mutate(
       co = case_when(
@@ -346,10 +352,10 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   log_message("Processing corporation records...")
   corps <- corps %>%
     std_flow_strings(c("entityname", "agentname", "agentaddr1", "agentaddr2")) %>%
-    std_zip("agentpostalcode") %>% 
-    std_flow_addresses("agentaddr1", "agentaddr2") %>%
-    std_cities("agentcity") %>%
-    std_flow_names("entityname", "agentname", "agentaddr1", "agentaddr2") %>%
+    std_zip(c("agentpostalcode")) %>% 
+    std_flow_addresses(c("agentaddr1", "agentaddr2")) %>%
+    std_cities(c("agentcity")) %>%
+    std_flow_names(c("entityname", "agentname", "agentaddr1", "agentaddr2")) %>%
     drop_na("entityname")
   
   log_message("Matching owners in assessors records to corps table, distinguishing between lawyers and non-lawyers...")
@@ -504,10 +510,8 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   inds <- inds %>%
     filter(id_corp %in% corps_list) %>%
     std_flow_strings(c("firstname", "lastname", "busaddr1", "resaddr1")) %>%
-    std_zip("agentpostalcode") %>% 
-    std_flow_addresses("busaddr1", "resaddr1") %>%
-    std_cities("agentcity") %>%
-    std_flow_names("firstname", "lastname") %>%
+    std_flow_addresses(c("busaddr1", "resaddr1")) %>%
+    std_flow_names(c("firstname", "lastname")) %>%
     filter(
       if_any(
         c(firstname, lastname, busaddr1, resaddr1), ~ !is.na(.)

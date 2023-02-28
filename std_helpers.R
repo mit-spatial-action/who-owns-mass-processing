@@ -344,9 +344,10 @@ std_cities <- function(df, cols) {
   #' @param df A dataframe.
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
-  neighs <- std_uppercase_all(
-    read_delim(file.path(DATA_DIR, paste(BOS_NBHD, "csv", sep = ".")), delim = ",")
-  ) %>%
+  #' @export
+  neighs <- file.path(DATA_DIR, paste(BOS_NBHD, "csv", sep = ".")) %>%
+    read_delim(delim = ",") %>%
+    std_uppercase_all(c("Name")) %>%
     pull(Name)
   df %>%
     mutate(
@@ -577,7 +578,7 @@ std_corp_rm_sys <- function(df, cols) {
     )
 }
 
-std_flow_strings <- function(cols) {
+std_flow_strings <- function(df, cols) {
   #' Generic string standardization workflow.
   #'
   #' @param cols Columns to be processed.
@@ -593,13 +594,13 @@ std_flow_strings <- function(cols) {
     std_uppercase_all(cols)
 }
 
-std_flow_addresses <- function(cols) {
+std_flow_addresses <- function(df, cols) {
   #' Address standardization workflow.
   #'
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df <- df %>%
+  df %>%
     std_street_types(cols) %>%
     std_simplify_address(cols) %>%
     std_directions(cols) %>%
@@ -608,13 +609,13 @@ std_flow_addresses <- function(cols) {
     std_massachusetts(cols)
 }
 
-std_flow_names <- function(cols) {
+std_flow_names <- function(df, cols) {
   #' Name standardization workflow.
   #'
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df <- df %>%
+  df %>%
     std_corp_types(cols) %>%
     std_corp_rm_sys(cols) %>%
     std_remove_middle_initial(cols) 
