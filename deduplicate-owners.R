@@ -1,16 +1,6 @@
 source("log.R")
 source("std_helpers.R")
 source("assess_helpers.R")
-# Tidyverse components.
-library(dplyr)
-library(tidyr)
-library(readr)
-library(purrr)
-library(stringr)
-library(logr)
-library(tidyselect)
-# Spatial support.
-library(sf)
 
 # For Cosine Similarity statistics.
 library(quanteda)

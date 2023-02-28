@@ -1,28 +1,6 @@
+source("globals.R")
 source("deduplicate-owners.R")
 source("addresses-to-parcels.R")
-
-# Name of directory in which input data is stored.
-DATA_DIR <- "data"
-# Name of directory in which results are written.
-RESULTS_DIR <- "results"
-# Filename of delimited text file containing individuals.
-INDS <- "CSC_CorporationsIndividualExport_VB.txt"
-# Filename of delimited text file containing corporate entities.
-CORPS <- "CSC_CorpDataExports_VB.txt"
-# Filename of MassGIS Parcels geodatabase.
-ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
-# Name of CSV containing limited collection of HNS municipalities
-MUNI_CSV <- "hns_munis"
-# Name of delimited text output files.
-ASSESS_OUT_NAME <- "assess"
-OWNERS_OUT_NAME <- "owners"
-CORPS_OUT_NAME <- "corps"
-INDS_OUT_NAME <- "inds"
-NODES_OUT_NAME <- "nodes"
-EDGES_OUT_NAME <- "edges"
-EVICTORS_OUT_NAME <- "evictors"
-# Name of RData image.
-RDATA_OUT_NAME <- "results"
 
 run <- function(subset = "test", deduplicate_owners=TRUE, connect_evictors=TRUE, return_results = TRUE) {
   # Create and open log file with timestamp name.

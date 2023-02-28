@@ -1,5 +1,4 @@
-library(dplyr)
-library(tidyr)
+source("globals.R")
 
 std_uppercase_all <- function(df, cols, except_cols = c()) {
   #' Uppercase all strings

@@ -1,3 +1,5 @@
+source("globals.R")
+
 load_assess <- function(path = ".", town_ids = FALSE, write=TRUE) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
