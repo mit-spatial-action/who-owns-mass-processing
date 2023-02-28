@@ -11,18 +11,20 @@ library(tidytext)
 library(sf)
 
 DATA_DIR <- "data"
-BOSTON_NEIGHBORHOODS <- "bos_neigh.csv"
-local_db_name <- "evictions_local"
 
 get_filings <- function() {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
   #' @export
-  connect <- dbConnect(RPostgres::Postgres(), 
-                       dbname=local_db_name,
-                       host="localhost",
-                       port=5432)
+  connect <- dbConnect(
+      Postgres(),
+      dbname = Sys.getenv("DB_NAME"),
+      host = Sys.getenv("DB_HOST"),
+      port = Sys.getenv("DB_PORT"),
+      user = Sys.getenv("DB_USER"),
+      password = Sys.getenv("DB_PASS"),
+      sslmode = "allow")
   query <- "select * from filings as f left join plaintiffs as p on p.docket_id = f.docket_id"
   filings <- st_read(connect, query=query) %>% st_set_geometry("geometry") %>%
     select(-contains('..'))  %>% 

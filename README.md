@@ -14,6 +14,20 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`. If you are using Windows, you'll probably have to [install the `Rtools` bundle appropriate for your version of R](https://cran.r-project.org/bin/windows/Rtools/).
 
+### Setting up .Renviron
+
+Eviction filings are pulled down from a PostGIS database. As written, we expect PostgreSQL connection parameters to appear in an `.Renviron` file with the following environment variables defined:
+
+```
+DB_HOST="<host_location>"
+DB_USER="<user_name>"
+DB_PASS="<password>"
+DB_PORT="<port>"
+DB_NAME="<name_of_eviction_db>"
+```
+
+### Running the Script
+
 We provide an onmibus `run()` function in `run.R`. It takes two parameters:
 
 1. `subset`: If value is `"test"` (default), processes only Somerville. If value is `"hns"`, processes only HNS municipalities. If value is `"all"`, runs entire state. Otherwise, it stops and generates an error.

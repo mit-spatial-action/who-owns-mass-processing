@@ -4,6 +4,7 @@ CSC*.txt
 .DS_Store
 # Rproj/renv stuff
 renv/*
+.Renviron
 .RProj.user/*
 .Rproj.user
 *.RData
