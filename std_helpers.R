@@ -1,6 +1,6 @@
 source("globals.R")
 
-std_uppercase_all <- function(df, cols, except_cols = c()) {
+std_uppercase_all <- function(df, cols) {
   #' Uppercase all strings
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -10,7 +10,7 @@ std_uppercase_all <- function(df, cols, except_cols = c()) {
   df %>%
     mutate(
       across(
-        where(is.character) & !all_of({{ except_cols }}),
+        where(is.character) & all_of(cols),
         str_to_upper
       ),
     )
@@ -26,7 +26,7 @@ std_directions <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_trim(str_replace_all(., c(
           # Directions
           "(^| )N.? " = " NORTH ",
@@ -55,7 +55,7 @@ std_andslash <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           # Put space around slashes
           " ?/ ?" = " / ",
@@ -80,7 +80,7 @@ std_onewordaddress <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           # Put space around slashes
           "^[A-Z0-9]+$" = NA_character_
@@ -101,7 +101,7 @@ std_trailingwords <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           # Put space around slashes
           " OF$" = "",
@@ -124,7 +124,7 @@ std_remove_special <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           "[^[:alnum:][:space:]/-]" = ""
         )
@@ -143,7 +143,7 @@ std_small_numbers <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           "^ZERO(?=[ -])" = "0",
           "^ONE(?=[ -])" = "1",
@@ -182,7 +182,7 @@ std_remove_middle_initial <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace(., "(?<=[A-Z] )[A-Z] (?=[A-Z])", "")
       )
     )
@@ -190,7 +190,7 @@ std_remove_middle_initial <- function(df, cols) {
 
 
 
-std_replace_blank <- function(df, except_cols = c()) {
+std_replace_blank <- function(df, cols) {
   #' Replace blank string with NA and remove leading and trailing whitespace.
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -199,7 +199,7 @@ std_replace_blank <- function(df, except_cols = c()) {
   df %>%
     mutate(
       across(
-        where(is.character) & !all_of({{ except_cols }}),
+        where(is.character) & all_of(cols),
         ~case_when(
           str_detect(
             .,
@@ -221,7 +221,7 @@ std_the <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(
           .,
           c(
@@ -263,7 +263,7 @@ std_street_types <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~ str_replace_all(
           .,
           c(
@@ -294,7 +294,7 @@ std_street_types <- function(df, cols) {
     )
 }
 
-std_simplify_zip <- function(df, cols) {
+std_zip <- function(df, cols) {
   #' Standardize and simplify (i.e., remove 4-digit suffix) US Postal codes.
   #'
   #' @param df A dataframe.
@@ -304,7 +304,7 @@ std_simplify_zip <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}), ~ case_when(
+        where(is.character) & all_of(cols), ~ case_when(
           str_detect(., "[0-9] [0-9]") ~ str_extract(
             .,
             ".*(?=\\ )"
@@ -330,7 +330,7 @@ std_massachusetts <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           "MASS " = "MASSACHUSETTS "
         )
@@ -351,7 +351,7 @@ std_cities <- function(df, cols) {
   df %>%
     mutate(
       across(
-        where(is.character) & all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~case_when(
           . %in% c(
             neighs,
@@ -386,7 +386,7 @@ std_simplify_address <- function(df, cols) {
     df <- df %>%
       mutate(
         pobox = case_when(
-          str_detect(get({{ col }}), "^PO BOX") ~ TRUE,
+          str_detect(get(col), "^PO BOX") ~ TRUE,
           TRUE ~ FALSE
         )
       )
@@ -414,7 +414,7 @@ std_corp_types <- function(df, cols) {
   df %>%
     mutate(
       across(
-        all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~str_replace_all(., c(
           "LIMITED PARTNER?(SHIP)?" = "LP",
           "LIMITED LIABILITY PARTNER?(SHIP)?" = "LLP",
@@ -436,7 +436,7 @@ std_remove_co <- function(df, cols) {
     # Remove "C / O" prefix.
     mutate(
       across(
-        {{ cols }},
+        where(is.character) & all_of(cols),
         ~ str_replace_all(., " ?C / O? ?", "")
       )
     )
@@ -447,7 +447,7 @@ std_hyphenated_numbers <- function(df, cols) {
     # Remove "C / O" prefix.
     mutate(
       across(
-        {{ cols }},
+        where(is.character) & all_of(cols),
         ~ str_replace_all(
           str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
           "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
@@ -560,7 +560,7 @@ std_corp_rm_sys <- function(df, cols) {
   df %>%
     mutate(
       across(
-        all_of({{ cols }}),
+        where(is.character) & all_of(cols),
         ~ case_when(
           str_detect(
             .,
@@ -572,83 +572,30 @@ std_corp_rm_sys <- function(df, cols) {
     )
 }
 
-std_owner_name <- function(df, col) {
-  print(col)
-  df %>% std_remove_special(col) %>%
-    std_remove_middle_initial(col) %>%
-    std_the(col) %>%
-    std_and(col)
-}
-
-process_records <- function(df,
-                            cols,
-                            zip_cols = FALSE,
-                            city_cols = FALSE,
-                            addr_cols = FALSE,
-                            name_cols = FALSE,
-                            keep_cols = FALSE) {
-  #' Run a series of string standardizing functions.
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @param cols Column or columns to be processed by
-  #'  `std_directions`, `std_andslash`, `std_remove_special`,
-  #'  and `std_the`.
-  #' @param zip_cols Column or columns to be processed by
-  #'  `std_directions`, `std_andslash`, `std_remove_special`,
-  #'  and `std_the`.
-  #' @returns A dataframe.
-  #' @export
-  all_cols <- cols
-  if (!isFALSE(keep_cols)) {
-    all_cols <- c(keep_cols, all_cols)
-  } else {
-    keep_cols <- c()
-  }
-  if (!isFALSE(zip_cols)) {
-    all_cols <- c(all_cols, zip_cols)
-  }
-  if (!isFALSE(city_cols)) {
-    all_cols <- c(all_cols, city_cols)
-  }
-  if (!isFALSE(addr_cols)) {
-    all_cols <- c(all_cols, addr_cols)
-  }
-  if (!isFALSE(name_cols)) {
-    all_cols <- c(all_cols, name_cols)
-  }
-  all_cols <- unique(all_cols)
-  df <- df %>%
-    select(
-      all_of(all_cols)
-    ) %>%
+std_flow_strings <- function(cols) {
+  df %>%
     std_andslash(cols) %>%
     std_remove_special(cols) %>%
-    std_replace_blank(keep_cols) %>%
+    std_replace_blank(cols) %>%
     std_the(cols) %>%
-    std_massachusetts(cols) %>%
     std_small_numbers(cols) %>%
     std_trailingwords(cols) %>%
     std_uppercase_all(cols)
-  if (!isFALSE(zip_cols)) {
-    df <- df %>%
-      std_simplify_zip(zip_cols)
-  }
-  if (!isFALSE(city_cols)) {
-    df <- df %>%
-      std_cities(city_cols)
-  }
-  if (!isFALSE(addr_cols)) {
-    df <- df %>%
-      std_street_types(addr_cols) %>%
-      std_simplify_address(addr_cols) %>%
-      std_directions(addr_cols) %>%
-      std_hyphenated_numbers(addr_cols) %>%
-      std_onewordaddress(addr_cols)
-  }
-  if (!isFALSE(name_cols)) {
-    df <- df %>%
-      std_corp_types(name_cols) %>%
-      std_corp_rm_sys(name_cols)
-  }
-  df
+}
+
+std_flow_addresses <- function(cols) {
+  df <- df %>%
+    std_street_types(cols) %>%
+    std_simplify_address(cols) %>%
+    std_directions(cols) %>%
+    std_hyphenated_numbers(cols) %>%
+    std_onewordaddress(cols) %>% 
+    std_massachusetts(cols)
+}
+
+std_flow_names <- function(cols) {
+  df <- df %>%
+    std_corp_types(cols) %>%
+    std_corp_rm_sys(cols) %>%
+    std_remove_middle_initial(cols) 
 }

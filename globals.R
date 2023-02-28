@@ -29,4 +29,5 @@ EDGES_OUT_NAME <- "edges"
 EVICTORS_OUT_NAME <- "evictors"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
+# CSV containing Boston neighborhood names.
 BOS_NBHD <- "bos_neigh.csv"

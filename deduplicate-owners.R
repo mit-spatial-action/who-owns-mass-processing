@@ -9,12 +9,6 @@ library(quanteda.textstats)
 # For network-based community detection.
 library(igraph)
 
-# Name of directory in which input data is stored.
-DATA_DIR <- "data"
-# CSV containing Boston Neighborhoods
-BOS_NBHD <- "bos_neigh.csv"
-
-
 flag_lawyers <- function(df, cols) {
   df %>%
     mutate(
@@ -278,14 +272,11 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
               flagging owner-occupancy...")
   assess <- assess %>%
     # Run string standardization procedures.
-    process_records(
-      cols = c("owner1", "own_addr", "site_addr"),
-      keep_cols = c("prop_id", "loc_id", "fy", "town_id", "own_state"),
-      zip_cols = c("own_zip"),
-      city_cols = c("own_city"),
-      name_cols = c("owner1", "own_addr"),
-      addr_cols = c("own_addr", "site_addr")
-    ) %>%
+    std_flow_strings(c("owner1", "own_addr", "site_addr", "own_zip")) %>%
+    std_zip("own_zip") %>% 
+    std_flow_addresses("own_addr", "site_addr") %>%
+    std_cities("own_city") %>%
+    std_flow_names("owner1", "own_addr") %>%
     # Extract 'care of' entities to co and remove from own_addr.
     mutate(
       co = case_when(
@@ -354,15 +345,11 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   
   log_message("Processing corporation records...")
   corps <- corps %>%
-    process_records(
-      cols = c("entityname", "agentname", "agentaddr1", "agentaddr2"),
-      zip_cols = c("agentpostalcode"),
-      city_cols = c("agentcity"),
-      addr_cols = c("agentaddr1", "agentaddr2"),
-      # This is inclusive because agents are a mess.
-      name_cols = c("entityname", "agentname", "agentaddr1", "agentaddr2"),
-      keep_cols = c("id_corp", "activeflag")
-    ) %>%
+    std_flow_strings(c("entityname", "agentname", "agentaddr1", "agentaddr2")) %>%
+    std_zip("agentpostalcode") %>% 
+    std_flow_addresses("agentaddr1", "agentaddr2") %>%
+    std_cities("agentcity") %>%
+    std_flow_names("entityname", "agentname", "agentaddr1", "agentaddr2") %>%
     drop_na("entityname")
   
   log_message("Matching owners in assessors records to corps table, distinguishing between lawyers and non-lawyers...")
@@ -516,12 +503,11 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   
   inds <- inds %>%
     filter(id_corp %in% corps_list) %>%
-    process_records(
-      cols = c("firstname", "lastname", "busaddr1", "resaddr1"),
-      addr_cols = c("busaddr1", "resaddr1"),
-      name_cols = c("firstname", "lastname"),
-      keep_cols = c("id_corp")
-    ) %>%
+    std_flow_strings(c("firstname", "lastname", "busaddr1", "resaddr1")) %>%
+    std_zip("agentpostalcode") %>% 
+    std_flow_addresses("busaddr1", "resaddr1") %>%
+    std_cities("agentcity") %>%
+    std_flow_names("firstname", "lastname") %>%
     filter(
       if_any(
         c(firstname, lastname, busaddr1, resaddr1), ~ !is.na(.)
