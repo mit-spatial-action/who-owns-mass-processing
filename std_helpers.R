@@ -29,14 +29,14 @@ std_directions <- function(df, cols) {
         where(is.character) & all_of(cols),
         ~str_trim(str_replace_all(., c(
           # Directions
-          "(^| )N.? " = " NORTH ",
-          "(^| )N.?W.? " = " NORTHWEST ",
-          "(^| )N.?E.? " = " NORTHEAST ",
-          "(^| )S.? " = " SOUTH ",
-          "(^| )S.?W.? " = " SOUTHWEST ",
-          "(^| )S.?E.? " = " SOUTHEAST ",
-          "(^| )E.? " = " EAST",
-          "(^| )W.? " = " WEST "
+          "(^| )N\\.? " = " NORTH ",
+          "(^| )N\\.?W\\.? " = " NORTHWEST ",
+          "(^| )N\\.?E\\.? " = " NORTHEAST ",
+          "(^| )S\\.? " = " SOUTH ",
+          "(^| )S\\.?W\\.? " = " SOUTHWEST ",
+          "(^| )S\\.?E\\.? " = " SOUTHEAST ",
+          "(^| )E\\.? " = " EAST",
+          "(^| )W\\.? " = " WEST "
         )
         )
         )
@@ -287,7 +287,7 @@ std_street_types <- function(df, cols) {
             "(?<= )CR?T(?=$|\\s|\\.)" = "COURT",
             "(?<= )PLZ?(?=$|\\s|\\.)" = "PLAZA",
             "(?<= )W[HR]+F(?=$|\\s|\\.)" = "WHARF",
-            "(?<= |^)P.? ?O.? ?BO?X(?=$|\\s|\\.)" = "PO BOX"
+            "(?<= |^)P\\.? ?O\\.? ?BO?X(?=$|\\s|\\.)" = "PO BOX"
           )
         )
       )
@@ -607,6 +607,17 @@ std_flow_addresses <- function(df, cols) {
     std_hyphenated_numbers(cols) %>%
     std_onewordaddress(cols) %>% 
     std_massachusetts(cols)
+}
+
+std_flow_cities <- function(df, cols) {
+  #' Address standardization workflow.
+  #'
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  df %>%
+    std_cities(cols) %>%
+    std_directions(cols)
 }
 
 std_flow_names <- function(df, cols) {

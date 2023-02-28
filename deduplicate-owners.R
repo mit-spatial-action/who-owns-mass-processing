@@ -279,9 +279,9 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
   assess <- assess %>%
     # Run string standardization procedures.
     std_flow_strings(c("owner1", "own_addr", "site_addr", "own_zip")) %>%
-    std_zip(c("own_zip")) %>% 
+    std_zip(c("zip", "own_zip")) %>% 
     std_flow_addresses(c("own_addr", "site_addr")) %>%
-    std_cities(c("own_city")) %>%
+    std_flow_cities(c("city", "own_city")) %>%
     std_flow_names(c("owner1", "own_addr")) %>%
     # Extract 'care of' entities to co and remove from own_addr.
     mutate(
@@ -354,7 +354,7 @@ run_deduplicate <- function(town_ids = c(274), return_results = TRUE) {
     std_flow_strings(c("entityname", "agentname", "agentaddr1", "agentaddr2")) %>%
     std_zip(c("agentpostalcode")) %>% 
     std_flow_addresses(c("agentaddr1", "agentaddr2")) %>%
-    std_cities(c("agentcity")) %>%
+    std_flow_cities(c("agentcity")) %>%
     std_flow_names(c("entityname", "agentname", "agentaddr1", "agentaddr2")) %>%
     drop_na("entityname")
   

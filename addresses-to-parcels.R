@@ -4,7 +4,7 @@ source("std_helpers.R")
 source("assess_helpers.R")
 
 library(nngeo)
-library(tidytext)
+# library(tidytext)
 
 load_filings <- function(test = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
@@ -15,14 +15,11 @@ load_filings <- function(test = FALSE, crs = 2249) {
   docket_col <- "docket"
   filings_table <- "filings"
   plaintiffs_table <- "plaintiffs"
+  cols <- paste(docket_col, "add1", "city", "zip", "state", "geometry", sep = ",")
   q <- paste(
-    "SELECT * FROM", filings_table,
-    "AS f LEFT JOIN",
-    plaintiffs_table, "AS p ON",
-    paste("f", docket_col, sep = "."),
-    "=",
-    paste("p", docket_col, sep = ".")
-    )
+    "SELECT", cols, 
+    "FROM", filings_table, "AS f"
+  )
   # Set limit if test = TRUE
   if (test) {
     q <- paste(q, "LIMIT 1000")
@@ -41,20 +38,11 @@ load_filings <- function(test = FALSE, crs = 2249) {
     select(-contains('..')) %>%
     st_transform(crs) %>%
     rename_with(str_to_lower) %>%
+    filter(!is.na(add1)) %>%
     std_flow_strings(c("add1", "city")) %>%
     std_zip(c("zip")) %>% 
     std_flow_addresses(c("add1")) %>%
-    std_cities(c("city")) 
-  }
-
-join_by_address <- function() {
-  #' Joins filing to assessors table by address strings.
-  #'
-  #' @returns A dataframe.
-  #' @export
-  filings %>%
-    left_join(assess, by=c("street"="own_addr", "city"="own_city")) %>% 
-    filter(!is.na(owner1))
+    std_flow_cities(c("city")) 
 }
 
 add_parcels_to_assessors <- function(town_ids = c(274)) {
@@ -77,18 +65,19 @@ match_nearby_filings <- function(parcel_points_df, mile_multiplier = 0.1) {
   #' @param mile_multiplier Bandwidth distance, in miles.
   #' @returns A dataframe.
   #' @export
-  assess_and_filings <- st_join(assess_points_df, 
-                                filings_with_geometry, 
-                                join = st_nn, 
-                                maxdist = 5280 * mile_multiplier, 
-                                k = 2,
-                                progress = FALSE) %>% 
+  assess_and_filings <- st_join(
+      assess_points_df, 
+      filings_with_geometry, 
+      join = st_nn, 
+      maxdist = 5280 * mile_multiplier, 
+      k = 2,
+      progress = FALSE) %>% 
     filter(!st_is_empty(geometry)) %>% 
     filter(!is.na(street))
 }
 
 
-connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
+link_filings_to_assess <- function(town_ids=c(274), mile_multiplier = 0.1) {
   #' Workflow to connect evictions to assessors records.
   #'
   #' @param town_ids List of numerical town ids.
@@ -98,55 +87,55 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
   filings <- load_filings()
   
   log_message("-------- Reading assessors table from file")
-  assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), write=FALSE) 
-  assess <- assess %>% process_records(cols=c("owner1"),
-                    addr_cols=c("own_addr"),
-                    keep_cols=c("prop_id", "own_addr", 
-                                "own_city", "own_zip", "own_state", 
-                                "loc_id"))
+  assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB)) %>%
+    # Run string standardization procedures.
+    std_flow_strings(c("owner1", "own_addr", "site_addr", "own_zip", "city", "own_city")) %>%
+    std_zip(c("zip", "own_zip")) %>% 
+    std_flow_addresses(c("own_addr", "site_addr")) %>%
+    std_flow_cities(c("city", "own_city")) %>%
+    std_flow_names(c("owner1", "own_addr")) %>%
+    # Extract 'care of' entities to co and remove from own_addr.
+    mutate(
+      co = case_when(
+        str_detect(
+          own_addr,
+          "C / O"
+        )
+        ~ str_extract(own_addr, "(?<=C / O ).*$")
+      ),
+      own_addr = case_when(
+        str_detect(
+          own_addr,
+          "C / O"
+        )
+        ~ na_if(str_extract(own_addr, ".*(?= ?C / O )"), ""),
+        TRUE ~ own_addr
+      )
+    ) %>%
+    # Flag owner-occupied properties on the basis of standardized addresses.
+    mutate(
+      ooc = case_when(
+        own_addr == site_addr ~ TRUE,
+        TRUE ~ FALSE
+      )
+    )
   
   log_message("Step 1. Join by address strings")
-  joined_by_address <- join_by_address() %>% 
-    distinct(docket_id, .keep_all = TRUE) %>% st_drop_geometry('geometry')
-  # simple join by evictor name to parcel owner
-  joined_by_name <- left_join(filings, assess, by=c("name"="owner1")) %>% 
-    filter(!is.na(name)) %>% filter(!is.na(own_addr)) %>% 
-    distinct(docket_id, .keep_all = TRUE) %>% st_drop_geometry('geometry')
-  joined_by_name <- cbind(owner1=joined_by_name$name, joined_by_name)
   
-  # merge two dataframes
-  df <- full_join(joined_by_address, joined_by_name) %>% distinct(docket_id, .keep_all = TRUE) 
-  # %>% distinct(docket_id, .keep_all = TRUE)
-   # log_message("-------- Standardize filing name column")
-  # filing_names <- filings %>% std_owner_name(c('name')) %>% 
-  #   mutate(name_simple=str_remove(str_to_upper(name), " LLC| AS | LP")) %>% 
-  #   filter(!is.na(owner1))
-  # assess_names <- assess %>% std_owner_name(c('owner1')) %>%
-  #   mutate(name_simple=str_remove(str_to_upper(owner1), " LLC| AS | LP")) %>% 
-  #   filter(!is.na(owner1))
-  # 
-  # log_message("Step 2. Join clean names")
-  # filing_assess_names <- left_join(filing_names, assess_names, by=c('name_simple'='name_simple')) %>% 
-  #   filter(!is.na(owner1)) %>% distinct()
+  filings_joined <- filings %>%
+    left_join(select(assess, -c(zip)), by = c("add1" = "site_addr", "city" = "city"))
+  
+  joined_by_address <- join_by_address() %>% 
+    distinct(docket_id, .keep_all = TRUE) %>% 
+    st_drop_geometry('geometry')
 
   log_message("-------- Add parcels to assessors")
   assess <- add_parcels_to_assessors(town_ids = town_ids) %>% 
     filter(!st_is_empty(geometry))
   
-  log_message("-------- Transform filings to correct geometry")
-  filings <- filings %>% st_set_geometry("geometry") %>% st_transform(2249) %>% 
-    filter(!st_is_empty(geometry))
-  
-  # log_message("-------- Add parcels to joined by name from step 1")
-  # joined_by_name <- st_join(joined_by_name, assess, join=st_contains) 
-  
   log_message("Step 2. Find assess parcels that contain filings") 
-  found_addresses <- st_join(assess, filings, join=st_contains) %>% 
-    filter(!is.na(name)) %>% st_drop_geometry('geometry') 
-  
-  # remove extra geo columns
-  drops <- c("geoid_bg","geoid_t")
-  found_addresses <- found_addresses[ , !(names(found_addresses) %in% drops)]
+  found_addresses <- assess %>%
+    st_join(filings, join=st_contains)
   
   # merge found_addresses to df 
   df <- full_join(df, found_addresses)
