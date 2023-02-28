@@ -24,3 +24,5 @@ results/*.csv
 *.geojson
 *.gpkg
 *.gdb
+*.gpkg-wal
+*.gpkg-shm
