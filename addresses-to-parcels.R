@@ -6,32 +6,45 @@ source("assess_helpers.R")
 library(nngeo)
 library(tidytext)
 
-
-get_filings <- function() {
+load_filings <- function(test = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
   #' @export
-  connect <- dbConnect(
+  # Construct SQL query.
+  docket_col <- "docket"
+  filings_table <- "filings"
+  plaintiffs_table <- "plaintiffs"
+  q <- paste(
+    "SELECT * FROM", filings_table,
+    "AS f LEFT JOIN",
+    plaintiffs_table, "AS p ON",
+    paste("f", docket_col, sep = "."),
+    "=",
+    paste("p", docket_col, sep = ".")
+    )
+  # Set limit if test = TRUE
+  if (test) {
+    q <- paste(q, "LIMIT 1000")
+  }
+  # Pull filings.
+  dbConnect(
       Postgres(),
       dbname = Sys.getenv("DB_NAME"),
       host = Sys.getenv("DB_HOST"),
       port = Sys.getenv("DB_PORT"),
       user = Sys.getenv("DB_USER"),
       password = Sys.getenv("DB_PASS"),
-      sslmode = "allow")
-  query <- "select * from filings as f left join plaintiffs as p on p.docket_id = f.docket_id LIMIT 1000"
-  filings <- st_read(connect, query=query) %>% 
-    st_set_geometry("geometry") %>%
-    select(-contains('..'))  %>% 
-    process_records(cols=c("street", "city", "zip", "name", "case_type"), 
-                    addr_cols=c("street"), name_cols=c("name"), 
-                    keep_cols=c("def_attorney_id", "ptf_attorney_id", 
-                                "docket_id", "street", "city", 
-                                "zip", "name", "case_type")) %>% 
-    std_cities(c("city"))
-  
-  
+      sslmode = "allow"
+      ) %>%
+    st_read(query=q) %>% 
+    select(-contains('..')) %>%
+    st_transform(crs) %>%
+    rename_with(str_to_lower) %>%
+    std_flow_strings(c("add1", "city")) %>%
+    std_zip(c("zip")) %>% 
+    std_flow_addresses(c("add1")) %>%
+    std_cities(c("city")) 
   }
 
 join_by_address <- function() {
@@ -39,7 +52,9 @@ join_by_address <- function() {
   #'
   #' @returns A dataframe.
   #' @export
-  left_join(filings, assess, by=c("street"="own_addr", "city"="own_city")) %>% filter(!is.na(owner1))
+  filings %>%
+    left_join(assess, by=c("street"="own_addr", "city"="own_city")) %>% 
+    filter(!is.na(owner1))
 }
 
 add_parcels_to_assessors <- function(town_ids = c(274)) {
@@ -80,7 +95,7 @@ connect_evictors <- function(town_ids=c(274), mile_multiplier = 0.1) {
   #' @param mile_multiplier Bandwidth distance, in miles.
   #' @returns A dataframe.
   #' @export
-  filings <- get_filings()
+  filings <- load_filings()
   
   log_message("-------- Reading assessors table from file")
   assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), write=FALSE) 
