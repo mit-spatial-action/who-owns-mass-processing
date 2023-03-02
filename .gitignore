@@ -26,3 +26,4 @@ results/*.csv
 *.gdb
 *.gpkg-wal
 *.gpkg-shm
+*.rds

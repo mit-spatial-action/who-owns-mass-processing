@@ -1,7 +1,7 @@
-source("R/log.R")
 source("R/globals.R")
 source("R/standardizers.R")
 source("R/loaders.R")
+source("R/run_utils.R")
 
 flag_lawyers <- function(df, cols) {
   #' Flags likely law offices and lawyers.
@@ -177,7 +177,7 @@ process_assess <- function(df) {
   log_message("Processing assessors records and 
               flagging owner-occupancy...")
   df %>%
-    std_flow_strings(c("owner1", "own_addr", "site_addr", "own_zip")) %>%
+    std_flow_strings(c("owner1", "city", "own_city", "own_addr", "site_addr", "own_zip")) %>%
     std_zip(c("zip", "own_zip")) %>% 
     std_flow_addresses(c("own_addr", "site_addr")) %>%
     std_flow_cities(c("city", "own_city")) %>%
@@ -272,9 +272,15 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       delim = "|", 
       quote = "needed"
     )
+  # Write it out for later use in filing linker.
+  saveRDS(
+    assess, 
+    file = file.path(RESULTS_DIR, stringr::str_c(ASSESS_OUT_NAME, "rds", sep = "."))
+    )
   # Separate owners from assessors records.
   log_message("Extracting owners from assessors table...")
   owners <- process_owners(assess)
+  
   
   rm(assess)
   
