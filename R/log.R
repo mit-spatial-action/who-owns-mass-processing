@@ -5,6 +5,6 @@ log_message <- function(status) {
   #' @returns Nothing.
   #' @export
   time <- format(Sys.time(), "%a %b %d %X %Y")
-  message <- paste(time, status, sep = ": ")
-  log_print(message)
+  message <- stringr::str_c(time, status, sep = ": ")
+  logr::log_print(message)
 }

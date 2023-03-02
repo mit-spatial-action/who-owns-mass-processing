@@ -1,3 +1,4 @@
+# Tidyverse components
 library(dplyr)
 library(tidyr)
 library(readr)
@@ -5,9 +6,26 @@ library(purrr)
 library(logr)
 library(tidyselect)
 library(stringr)
-library(RPostgres)
+
+# Spatial support
 library(sf)
+# Nearest neighbor analysis.
+library(nngeo)
+
+# PostgreSQL interface
+library(RPostgres)
+
+# Census geographies
 library(tigris)
+
+# For Cosine Similarity statistics.
+library(quanteda)
+library(quanteda.textstats)
+
+# For network-based community detection.
+library(igraph)
+
+# Use cached tigris geographies
 options(tigris_use_cache = TRUE)
 
 DATA_DIR <- "data"

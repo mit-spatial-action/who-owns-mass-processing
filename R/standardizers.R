@@ -1,17 +1,17 @@
-source("globals.R")
+source("R/globals.R")
 
-std_uppercase_all <- function(df, cols) {
-  #' Uppercase all strings
+std_uppercase <- function(df, cols) {
+  #' Uppercase string values
   #'
   #' @param df A dataframe containing only string datatypes.
   #' @param except Column or columns to remain untouched.
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        str_to_upper
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        stringr::str_to_upper
       ),
     )
 }
@@ -24,10 +24,10 @@ std_directions <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_trim(str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_trim(stringr::str_replace_all(., c(
           # Directions
           "(^| )N\\.? " = " NORTH ",
           "(^| )N\\.?W\\.? " = " NORTHWEST ",
@@ -53,10 +53,10 @@ std_andslash <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           # Put space around slashes
           " ?/ ?" = " / ",
           # Replace & with AND
@@ -78,10 +78,10 @@ std_onewordaddress <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           # Put space around slashes
           "^[A-Z0-9]+$" = NA_character_
         )
@@ -99,10 +99,10 @@ std_trailingwords <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           # Put space around slashes
           " OF$" = "",
           # Replace & with AND
@@ -122,10 +122,10 @@ std_remove_special <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           "[^[:alnum:][:space:]/-]" = ""
         )
         )
@@ -141,10 +141,10 @@ std_small_numbers <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           "^ZERO(?=[ -])" = "0",
           "^ONE(?=[ -])" = "1",
           "^TWO(?=[ -])" = "2",
@@ -180,10 +180,10 @@ std_remove_middle_initial <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace(., "(?<=[A-Z] )[A-Z] (?=[A-Z])", "")
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace(., "(?<=[A-Z] )[A-Z] (?=[A-Z])", "")
       )
     )
 }
@@ -197,15 +197,15 @@ std_replace_blank <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~case_when(
-          str_detect(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~dplyr::case_when(
+          stringr::str_detect(
             .,
             "^X+$|^N(ONE)?$|^UNKNOWN$|ABOVE|^N / A$|^[- ]*SAME( ADDRESS)?") ~
             NA_character_,
-          TRUE ~ str_squish(.)
+          TRUE ~ stringr::str_squish(.)
         )
       )
     )
@@ -219,10 +219,10 @@ std_the <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(
           .,
           c(
             " THE$" = "",
@@ -240,10 +240,10 @@ std_and <- function(df, cols){
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols), 
-        ~str_replace_all(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols), 
+        ~ stringr::str_replace_all(
           .,
           c(
             " AND$" = "",
@@ -261,10 +261,10 @@ std_street_types <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~ str_replace_all(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(
           .,
           c(
             # Correct for spaces between numbers and suffixes.
@@ -302,18 +302,18 @@ std_zip <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols), ~ case_when(
-          str_detect(., "[0-9] [0-9]") ~ str_extract(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols), ~ case_when(
+          stringr::str_detect(., "[0-9] [0-9]") ~ stringr::str_extract(
             .,
             ".*(?=\\ )"
           ),
-          str_detect(., "-") ~ str_extract(
+          stringr::str_detect(., "-") ~ stringr::str_extract(
             .,
             ".*(?=\\-)"
           ),
-          str_detect(., "^0+$") ~ NA_character_,
+          stringr::str_detect(., "^0+$") ~ NA_character_,
           TRUE ~ .
         )
       )
@@ -328,10 +328,10 @@ std_massachusetts <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           "MASS " = "MASSACHUSETTS "
         )
         )
@@ -339,21 +339,21 @@ std_massachusetts <- function(df, cols) {
     )
 }
 
-std_cities <- function(df, cols) {
+std_city_names <- function(df, cols) {
   #' Replace Boston neighborhoods with Boston
   #' @param df A dataframe.
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
   neighs <- file.path(DATA_DIR, paste(BOS_NBHD, "csv", sep = ".")) %>%
-    read_delim(delim = ",") %>%
-    std_uppercase_all(c("Name")) %>%
-    pull(Name)
+    readr::read_delim(delim = ",") %>%
+    std_uppercase(c("Name")) %>%
+    dplyr::pull(Name)
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~case_when(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ dplyr::case_when(
           . %in% c(
             neighs,
             c("ROXBURY CROSSING", "DORCHESTER CENTER")
@@ -385,24 +385,24 @@ std_simplify_address <- function(df, cols) {
   for (col in cols) {
     # Flag PO Boxes.
     df <- df %>%
-      mutate(
-        pobox = case_when(
-          str_detect(get(col), "^PO BOX") ~ TRUE,
+      dplyr::mutate(
+        pobox = dplyr::case_when(
+          stringr::str_detect(get(col), "^PO BOX") ~ TRUE,
           TRUE ~ FALSE
         )
       )
-    po_box <- filter(df, pobox)
-    df <- filter(df, !pobox) %>%
-      mutate(
-        across(
-          matches(col),
-          ~str_replace_all(., replace)
+    po_box <- dplyr::filter(df, pobox)
+    df <- dplyr::filter(df, !pobox) %>%
+      dplyr::mutate(
+        dplyr::across(
+          tidyselect::matches(col),
+          ~ stringr::str_replace_all(., replace)
         )
       ) %>%
-      bind_rows(po_box)
+      dplyr::bind_rows(po_box)
   }
   df %>%
-    select(-c(pobox))
+    dplyr::select(-c(pobox))
 }
 
 std_corp_types <- function(df, cols) {
@@ -413,10 +413,10 @@ std_corp_types <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~str_replace_all(., c(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., c(
           "LIMITED PARTNER?(SHIP)?" = "LP",
           "LIMITED LIABILITY PARTNER?(SHIP)?" = "LLP",
           "LIMITED LIABILITY (COMPANY|CORPORATION)" = "LLC",
@@ -439,10 +439,10 @@ std_remove_co <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~ str_replace_all(., " ?C / O? ?", "")
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(., " ?C / O? ?", "")
       )
     )
 }
@@ -455,11 +455,11 @@ std_hyphenated_numbers <- function(df, cols) {
   #' @export
   df %>%
     # Remove "C / O" prefix.
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~ str_replace_all(
-            str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ stringr::str_replace_all(
+            stringr::str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
             "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
             ""
         )
@@ -480,15 +480,15 @@ std_select_address <- function(df,
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      !!output_col := case_when(
-        str_detect(
+    dplyr::mutate(
+      !!output_col := dplyr::case_when(
+        stringr::str_detect(
           get({{ addr_col2 }}), "^[0-9]") &
-          !str_detect(get({{ addr_col1 }}), "^[0-9]")
+          !stringr::str_detect(get({{ addr_col1 }}), "^[0-9]")
         ~ get({{ addr_col2 }}),
-        str_detect(
+        stringr::str_detect(
           get({{ addr_col2 }}), "^[0-9]") &
-          str_detect(get({{ addr_col1 }}), "LLC")
+          stringr::str_detect(get({{ addr_col1 }}), "LLC")
         ~ get({{ addr_col2 }}),
         TRUE ~ get({{ addr_col1 }})
       )
@@ -506,23 +506,23 @@ st_get_zips <- function(sdf, zip_col, state = "MA", crs = 2249) {
   #' @returns A dataframe.
   #' @export
   sdf %>%
-    mutate(
-      point = st_point_on_surface(geometry)
+    dplyr::mutate(
+      point = sf::st_point_on_surface(geometry)
     ) %>%
-    st_set_geometry("point") %>%
-    st_join(
-      zctas(year = 2010, state = state, zip_col) %>%
-        st_transform(crs) %>%
-        select(ZCTA5CE10)
+    sf::st_set_geometry("point") %>%
+    sf::st_join(
+      tigris::zctas(year = 2010, state = state, zip_col) %>%
+        sf::st_transform(crs) %>%
+        dplyr::select(ZCTA5CE10)
     ) %>%
-    st_set_geometry("geometry") %>%
-    select(
+    sf::st_set_geometry("geometry") %>%
+    dplyr::select(
       -c(point)
     ) %>%
-    mutate(
+    dplyr::mutate(
       !!zip_col := ZCTA5CE10
     ) %>%
-    select(-c(ZCTA5CE10))
+    dplyr::select(-c(ZCTA5CE10))
 }
 
 st_get_censusgeo <- function(sdf, state = "MA", crs = 2249) {
@@ -533,25 +533,25 @@ st_get_censusgeo <- function(sdf, state = "MA", crs = 2249) {
   #' @param crs EPSG code of appropriate coordinate reference system.
   #' @returns A dataframe.
   #' @export
-  censusgeo <- block_groups(state = state) %>%
-    st_transform(crs) %>%
-    rename(
+  censusgeo <- tigris::block_groups(state = state) %>%
+    sf::st_transform(crs) %>%
+    dplyr::rename(
       geoid_bg = GEOID
     ) %>%
-    select(geoid_bg)
+    dplyr::select(geoid_bg)
   sdf %>%
-    mutate(
-      point = st_point_on_surface(geometry)
+    dplyr::mutate(
+      point = sf::st_point_on_surface(geometry)
     ) %>%
-    st_set_geometry("point") %>%
-    st_join(
+    sf::st_set_geometry("point") %>%
+    sf::st_join(
       censusgeo
     ) %>%
-    st_set_geometry("geometry") %>%
-    mutate(
-      geoid_t = str_sub(geoid_bg, start = 1L, end = 11L)
+    sf::st_set_geometry("geometry") %>%
+    dplyr::mutate(
+      geoid_t = stringr::str_sub(geoid_bg, start = 1L, end = 11L)
     ) %>%
-    select(
+    dplyr::select(
       -c(point)
     )
 }
@@ -564,11 +564,11 @@ std_corp_rm_sys <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
-      across(
-        where(is.character) & all_of(cols),
-        ~ case_when(
-          str_detect(
+    dplyr::mutate(
+      dplyr::across(
+        tidyselect::where(is.character) & tidyselect::all_of(cols),
+        ~ dplyr::case_when(
+          stringr::str_detect(
             .,
             "(((CORP(ORATION)?)|(LLC)|) (SYS)|(SER))|(AGENT)|(BUSINESS FILINGS)"
           ) ~ NA_character_,
@@ -591,7 +591,7 @@ std_flow_strings <- function(df, cols) {
     std_the(cols) %>%
     std_small_numbers(cols) %>%
     std_trailingwords(cols) %>%
-    std_uppercase_all(cols)
+    std_uppercase(cols)
 }
 
 std_flow_addresses <- function(df, cols) {
@@ -616,7 +616,7 @@ std_flow_cities <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    std_cities(cols) %>%
+    std_city_names(cols) %>%
     std_directions(cols)
 }
 

@@ -1,39 +1,38 @@
-source("globals.R")
-source("deduplicate-owners.R")
-source("addresses-to-parcels.R")
+source("R/globals.R")
+source("R/deduplicaters.R")
+source("R/filing_linkers.R")
 
-run <- function(subset = "test", deduplicate_owners=TRUE, connect_evictors=TRUE, return_results = TRUE) {
-  # Create and open log file with timestamp name.
-  lf <- log_open(
-    file.path(
-      "logs",
-      format(Sys.time(), "%Y-%m-%d_%H%M%S")
-    )
-  )
+subset_town_ids <- function(subset) {
   if (subset == "hns") {
-    town_ids <- read_csv(
-      file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))
-    ) %>%
+    readr::read_csv(
+        file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))
+      ) %>%
       pull(town_id) %>%
       paste(collapse = ", ")
   } else if (subset == "test") {
-    town_ids <- c(274, 49)
+    c(274, 49)
   } else if (subset == "all") {
-    town_ids <- FALSE
+    FALSE
   } else {
     stop("Invalid subset.")
   }
-  if (deduplicate_owners) {
-    run_deduplicate(town_ids = town_ids, return_results = TRUE)
-  }
-  if (connect_evictors) {
-    connect_evictors(town_ids = town_ids)
-  }
-  # Close logs.
-  log_close()
 }
+
+run_all <- function(
+      subset = "test", 
+                return_results = TRUE) {
+  # Create and open log file with timestamp name.
+  lf <- logr::log_open(
+      format(Sys.time(), "%Y-%m-%d_%H%M%S"),
+      logdir = TRUE
+    )
+  process_deduplication(town_ids = subset_town_ids(subset), return_results = TRUE)
+  # Close logs.
+  logr::log_close()
+}
+
 
 # This is like if __name__ == "__main__" in python.
 if (!interactive()) {
-  run(subset = "all", deduplicate_owners=TRUE, connect_evictors=TRUE, return_results = FALSE)
+  run_all(subset = "all", return_results = FALSE)
 }
