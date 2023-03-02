@@ -1,8 +1,0 @@
-"id","town_id","fips_stco","district","mapctype","mapcsub"
-"BROCKTON","44",25023,"metrosouth","Regional Urban Centers","Major Regional Urban Centers"
-"BOSTON","35",25025,"eastern","Inner Core","Metro Core"
-"EVERETT","93",25017,"northeast","Inner Core","Metro Core"
-"LYNN","163",25009,"northeast","Regional Urban Centers","Sub-Regional Urban Center"
-"FALL RIVER","95",25005,"southeast","Regional Urban Centers","Major Regional Urban Centers"
-"CHELSEA","57",25025,"eastern","Inner Core","Metro Core"
-"NEW BEDFORD","201",25005,"southeast","Regional Urban Centers","Major Regional Urban Centers"
