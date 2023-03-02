@@ -1,3 +1,5 @@
+source("R/globals.R")
+
 log_message <- function(status) {
   #' Print message to `logr` logs.
   #'
@@ -16,7 +18,7 @@ subset_town_ids <- function(subset) {
       dplyr::pull(town_id) %>%
       stringr::str_c(collapse = ", ")
   } else if (subset == "test") {
-    c(274, 49)
+    TEST_MUNIS
   } else if (subset == "all") {
     FALSE
   } else {

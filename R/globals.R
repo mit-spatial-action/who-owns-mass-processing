@@ -5,6 +5,8 @@ require(magrittr)
 # Use cached tigris geographies
 options(tigris_use_cache = TRUE)
 
+TEST_MUNIS <- c(274, 49, 176)
+
 DATA_DIR <- "data"
 # Name of directory in which results are written.
 RESULTS_DIR <- "results"
