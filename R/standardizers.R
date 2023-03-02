@@ -347,7 +347,10 @@ std_city_names <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  neighs <- file.path(DATA_DIR, paste(BOS_NBHD, "csv", sep = ".")) %>%
+  neighs <- file.path(
+      DATA_DIR, 
+      stringr::str_c(BOS_NEIGH, "csv", sep = ".")
+    ) %>%
     readr::read_delim(delim = ",") %>%
     std_uppercase(c("Name")) %>%
     dplyr::pull(Name)
