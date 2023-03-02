@@ -11,7 +11,7 @@ flag_lawyers <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   df %>%
-    mutate(
+    dplyr::mutate(
       lawyer = dplyr::case_when(
         dplyr::if_any(
           tidyselect::any_of(cols),
@@ -100,7 +100,7 @@ dedupe_text_mode <- function(df, group_col, cols) {
     dplyr::arrange(get({{ group_col }}), dplyr::desc(count)) %>%
     dplyr::group_by(across({{ group_col }})) %>%
     dplyr::summarize(
-      dplyr::across({{ cols }}, ~first(.))
+      dplyr::across({{ cols }}, ~dplyr::first(.))
     )
 }
 
@@ -189,7 +189,7 @@ process_assess <- function(df) {
           own_addr,
           "C / O"
         )
-        ~ str_extract(own_addr, "(?<=C / O ).*$")
+        ~ stringr::str_extract(own_addr, "(?<=C / O ).*$")
       ),
       own_addr = dplyr::case_when(
         stringr::str_detect(
@@ -220,7 +220,7 @@ process_owners <- function(df) {
         !is.na(owner1) & is.na(own_addr) ~ owner1,
         is.na(owner1) & !is.na(own_addr) ~ own_addr,
         is.na(owner1) & is.na(own_addr) ~ NA_character_,
-        TRUE ~ str_c(owner1, own_addr, sep = " ")
+        TRUE ~ stringr::str_c(owner1, own_addr, sep = " ")
       )
     ) %>%
     dplyr::select(-c(site_addr, ooc)) %>%
@@ -267,7 +267,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
   log_message("Processing assessors records...")
   assess <- process_assess(assess) %>%
     # Write pipe-delimited text file of edges.
-    write_delim(
+    readr::write_delim(
       file.path(RESULTS_DIR, stringr::str_c(ASSESS_OUT_NAME, "csv", sep = ".")),
       delim = "|", 
       quote = "needed"
@@ -378,7 +378,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
         TRUE ~ NA_character_
       )
     ) %>%
-    select(-c(id_agentname, id_agentaddr1, id_agentaddr2))
+    dplyr::select(-c(id_agentname, id_agentaddr1, id_agentaddr2))
   
   rm(corps_active)
   
@@ -490,13 +490,13 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       name_address = dplyr::case_when(
         !is.na(fullname) & 
           !is.na(address) 
-          ~ str_c(fullname, address, sep = " "),
+          ~ stringr::str_c(fullname, address, sep = " "),
         !is.na(fullname) & 
           is.na(address) 
           ~ fullname,
         is.na(fullname) & 
           !is.na(address) 
-        ~ address,
+          ~ address,
         TRUE ~ NA_character_
       )
     ) %>%
@@ -556,7 +556,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       name_address = dplyr::case_when(
         !is.na(fullname) & 
           !is.na(address) 
-          ~ str_c(fullname, address, sep = " "),
+          ~ stringr::str_c(fullname, address, sep = " "),
         !is.na(fullname) &
           is.na(address)
           ~ fullname,

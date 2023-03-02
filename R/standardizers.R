@@ -304,20 +304,22 @@ std_zip <- function(df, cols) {
   df %>%
     dplyr::mutate(
       dplyr::across(
-        tidyselect::where(is.character) & tidyselect::all_of(cols), ~ case_when(
-          stringr::str_detect(., "[0-9] [0-9]") ~ stringr::str_extract(
-            .,
-            ".*(?=\\ )"
-          ),
-          stringr::str_detect(., "-") ~ stringr::str_extract(
-            .,
-            ".*(?=\\-)"
-          ),
-          stringr::str_detect(., "^0+$") ~ NA_character_,
-          TRUE ~ .
+        tidyselect::where(is.character) & 
+          tidyselect::all_of(cols), 
+          ~ dplyr::case_when(
+            stringr::str_detect(., "[0-9] [0-9]") ~ stringr::str_extract(
+              .,
+              ".*(?=\\ )"
+            ),
+            stringr::str_detect(., "-") ~ stringr::str_extract(
+              .,
+              ".*(?=\\-)"
+            ),
+            stringr::str_detect(., "^0+$") ~ NA_character_,
+            TRUE ~ .
+          )
         )
       )
-    )
 }
 
 std_massachusetts <- function(df, cols) {

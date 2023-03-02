@@ -5,10 +5,13 @@ source("R/filing_linkers.R")
 subset_town_ids <- function(subset) {
   if (subset == "hns") {
     readr::read_csv(
-        file.path(DATA_DIR, paste(MUNI_CSV, "csv", sep = "."))
+        file.path(
+          DATA_DIR, 
+          stringr::str_c(MUNI_CSV, "csv", sep = ".")
+          )
       ) %>%
-      pull(town_id) %>%
-      paste(collapse = ", ")
+      dplyr::pull(town_id) %>%
+      stringr::str_c(collapse = ", ")
   } else if (subset == "test") {
     c(274, 49)
   } else if (subset == "all") {
