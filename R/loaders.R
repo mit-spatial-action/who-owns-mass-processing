@@ -1,4 +1,5 @@
 source("R/globals.R")
+source("R/run_utils.R")
 
 load_corps <- function(path) {
   #' Load corporations, sourced from the MA Secretary of the Commonwealth.
@@ -43,7 +44,7 @@ load_parcels <- function(path, town_ids=FALSE, crs = 2249) {
   q <- "SELECT OBJECTID, MAP_PAR_ID, LOC_ID, TOWN_ID FROM L3_TAXPAR_POLY"
   if (!isFALSE(town_ids)) {
     q <- stringr::str_c(
-        parcel_query, 
+        q, 
         "WHERE TOWN_ID IN (", 
         stringr::str_c(town_ids, collapse=", "), 
         ")",
@@ -61,7 +62,7 @@ load_parcels <- function(path, town_ids=FALSE, crs = 2249) {
     sf::st_transform(crs) %>%
     # Cast from MULTISURFACE to MULTIPOLYGON.
     dplyr::mutate(
-      geometry = st_cast(geometry, "MULTIPOLYGON")
+      geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
   
 }
@@ -158,7 +159,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     residential_filter("use_code")
 }
 
-load_filings <- function(test = FALSE, crs = 2249) {
+load_filings <- function(town_ids = NA, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
@@ -167,18 +168,27 @@ load_filings <- function(test = FALSE, crs = 2249) {
   docket_col <- "docket"
   filings_table <- "filings"
   plaintiffs_table <- "plaintiffs"
-  cols <- stringr::str_c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry", sep = ",")
+  cols <- stringr::str_c(
+    c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry"), 
+    collapse = ","
+    )
   q <- stringr::str_c(
     "SELECT", cols, 
     "FROM", filings_table, "AS f",
     sep = " "
   )
   # Set limit if test = TRUE
-  if (test) {
-    q <- stringr::str_c(q, "LIMIT 1000", sep = " ")
+  if (!is.na(town_ids)) {
+    q_filter <- MA_MUNIS %>%
+      dplyr::filter(town_id %in% town_ids) %>%
+      dplyr::pull(id) %>%
+      stringr::str_c("UPPER(f.city) = '", ., "'") %>%
+      stringr::str_c(., collapse = " OR ") %>%
+      stringr::str_c("WHERE", ., sep = " ")
+    q <- stringr::str_c(q, q_filter, sep = " ")
   }
   # Pull filings.
-  DBI::dbConnect(
+  conn <- DBI::dbConnect(
       RPostgres::Postgres(),
       dbname = Sys.getenv("DB_NAME"),
       host = Sys.getenv("DB_HOST"),
@@ -186,10 +196,14 @@ load_filings <- function(test = FALSE, crs = 2249) {
       user = Sys.getenv("DB_USER"),
       password = Sys.getenv("DB_PASS"),
       sslmode = "allow"
-    ) %>%
-    sf::st_read(query=q) %>% 
-    dplyr::select(-contains('..')) %>%
+    ) 
+  filings <- conn %>%
+    sf::st_read(query=q)
+  print(filings)
+  DBI::dbDisconnect(conn)
+  filings %>% 
+    dplyr::select(-tidyselect::contains('..')) %>%
     sf::st_transform(crs) %>%
-    dplyr::rename_with(str_to_lower) %>%
-    dplyr::filter(!is.na(add1)) 
+    dplyr::rename_with(stringr::str_to_lower) %>%
+    dplyr::filter(!is.na(add1))
 }
