@@ -1,35 +1,19 @@
 source("R/globals.R")
 source("R/deduplicaters.R")
 source("R/filing_linkers.R")
+source("R/run_utils.R")
 
-subset_town_ids <- function(subset) {
-  if (subset == "hns") {
-    readr::read_csv(
-        file.path(
-          DATA_DIR, 
-          stringr::str_c(MUNI_CSV, "csv", sep = ".")
-          )
-      ) %>%
-      dplyr::pull(town_id) %>%
-      stringr::str_c(collapse = ", ")
-  } else if (subset == "test") {
-    c(274, 49)
-  } else if (subset == "all") {
-    FALSE
-  } else {
-    stop("Invalid subset.")
-  }
-}
-
-run_all <- function(
-      subset = "test", 
-                return_results = TRUE) {
+run_all <- function(subset = "test", return_results = FALSE) {
   # Create and open log file with timestamp name.
   lf <- logr::log_open(
       format(Sys.time(), "%Y-%m-%d_%H%M%S"),
       logdir = TRUE
     )
-  process_deduplication(town_ids = subset_town_ids(subset), return_results = TRUE)
+  process_deduplication(
+    town_ids = subset_town_ids(subset),
+    return_results = return_results
+    )
+  process_link_filings(town_ids = subset_town_ids(subset))
   # Close logs.
   logr::log_close()
 }
