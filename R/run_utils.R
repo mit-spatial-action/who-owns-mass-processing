@@ -15,8 +15,9 @@ subset_town_ids <- function(subset) {
   if (subset == "hns") {
     MA_MUNIS %>%
       dplyr::filter(HNS == 1) %>%
-      dplyr::pull(town_id) %>%
-      stringr::str_c(collapse = ", ")
+      dplyr::pull(town_id) 
+    # %>%
+    #   stringr::str_c(collapse = ", ")
   } else if (subset == "test") {
     TEST_MUNIS
   } else if (subset == "all") {

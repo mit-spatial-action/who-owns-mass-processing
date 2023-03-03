@@ -181,11 +181,23 @@ load_filings <- function(town_ids = NA, crs = 2249) {
   if (!is.na(town_ids)) {
     q_filter <- MA_MUNIS %>%
       dplyr::filter(town_id %in% town_ids) %>%
-      dplyr::pull(id) %>%
+      dplyr::pull(id) 
+    if (35 %in% town_ids) {
+      neighs <- file.path(
+          DATA_DIR, 
+          stringr::str_c(BOS_NEIGH, "csv", sep = ".")
+        ) %>%
+        readr::read_delim(delim = ",") %>%
+        std_uppercase(c("Name")) %>%
+        dplyr::pull(Name)
+      q_filter <- c(q_filter, neighs)
+    }
+    q_filter <- q_filter %>%
       stringr::str_c("UPPER(f.city) = '", ., "'") %>%
       stringr::str_c(., collapse = " OR ") %>%
       stringr::str_c("WHERE", ., sep = " ")
     q <- stringr::str_c(q, q_filter, sep = " ")
+    print(q)
   }
   # Pull filings.
   conn <- DBI::dbConnect(
@@ -199,8 +211,9 @@ load_filings <- function(town_ids = NA, crs = 2249) {
     ) 
   filings <- conn %>%
     sf::st_read(query=q)
-  print(filings)
+  
   DBI::dbDisconnect(conn)
+  
   filings %>% 
     dplyr::select(-tidyselect::contains('..')) %>%
     sf::st_transform(crs) %>%
