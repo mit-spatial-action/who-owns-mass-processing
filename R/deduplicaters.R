@@ -176,7 +176,7 @@ dedupe_fill_group <- function(df, group, fill_col) {
 process_assess <- function(df) {
   log_message("Processing assessors records and 
               flagging owner-occupancy...")
-  df %>%
+  df <- df %>%
     std_flow_strings(c("owner1", "city", "own_city", "own_addr", "site_addr", "own_zip")) %>%
     std_zip(c("zip", "own_zip")) %>% 
     std_flow_addresses(c("own_addr", "site_addr")) %>%
@@ -210,6 +210,33 @@ process_assess <- function(df) {
         TRUE ~ FALSE
       )
     )
+  
+  # For rows that are missing a ZIP code, pull it from `tigris`.
+  # Described in GitHub issue #19
+  df_no_zip <- assess %>%
+    dplyr::filter(is.na(zip))
+  
+  if (nrow(df_no_zip) > 0) {
+    df_zip <- assess %>%
+      dplyr::filter(!is.na(zip))
+    
+    
+    parcels <- parcels %>%
+      dplyr::filter(loc_id %in% dplyr::pull(df_no_zip, loc_id)) %>%
+      st_get_zips("zip") %>%
+      sf::st_drop_geometry()
+    
+    df <- df_no_zip %>%
+      dplyr::select(-c(zip)) %>%
+      dplyr::left_join(
+        dplyr::select(parcels, c(loc_id, zip)),
+        by = c("loc_id" = "loc_id"),
+        na_matches = "never"
+      ) %>%
+      dplyr::distinct(loc_id, zip, .keep_all = TRUE) %>%
+      dplyr::bind_rows(df_zip)
+  }
+  df
 }
 
 process_owners <- function(df) {

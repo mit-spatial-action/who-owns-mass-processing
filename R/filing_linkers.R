@@ -54,35 +54,6 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
       process_assess()
   }
   
-  parcels <- load_parcels(
-    file.path(DATA_DIR, ASSESS_GDB), 
-    town_ids = town_ids,
-    crs = crs)
-  
-  assess_with_zip <- assess %>%
-    dplyr::filter(!is.na(zip))
-  
-  assess_no_zip <- assess %>%
-    dplyr::filter(is.na(zip))
-  
-  log_message("Loading parcels and filtering for residential land use.")
-  parcels <- parcels %>%
-    dplyr::filter(loc_id %in% dplyr::pull(assess_no_zip, loc_id)) %>%
-    st_get_zips("zip") %>%
-    sf::st_drop_geometry()
-  
-  assess <- assess_no_zip %>%
-    dplyr::select(-c(zip)) %>%
-    dplyr::left_join(
-      dplyr::select(parcels, c(loc_id, zip)),
-      by = c("loc_id" = "loc_id"),
-      na_matches = "never"
-    ) %>%
-    dplyr::distinct(loc_id, zip, .keep_all = TRUE) %>%
-    dplyr::bind_rows(assess_with_zip)
-  
-  rm(assess_with_zip, assess_no_zip)
-  
   log_message("Joining filings to parcels by address and city.")
   filings <- load_filings(town_ids, crs = crs) %>%
     process_filings() %>%
@@ -91,6 +62,13 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
       by = c("add1" = "site_addr", "city" = "city"),
       na_matches = "never"
     )
+  
+  parcels <- load_parcels(
+      file.path(DATA_DIR, ASSESS_GDB), 
+      town_ids = town_ids,
+      crs = crs
+    ) %>%
+    dplyr::filter(loc_id %in% dplyr::pull(assess, loc_id))
   
   filings_with_address <- filings %>%
     dplyr::filter(!is.na(loc_id)) %>%
