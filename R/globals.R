@@ -21,7 +21,8 @@ MA_MUNIS <- readr::read_csv(
     file.path(
       DATA_DIR, 
       stringr::str_c("ma_munis", "csv", sep = ".")
-    )
+    ),
+    show_col_types = FALSE
   )
 # Name of CSV containing Boston neighborhood names.
 BOS_NEIGH <- "bos_neigh"

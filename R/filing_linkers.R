@@ -38,10 +38,13 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
   #' Workflow to connect eviction filings to assessors records.
   #'
   #' @param town_ids List of numerical town ids.
-  #' @param mile_multiplier Bandwidth distance, in miles.
+  #' @param crs Bandwidth distance, in miles.
   #' @returns A dataframe.
   #' @export
-  assess_file <- file.path(RESULTS_DIR, stringr::str_c(ASSESS_OUT_NAME, "rds", sep = "."))
+  assess_file <- file.path(
+    RESULTS_DIR, 
+    stringr::str_c(ASSESS_OUT_NAME, "rds", sep = ".")
+    )
   if (file.exists(assess_file)) {
     log_message("Found previously processed assessors table. Loading...")
     assess <- readRDS(assess_file)
@@ -51,58 +54,107 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
       process_assess()
   }
   
-  log_message("Loading parcels and filtering for residential land use.")
   parcels <- load_parcels(
-      file.path(DATA_DIR, ASSESS_GDB), 
-      town_ids = town_ids,
-      crs = crs) %>%
-    dplyr::filter(loc_id %in% dplyr::pull(assess, loc_id))
+    file.path(DATA_DIR, ASSESS_GDB), 
+    town_ids = town_ids,
+    crs = crs)
+  
+  assess_with_zip <- assess %>%
+    dplyr::filter(!is.na(zip))
+  
+  assess_no_zip <- assess %>%
+    dplyr::filter(is.na(zip))
+  
+  log_message("Loading parcels and filtering for residential land use.")
+  parcels <- parcels %>%
+    dplyr::filter(loc_id %in% dplyr::pull(assess_no_zip, loc_id)) %>%
+    st_get_zips("zip") %>%
+    sf::st_drop_geometry()
+  
+  assess <- assess_no_zip %>%
+    dplyr::select(-c(zip)) %>%
+    dplyr::left_join(
+      dplyr::select(parcels, c(loc_id, zip)),
+      by = c("loc_id" = "loc_id"),
+      na_matches = "never"
+    ) %>%
+    dplyr::distinct(loc_id, zip, .keep_all = TRUE) %>%
+    dplyr::bind_rows(assess_with_zip)
+  
+  rm(assess_with_zip, assess_no_zip)
   
   log_message("Joining filings to parcels by address and city.")
   filings <- load_filings(town_ids, crs = crs) %>%
     process_filings() %>%
     dplyr::left_join(
       dplyr::select(assess, c(loc_id, site_addr, city)), 
-      by = c("add1" = "site_addr", "city" = "city")
+      by = c("add1" = "site_addr", "city" = "city"),
+      na_matches = "never"
     )
   
-  filings_match <- filings %>%
+  filings_with_address <- filings %>%
     dplyr::filter(!is.na(loc_id)) %>%
     dplyr::mutate(
-      link_type = "address"
+      link_type = "address_city"
     )
   
-  filings_unmatchable <- filings %>%
+  filings_no_address <- filings %>%
+    dplyr::filter(is.na(loc_id)) %>%
+    dplyr::select(-c(loc_id)) %>%
+    dplyr::left_join(
+      dplyr::select(assess, c(loc_id, site_addr, zip)), 
+      by = c("add1" = "site_addr", "zip" = "zip"),
+      na_matches = "never"
+    )
+  
+  filings_zip_match <- filings_no_address %>%
+    dplyr::filter(!is.na(loc_id)) %>%
+    dplyr::mutate(
+      link_type = "address_zip"
+    )
+  
+  filings_unmatched <- filings_no_address %>%
+    dplyr::filter(is.na(loc_id)) %>%
+    dplyr::select(-c(loc_id))
+  
+  filings_unmatchable <- filings_unmatched %>%
     dplyr::filter(
-      is.na(loc_id) & 
-        !(match_type %in% c("building", "parcel", "rooftop"))
-    ) %>%
+      !(match_type %in% c("building", "parcel", "rooftop"))
+      ) %>%
     dplyr::mutate(
       link_type = NA_character_
     )
   
-  filings_no_match <- filings %>%
-    dplyr::filter(
-      is.na(loc_id) & 
-        match_type %in% c("building", "parcel", "rooftop")
-    ) %>%
-    dplyr::select(-c(loc_id))
-  
   log_message("Step 2. Find assess parcels that contain filings") 
-  filings_no_match %>%
+  filings_no_match <- filings_unmatched %>%
+    dplyr::filter(
+      match_type %in% c("building", "parcel", "rooftop")
+    )
+  
+  filings <- filings_no_match %>%
     sf::st_join(parcels, join=sf::st_within) %>%
     dplyr::mutate(
       link_type = dplyr::case_when(
-        is.na(loc_id) ~ NA_character_,
-        TRUE ~ "spatial"
+        !is.na(loc_id) ~ "spatial"
         )
     ) %>%
-    dplyr::bind_rows(filings_match, filings_unmatchable) %>% 
+    dplyr::bind_rows(filings_address_match, filings_zip_match, filings_unmatchable) %>% 
     sf::st_drop_geometry() %>%
-    dplyr::select(docket, loc_id, link_type) %>%
+    dplyr::select(docket, loc_id, city, zip, link_type) %>%
     readr::write_delim(
       file.path(RESULTS_DIR, paste(FILINGS_OUT_NAME, "csv", sep = ".")),
       delim = "|", quote = "needed"
     )
+  
+  filings_by_parcel <- filings %>%
+    dplyr::group_by(loc_id) %>%
+    dplyr::summarize(
+      filing_count = dplyr::n()
+    ) %>%
+    readr::write_delim(
+      file.path(RESULTS_DIR, paste("filings_per_parcel", "csv", sep = ".")),
+      delim = "|", quote = "needed"
+    )
+  filings
 }
 

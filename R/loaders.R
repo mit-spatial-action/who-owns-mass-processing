@@ -13,7 +13,9 @@ load_corps <- function(path) {
       col_select = c(
         DataID, EntityName,
         AgentName, AgentAddr1, AgentAddr2, AgentCity,
-        AgentState, AgentPostalCode, ActiveFlag)
+        AgentState, AgentPostalCode, ActiveFlag
+        ),
+      show_col_types = FALSE
     ) %>%
     dplyr::rename(
       id_corp = DataID
@@ -51,7 +53,7 @@ load_parcels <- function(path, town_ids=FALSE, crs = 2249) {
         sep = " "
       )
   }
-  sf::st_read(path, query = q) %>%
+  sf::st_read(path, query = q, quiet = TRUE) %>%
     dplyr::rename_with(stringr::str_to_lower) %>% 
     # Correct weird naming conventions of GDB.
     sf::st_set_geometry("shape") %>%
@@ -80,7 +82,8 @@ load_inds <- function(path) {
       col_select = c(
         DataID, FirstName, LastName, BusAddr1,
         ResAddr1
-      )
+      ),
+      show_col_types = FALSE
     ) %>%
     dplyr::rename(
       id_corp = DataID
@@ -153,7 +156,8 @@ load_assess <- function(path = ".", town_ids = FALSE) {
   }
   sf::st_read(
       path,
-      query = q
+      query = q,
+      quiet = TRUE
     ) %>%
     dplyr::rename_with(stringr::str_to_lower) %>%
     residential_filter("use_code")
@@ -187,7 +191,10 @@ load_filings <- function(town_ids = NA, crs = 2249) {
           DATA_DIR, 
           stringr::str_c(BOS_NEIGH, "csv", sep = ".")
         ) %>%
-        readr::read_delim(delim = ",") %>%
+        readr::read_delim(
+          delim = ",",
+          show_col_types = FALSE
+          ) %>%
         std_uppercase(c("Name")) %>%
         dplyr::pull(Name)
       q_filter <- c(q_filter, neighs)
@@ -197,7 +204,6 @@ load_filings <- function(town_ids = NA, crs = 2249) {
       stringr::str_c(., collapse = " OR ") %>%
       stringr::str_c("WHERE", ., sep = " ")
     q <- stringr::str_c(q, q_filter, sep = " ")
-    print(q)
   }
   # Pull filings.
   conn <- DBI::dbConnect(
@@ -210,7 +216,10 @@ load_filings <- function(town_ids = NA, crs = 2249) {
       sslmode = "allow"
     ) 
   filings <- conn %>%
-    sf::st_read(query=q)
+    sf::st_read(
+      query=q,
+      quiet = TRUE
+      )
   
   DBI::dbDisconnect(conn)
   
