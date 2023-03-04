@@ -140,7 +140,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
   #' @export
   cols <- c(
       "PROP_ID", "LOC_ID", "FY", "USE_CODE", 
-      "SITE_ADDR", "CITY", "ZIP", "OWNER1", 
+      "SITE_ADDR", "ADDR_NUM", "FULL_STR", "CITY", "ZIP", "OWNER1", 
       "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP"
       )
   cols <- stringr::str_c(cols, collapse = ", ")
@@ -160,7 +160,16 @@ load_assess <- function(path = ".", town_ids = FALSE) {
       quiet = TRUE
     ) %>%
     dplyr::rename_with(stringr::str_to_lower) %>%
-    residential_filter("use_code")
+    residential_filter("use_code") %>%
+    dplyr::mutate(
+      site_addr = dplyr::case_when(
+        is.na(site_addr) & 
+          !is.na(addr_num) & 
+          !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
+        TRUE ~ site_addr
+      )
+    ) %>%
+    dplyr::select(-c(addr_num, full_str))
 }
 
 load_filings <- function(town_ids = NA, crs = 2249) {

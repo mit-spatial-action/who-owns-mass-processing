@@ -70,7 +70,7 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
     ) %>%
     dplyr::filter(loc_id %in% dplyr::pull(assess, loc_id))
   
-  filings_with_address <- filings %>%
+  filings_address_match <- filings %>%
     dplyr::filter(!is.na(loc_id)) %>%
     dplyr::mutate(
       link_type = "address_city"

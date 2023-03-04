@@ -351,7 +351,10 @@ std_city_names <- function(df, cols) {
       DATA_DIR, 
       stringr::str_c(BOS_NEIGH, "csv", sep = ".")
     ) %>%
-    readr::read_delim(delim = ",") %>%
+    readr::read_delim(
+      delim = ",", 
+      show_col_types = FALSE
+      ) %>%
     std_uppercase(c("Name")) %>%
     dplyr::pull(Name)
   df %>%
