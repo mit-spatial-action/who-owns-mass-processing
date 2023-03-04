@@ -119,20 +119,14 @@ process_link_filings <- function(town_ids = NA, crs = 2249) {
     dplyr::bind_rows(filings_address_match, filings_zip_match, filings_unmatchable) %>% 
     sf::st_drop_geometry() %>%
     dplyr::select(docket, loc_id, city, zip, link_type) %>%
-    readr::write_delim(
-      file.path(RESULTS_DIR, paste(FILINGS_OUT_NAME, "csv", sep = ".")),
-      delim = "|", quote = "needed"
-    )
+    write_multi(FILINGS_OUT_NAME)
   
   filings_by_parcel <- filings %>%
     dplyr::group_by(loc_id) %>%
     dplyr::summarize(
       filing_count = dplyr::n()
     ) %>%
-    readr::write_delim(
-      file.path(RESULTS_DIR, paste("filings_per_parcel", "csv", sep = ".")),
-      delim = "|", quote = "needed"
-    )
+    write_multi("filings_per_parcel")
   filings
 }
 

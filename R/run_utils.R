@@ -26,3 +26,22 @@ subset_town_ids <- function(subset) {
     stop("Invalid subset.")
   }
 }
+
+write_multi <- function(df, name, formats = c("csv", "rds", "pg")){
+  if ("csv" %in% formats) {
+      # Write pipe-delimited text file of edges.
+      readr::write_delim(
+        df,
+        file.path(RESULTS_DIR, stringr::str_c(name, "csv", sep = ".")),
+        delim = "|", 
+        quote = "needed"
+      )
+  }
+  if ("rds" %in% formats) {
+    saveRDS(
+      df, 
+      file = file.path(RESULTS_DIR, stringr::str_c(name, "rds", sep = "."))
+    )
+  }
+  df
+}

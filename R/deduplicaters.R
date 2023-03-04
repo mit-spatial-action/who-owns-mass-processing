@@ -173,7 +173,7 @@ dedupe_fill_group <- function(df, group, fill_col) {
     dplyr::ungroup()
 }
 
-process_assess <- function(df) {
+process_assess <- function(df, town_ids = NA, crs = 2249) {
   log_message("Processing assessors records and 
               flagging owner-occupancy...")
   df <- df %>%
@@ -213,18 +213,24 @@ process_assess <- function(df) {
   
   # For rows that are missing a ZIP code, pull it from `tigris`.
   # Described in GitHub issue #19
-  df_no_zip <- assess %>%
+  df_no_zip <- df %>%
     dplyr::filter(is.na(zip))
   
   if (nrow(df_no_zip) > 0) {
-    df_zip <- assess %>%
+    log_message("Missing ZIP codes found. Fetching from tigris...")
+    df_zip <- df %>%
       dplyr::filter(!is.na(zip))
     
-    
-    parcels <- parcels %>%
+    parcels <- load_parcels(
+        file.path(DATA_DIR, ASSESS_GDB), 
+        town_ids = town_ids,
+        crs = crs
+      ) %>%
       dplyr::filter(loc_id %in% dplyr::pull(df_no_zip, loc_id)) %>%
       st_get_zips("zip") %>%
       sf::st_drop_geometry()
+    
+    print("Did we get here?")
     
     df <- df_no_zip %>%
       dplyr::select(-c(zip)) %>%
@@ -278,7 +284,7 @@ process_corps <- function(df){
     tidyr::drop_na("entityname")
 }
 
-process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
+process_deduplication <- function(town_ids = NA, return_results = TRUE) {
   #' Run complete owner deduplication process.
   #'
   #' @param town_ids list of town ids
@@ -292,18 +298,8 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
   log_message("Reading assessors table from GDB...")
   assess <- load_assess(path = file.path(DATA_DIR, ASSESS_GDB), town_ids = town_ids)
   log_message("Processing assessors records...")
-  assess <- process_assess(assess) %>%
-    # Write pipe-delimited text file of edges.
-    readr::write_delim(
-      file.path(RESULTS_DIR, stringr::str_c(ASSESS_OUT_NAME, "csv", sep = ".")),
-      delim = "|", 
-      quote = "needed"
-    )
-  # Write it out for later use in filing linker.
-  saveRDS(
-    assess, 
-    file = file.path(RESULTS_DIR, stringr::str_c(ASSESS_OUT_NAME, "rds", sep = "."))
-    )
+  assess <- process_assess(assess, town_ids = town_ids) %>%
+    write_multi(ASSESS_OUT_NAME)
   # Separate owners from assessors records.
   log_message("Extracting owners from assessors table...")
   owners <- process_owners(assess)
@@ -668,27 +664,13 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       relation = "AGENT_OF"
     ) %>%
     dplyr::bind_rows(corps_links) %>%
-    # Write pipe-delimited text file of edges.
-    readr::write_delim(
-      file.path(
-        RESULTS_DIR, 
-        stringr::str_c(EDGES_OUT_NAME, "csv", sep = ".")
-      ),
-      delim = "|", 
-      quote = "needed"
-    )
+    # Write edges.
+    write_multi(EDGES_OUT_NAME)
   
   nodes <- inds_nodes %>%
     dplyr::bind_rows(corps_nodes) %>%
     # Write pipe-delimited text file of corporations.
-    readr::write_delim(
-      file.path(
-        RESULTS_DIR, 
-        stringr::str_c(NODES_OUT_NAME, "csv", sep = ".")
-      ),
-      delim = "|", 
-      quote = "needed"
-    )
+    write_multi(NODES_OUT_NAME)
   
   log_message("Identifying community and writing to delimited file...")
   community <- edges %>%
@@ -705,15 +687,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       community,
       by = c("id" = "id")
     ) %>%
-    # Write pipe-delimited text file of corporations.
-    readr::write_delim(
-      file.path(
-        RESULTS_DIR, 
-        stringr::str_c(CORPS_OUT_NAME, "csv", sep = ".")
-      ),
-      delim = "|", 
-      quote = "needed"
-    )
+    write_multi(CORPS_OUT_NAME)
   
   log_message("Writing indiviudals nodes to delimited file...")
   inds_nodes <- inds_nodes %>%
@@ -721,15 +695,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       community,
       by = c("id" = "id")
     ) %>%
-    # Write pipe-delimited text file of individuals.
-    readr::write_delim(
-      file.path(
-        RESULTS_DIR, 
-        stringr::str_c(INDS_OUT_NAME, "csv", sep = ".")
-      ),
-      delim = "|", 
-      quote = "needed"
-    )
+    write_multi(INDS_OUT_NAME)
   
   log_message("Writing deduplicated ownership to delimited file...")
   owners <- owners %>%
@@ -752,15 +718,7 @@ process_deduplication <- function(town_ids = c(274), return_results = TRUE) {
       count = dplyr::n()
     ) %>%
     dplyr::ungroup() %>%
-    # Write pipe-delimited text file of ownership.
-    readr::write_delim(
-      file.path(
-        RESULTS_DIR, 
-        stringr::str_c(OWNERS_OUT_NAME, "csv", sep = ".")
-      ),
-      delim = "|", 
-      quote = "needed"
-    )
+    write_multi(OWNERS_OUT_NAME)
   
   log_message("Finishing up.")
   # Save RData image.
