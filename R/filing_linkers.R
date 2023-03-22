@@ -34,7 +34,7 @@ process_filings <- function(df) {
     std_flow_cities(c("city"))
 }
 
-process_link_filings <- function(town_ids = NA, crs = 2249) {
+process_link_filings <- function(town_ids = FALSE, crs = 2249) {
   #' Workflow to connect eviction filings to assessors records.
   #'
   #' @param town_ids List of numerical town ids.

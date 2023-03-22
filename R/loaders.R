@@ -172,7 +172,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     dplyr::select(-c(addr_num, full_str))
 }
 
-load_filings <- function(town_ids = NA, crs = 2249) {
+load_filings <- function(town_ids = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
@@ -191,7 +191,7 @@ load_filings <- function(town_ids = NA, crs = 2249) {
     sep = " "
   )
   # Set limit if test = TRUE
-  if (!is.na(town_ids)) {
+  if (!isFALSE(town_ids)) {
     q_filter <- MA_MUNIS %>%
       dplyr::filter(town_id %in% town_ids) %>%
       dplyr::pull(id) 
