@@ -103,7 +103,7 @@ process_link_filings <- function(town_ids = FALSE, crs = 2249) {
       link_type = NA_character_
     )
   
-  log_message("Step 2. Find assess parcels that contain filings") 
+  log_message("Find assess parcels that contain filings") 
   filings_no_match <- filings_unmatched %>%
     dplyr::filter(
       match_type %in% c("building", "parcel", "rooftop")
@@ -118,7 +118,7 @@ process_link_filings <- function(town_ids = FALSE, crs = 2249) {
     ) %>%
     dplyr::bind_rows(filings_address_match, filings_zip_match, filings_unmatchable) %>% 
     sf::st_drop_geometry() %>%
-    dplyr::select(docket, loc_id, city, zip, link_type) %>%
+    dplyr::select(docket_id, loc_id, city, zip, link_type) %>%
     write_multi(FILINGS_OUT_NAME)
   
   filings_by_parcel <- filings %>%

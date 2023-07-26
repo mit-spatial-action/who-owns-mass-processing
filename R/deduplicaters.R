@@ -230,8 +230,6 @@ process_assess <- function(df, town_ids = NA, crs = 2249) {
       st_get_zips("zip") %>%
       sf::st_drop_geometry()
     
-    print("Did we get here?")
-    
     df <- df_no_zip %>%
       dplyr::select(-c(zip)) %>%
       dplyr::left_join(

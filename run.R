@@ -18,7 +18,6 @@ run_all <- function(subset = "test", return_results = FALSE) {
   logr::log_close()
 }
 
-
 # This is like if __name__ == "__main__" in python.
 if (!interactive()) {
   run_all(subset = "all", return_results = FALSE)

@@ -178,7 +178,7 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
   #' @returns A dataframe.
   #' @export
   # Construct SQL query.
-  docket_col <- "docket"
+  docket_col <- "docket_id"
   filings_table <- "filings"
   plaintiffs_table <- "plaintiffs"
   cols <- stringr::str_c(
