@@ -7,7 +7,7 @@ std_uppercase <- function(df, cols) {
   #' @param except Column or columns to remain untouched.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -23,7 +23,7 @@ std_directions <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -52,7 +52,7 @@ std_andslash <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -77,7 +77,7 @@ std_onewordaddress <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -98,7 +98,7 @@ std_trailingwords <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -121,7 +121,7 @@ std_remove_special <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -140,7 +140,7 @@ std_small_numbers <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -179,7 +179,7 @@ std_remove_middle_initial <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -196,7 +196,7 @@ std_replace_blank <- function(df, cols) {
   #' @param df A dataframe containing only string datatypes.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -218,7 +218,7 @@ std_the <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -239,7 +239,7 @@ std_and <- function(df, cols){
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols), 
@@ -260,7 +260,7 @@ std_street_types <- function(df, cols) {
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -301,7 +301,7 @@ std_zip <- function(df, cols) {
   #' @param cols Column or columns containing the ZIP code to be simplified.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & 
@@ -329,7 +329,7 @@ std_massachusetts <- function(df, cols) {
   #' @param cols Column or columns in which to replace "MASS"
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -350,14 +350,14 @@ std_city_names <- function(df, cols) {
   neighs <- file.path(
       DATA_DIR, 
       stringr::str_c(BOS_NEIGH, "csv", sep = ".")
-    ) %>%
+    ) |>
     readr::read_delim(
       delim = ",", 
       show_col_types = FALSE
-      ) %>%
-    std_uppercase(c("Name")) %>%
+      ) |>
+    std_uppercase(c("Name")) |>
     dplyr::pull(Name)
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -392,7 +392,7 @@ std_simplify_address <- function(df, cols) {
   )
   for (col in cols) {
     # Flag PO Boxes.
-    df <- df %>%
+    df <- df |>
       dplyr::mutate(
         pobox = dplyr::case_when(
           stringr::str_detect(get(col), "^PO BOX") ~ TRUE,
@@ -400,16 +400,16 @@ std_simplify_address <- function(df, cols) {
         )
       )
     po_box <- dplyr::filter(df, pobox)
-    df <- dplyr::filter(df, !pobox) %>%
+    df <- dplyr::filter(df, !pobox) |>
       dplyr::mutate(
         dplyr::across(
           tidyselect::matches(col),
           ~ stringr::str_replace_all(., replace)
         )
-      ) %>%
+      ) |>
       dplyr::bind_rows(po_box)
   }
-  df %>%
+  df |>
     dplyr::select(-c(pobox))
 }
 
@@ -420,7 +420,7 @@ std_corp_types <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -446,7 +446,7 @@ std_remove_co <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -461,7 +461,7 @@ std_hyphenated_numbers <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     # Remove "C / O" prefix.
     dplyr::mutate(
       dplyr::across(
@@ -487,7 +487,7 @@ std_select_address <- function(df,
   #' @param output_col Name of column that stores selected address.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       !!output_col := dplyr::case_when(
         stringr::str_detect(
@@ -513,23 +513,23 @@ st_get_zips <- function(sdf, zip_col, state = "MA", crs = 2249) {
   #' @param crs EPSG code of appropriate coordinate reference system.
   #' @returns A dataframe.
   #' @export
-  sdf %>%
+  sdf |>
     dplyr::mutate(
       point = sf::st_point_on_surface(geometry)
-    ) %>%
-    sf::st_set_geometry("point") %>%
+    ) |>
+    sf::st_set_geometry("point") |>
     sf::st_join(
-      tigris::zctas(year = 2010, state = state, zip_col) %>%
-        sf::st_transform(crs) %>%
+      tigris::zctas(cb = FALSE, state = state, year = 2010) |>
+        sf::st_transform(crs) |>
         dplyr::select(ZCTA5CE10)
-    ) %>%
-    sf::st_set_geometry("geometry") %>%
+    ) |>
+    sf::st_set_geometry("geometry") |>
     dplyr::select(
       -c(point)
-    ) %>%
+    ) |>
     dplyr::mutate(
       !!zip_col := ZCTA5CE10
-    ) %>%
+    ) |>
     dplyr::select(-c(ZCTA5CE10))
 }
 
@@ -541,24 +541,24 @@ st_get_censusgeo <- function(sdf, state = "MA", crs = 2249) {
   #' @param crs EPSG code of appropriate coordinate reference system.
   #' @returns A dataframe.
   #' @export
-  censusgeo <- tigris::block_groups(state = state) %>%
-    sf::st_transform(crs) %>%
+  censusgeo <- tigris::block_groups(state = state) |>
+    sf::st_transform(crs) |>
     dplyr::rename(
       geoid_bg = GEOID
-    ) %>%
+    ) |>
     dplyr::select(geoid_bg)
-  sdf %>%
+  sdf |>
     dplyr::mutate(
       point = sf::st_point_on_surface(geometry)
-    ) %>%
-    sf::st_set_geometry("point") %>%
+    ) |>
+    sf::st_set_geometry("point") |>
     sf::st_join(
       censusgeo
-    ) %>%
-    sf::st_set_geometry("geometry") %>%
+    ) |>
+    sf::st_set_geometry("geometry") |>
     dplyr::mutate(
       geoid_t = stringr::str_sub(geoid_bg, start = 1L, end = 11L)
-    ) %>%
+    ) |>
     dplyr::select(
       -c(point)
     )
@@ -571,7 +571,7 @@ std_corp_rm_sys <- function(df, cols) {
   #' @param cols The columns containing the addresses to be standardized.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
@@ -592,13 +592,13 @@ std_flow_strings <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
-    std_andslash(cols) %>%
-    std_remove_special(cols) %>%
-    std_replace_blank(cols) %>%
-    std_the(cols) %>%
-    std_small_numbers(cols) %>%
-    std_trailingwords(cols) %>%
+  df |>
+    std_andslash(cols) |>
+    std_remove_special(cols) |>
+    std_replace_blank(cols) |>
+    std_the(cols) |>
+    std_small_numbers(cols) |>
+    std_trailingwords(cols) |>
     std_uppercase(cols)
 }
 
@@ -608,12 +608,12 @@ std_flow_addresses <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
-    std_street_types(cols) %>%
-    std_simplify_address(cols) %>%
-    std_directions(cols) %>%
-    std_hyphenated_numbers(cols) %>%
-    std_onewordaddress(cols) %>% 
+  df |>
+    std_street_types(cols) |>
+    std_simplify_address(cols) |>
+    std_directions(cols) |>
+    std_hyphenated_numbers(cols) |>
+    std_onewordaddress(cols) |> 
     std_massachusetts(cols)
 }
 
@@ -623,8 +623,8 @@ std_flow_cities <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
-    std_city_names(cols) %>%
+  df |>
+    std_city_names(cols) |>
     std_directions(cols)
 }
 
@@ -634,8 +634,8 @@ std_flow_names <- function(df, cols) {
   #' @param cols Columns to be processed.
   #' @returns A dataframe.
   #' @export
-  df %>%
-    std_corp_types(cols) %>%
-    std_corp_rm_sys(cols) %>%
+  df |>
+    std_corp_types(cols) |>
+    std_corp_rm_sys(cols) |>
     std_remove_middle_initial(cols) 
 }

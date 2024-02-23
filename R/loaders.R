@@ -16,10 +16,10 @@ load_corps <- function(path) {
         AgentState, AgentPostalCode, ActiveFlag
         ),
       show_col_types = FALSE
-    ) %>%
+    ) |>
     dplyr::rename(
       id_corp = DataID
-    ) %>%
+    ) |>
     dplyr::rename_with(stringr::str_to_lower)
 }
 
@@ -31,20 +31,20 @@ load_agents <- function(df, cols, drop_na_col) {
   #' @param drop_na_col Column for which NA rows should be dropped.
   #' @returns A dataframe of corporate agents.
   #' @export
-  df %>%
-    dplyr::select(all_of(cols)) %>%
+  df |>
+    dplyr::select(all_of(cols)) |>
     dplyr::filter(!is.na(get({{ drop_na_col }})))
 }
 
-load_parcels <- function(path, town_ids=FALSE, crs = 2249) {
+load_parcels <- function(path, town_ids=NULL, crs = 2249) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
   #' @param path Path to MassGIS Parcels GDB.
   #' @param test Whether to only load a sample subset of rows.
   #' @export
-  q <- "SELECT OBJECTID, MAP_PAR_ID, LOC_ID, TOWN_ID FROM L3_TAXPAR_POLY"
-  if (!isFALSE(town_ids)) {
+  q <- "SELECT LOC_ID FROM L3_TAXPAR_POLY"
+  if (!is.null(town_ids)) {
     q <- stringr::str_c(
         q, 
         "WHERE TOWN_ID IN (", 
@@ -53,15 +53,13 @@ load_parcels <- function(path, town_ids=FALSE, crs = 2249) {
         sep = " "
       )
   }
-  sf::st_read(path, query = q, quiet = TRUE) %>%
-    dplyr::rename_with(stringr::str_to_lower) %>% 
+  sf::st_read(path, query = q, quiet = TRUE) |>
+    dplyr::rename_with(stringr::str_to_lower) |> 
     # Correct weird naming conventions of GDB.
-    sf::st_set_geometry("shape") %>%
-    sf::st_set_geometry("geometry") %>%
-    # Select only unique id.
-    dplyr::select(c(loc_id)) %>%
+    sf::st_set_geometry("shape") |>
+    sf::st_set_geometry("geometry") |>
     # Reproject to specified CRS.
-    sf::st_transform(crs) %>%
+    sf::st_transform(crs) |>
     # Cast from MULTISURFACE to MULTIPOLYGON.
     dplyr::mutate(
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
@@ -84,10 +82,10 @@ load_inds <- function(path) {
         ResAddr1
       ),
       show_col_types = FALSE
-    ) %>%
+    ) |>
     dplyr::rename(
       id_corp = DataID
-    ) %>%
+    ) |>
     dplyr::rename_with(stringr::str_to_lower)
 }
 
@@ -101,7 +99,7 @@ residential_filter <- function(df, col) {
   #' @param cols The columns containing the use codes.
   #' @returns A dataframe.
   #' @export
-  df %>%
+  df |>
     dplyr::filter(
       stringr::str_detect(
         get({{ col }}), stringr::str_c(c(
@@ -158,9 +156,9 @@ load_assess <- function(path = ".", town_ids = FALSE) {
       path,
       query = q,
       quiet = TRUE
-    ) %>%
-    dplyr::rename_with(stringr::str_to_lower) %>%
-    residential_filter("use_code") %>%
+    ) |>
+    dplyr::rename_with(stringr::str_to_lower) |>
+    residential_filter("use_code") |>
     dplyr::mutate(
       site_addr = dplyr::case_when(
         is.na(site_addr) & 
@@ -168,7 +166,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
           !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
         TRUE ~ site_addr
       )
-    ) %>%
+    ) |>
     dplyr::select(-c(addr_num, full_str))
 }
 
@@ -192,25 +190,25 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
   )
   # Set limit if test = TRUE
   if (!isFALSE(town_ids)) {
-    q_filter <- MA_MUNIS %>%
-      dplyr::filter(town_id %in% town_ids) %>%
+    q_filter <- MA_MUNIS |>
+      dplyr::filter(town_id %in% town_ids) |>
       dplyr::pull(id) 
     if (35 %in% town_ids) {
       neighs <- file.path(
           DATA_DIR, 
           stringr::str_c(BOS_NEIGH, "csv", sep = ".")
-        ) %>%
+        ) |>
         readr::read_delim(
           delim = ",",
           show_col_types = FALSE
-          ) %>%
-        std_uppercase(c("Name")) %>%
+          ) |>
+        std_uppercase(c("Name")) |>
         dplyr::pull(Name)
       q_filter <- c(q_filter, neighs)
     }
-    q_filter <- q_filter %>%
-      stringr::str_c("UPPER(f.city) = '", ., "'") %>%
-      stringr::str_c(., collapse = " OR ") %>%
+    q_filter <- q_filter |>
+      stringr::str_c("UPPER(f.city) = '", ., "'") |>
+      stringr::str_c(., collapse = " OR ") |>
       stringr::str_c("WHERE", ., sep = " ")
     q <- stringr::str_c(q, q_filter, sep = " ")
   }
@@ -224,7 +222,7 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
       password = Sys.getenv("DB_PASS"),
       sslmode = "allow"
     ) 
-  filings <- conn %>%
+  filings <- conn |>
     sf::st_read(
       query=q,
       quiet = TRUE
@@ -232,9 +230,9 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
   
   DBI::dbDisconnect(conn)
   
-  filings %>% 
-    dplyr::select(-tidyselect::contains('..')) %>%
-    sf::st_transform(crs) %>%
-    dplyr::rename_with(stringr::str_to_lower) %>%
+  filings |> 
+    dplyr::select(-tidyselect::contains('..')) |>
+    sf::st_transform(crs) |>
+    dplyr::rename_with(stringr::str_to_lower) |>
     dplyr::filter(!is.na(add1))
 }

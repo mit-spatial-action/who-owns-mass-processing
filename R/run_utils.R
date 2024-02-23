@@ -13,10 +13,10 @@ log_message <- function(status) {
 
 subset_town_ids <- function(subset) {
   if (subset == "hns") {
-    MA_MUNIS %>%
-      dplyr::filter(HNS == 1) %>%
+    MA_MUNIS |>
+      dplyr::filter(HNS == 1) |>
       dplyr::pull(town_id) 
-    # %>%
+    # |>
     #   stringr::str_c(collapse = ", ")
   } else if (subset == "test") {
     TEST_MUNIS
