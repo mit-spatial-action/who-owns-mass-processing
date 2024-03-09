@@ -1,6 +1,23 @@
 source("R/globals.R")
 source("R/run_utils.R")
 
+
+db_connect <- function() {
+    DBI::dbConnect(
+    RPostgres::Postgres(),
+    dbname = Sys.getenv("DB_NAME"),
+    host = Sys.getenv("DB_HOST"),
+    port = Sys.getenv("DB_PORT"),
+    user = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    sslmode = "allow"
+  ) 
+}
+
+db_disconnect <- function(conn)  {
+  DBI::dbDisconnect(conn)
+}
+
 load_corps <- function(path) {
   #' Load corporations, sourced from the MA Secretary of the Commonwealth.
   #'
@@ -172,24 +189,34 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     dplyr::select(-c(addr_num, full_str))
 }
 
+load_dockets <- function() {
+  #' Returns docket events where judgments were issued.
+  #' @returns A `tibble()`.
+  #' @export
+  conn <- db_connect()
+  base::message("Loading decisions from PostgreSQL db.")
+  q <- "SELECT * FROM docket"
+  dockets <- DBI::dbGetQuery(
+    conn = conn,
+    statement = q,
+    quiet = TRUE
+  )
+  db_disconnect(conn)
+  dockets
+}
+
 load_filings <- function(town_ids = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
   #' @export
   # Construct SQL query.
-  docket_col <- "docket"
+  conn <- db_connect()
+  docket_col <- "docket_id"
   filings_table <- "filings"
   plaintiffs_table <- "plaintiffs"
-  cols <- stringr::str_c(
-    c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry"), 
-    collapse = ","
-    )
-  q <- stringr::str_c(
-    "SELECT", cols, 
-    "FROM", filings_table, "AS f",
-    sep = " "
-  )
+  q <- "SELECT * FROM filings"
+  
   # Set limit if test = TRUE
   if (!isFALSE(town_ids)) {
     q_filter <- MA_MUNIS %>%
@@ -215,26 +242,56 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
     q <- stringr::str_c(q, q_filter, sep = " ")
   }
   # Pull filings.
-  conn <- DBI::dbConnect(
-      RPostgres::Postgres(),
-      dbname = Sys.getenv("DB_NAME"),
-      host = Sys.getenv("DB_HOST"),
-      port = Sys.getenv("DB_PORT"),
-      user = Sys.getenv("DB_USER"),
-      password = Sys.getenv("DB_PASS"),
-      sslmode = "allow"
-    ) 
+
   filings <- conn %>%
     sf::st_read(
       query=q,
       quiet = TRUE
       )
   
-  DBI::dbDisconnect(conn)
+  db_disconnect(conn)
   
   filings %>% 
     dplyr::select(-tidyselect::contains('..')) %>%
     sf::st_transform(crs) %>%
     dplyr::rename_with(stringr::str_to_lower) %>%
     dplyr::filter(!is.na(add1))
+}
+
+load_ptfs <- function() {
+  #' Returns table of plaintiffs.
+  #' @returns A `tibble()`.
+  #' @export
+  conn <- db_connect()
+  base::message("Loading plaintiffs from PostgreSQL db.")
+  q <- "SELECT 
+          p.name,
+          p.docket_id
+        FROM 
+          plaintiffs AS p"
+  DBI::dbGetQuery(
+    conn = conn,
+    statement = q,
+    quiet = TRUE
+  )
+  db_disconnect(conn)
+}
+
+load_defs <- function(conn) {
+  #' Returns table of defendants.
+  #' @returns A `tibble()`.
+  #' @export
+  conn <- db_connect()
+  base::message("Loading defendants from PostgreSQL db.")
+  q <- "SELECT 
+          d.name,
+          d.docket_id
+        FROM 
+          defendants AS d"
+  DBI::dbGetQuery(
+    conn = conn,
+    statement = q,
+    quiet = TRUE
+  )
+  db_disconnect(conn)
 }
