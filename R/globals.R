@@ -16,16 +16,7 @@ INDS <- "CSC_CorporationsIndividualExport_VB.txt"
 CORPS <- "CSC_CorpDataExports_VB.txt"
 # Filename of MassGIS Parcels geodatabase.
 ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
-# Name of CSV containing MA municipalities and IDs.
-MA_MUNIS <- readr::read_csv(
-    file.path(
-      DATA_DIR, 
-      stringr::str_c("ma_munis", "csv", sep = ".")
-    ),
-    show_col_types = FALSE
-  )
-# Name of CSV containing Boston neighborhood names.
-BOS_NEIGH <- "bos_neigh"
+
 # Name of delimited text output files.
 ASSESS_OUT_NAME <- "assess"
 OWNERS_OUT_NAME <- "owners"

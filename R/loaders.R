@@ -1,4 +1,3 @@
-source("R/globals.R")
 source("R/run_utils.R")
 
 load_corps <- function(path) {
@@ -137,9 +136,20 @@ load_assess <- function(path = ".", town_ids = FALSE) {
   #' @param town_ids list of town IDs
   #' @export
   cols <- c(
-      "PROP_ID", "LOC_ID", "FY", "USE_CODE", 
-      "SITE_ADDR", "ADDR_NUM", "FULL_STR", "CITY", "ZIP", "OWNER1", 
-      "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP"
+      # Property metadata.
+      "PROP_ID", "LOC_ID", "FY", 
+      # Parcel address.
+      "SITE_ADDR", "ADDR_NUM", "FULL_STR", "CITY", "ZIP", 
+      # Owner name and address.
+      "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
+      # Last sale date and price.
+      "LS_DATE", "LS_PRICE",
+      # Necessary to estimate unit counts.
+      "BLD_AREA", "RES_AREA", "UNITS",
+      # Assessed values.
+      "BLDG_VAL", "LAND_VAL", "TOTAL_VAL",
+      # Land use code.
+      "USE_CODE"
       )
   cols <- stringr::str_c(cols, collapse = ", ")
   q <- stringr::str_c("SELECT", cols, "FROM L3_ASSESS", sep = " ")
@@ -158,7 +168,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
       quiet = TRUE
     ) |>
     dplyr::rename_with(stringr::str_to_lower) |>
-    residential_filter("use_code") |>
+    # residential_filter("use_code") |>
     dplyr::mutate(
       site_addr = dplyr::case_when(
         is.na(site_addr) & 
@@ -170,7 +180,83 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     dplyr::select(-c(addr_num, full_str))
 }
 
-load_filings <- function(town_ids = FALSE, crs = 2249) {
+get_from_arc <- function(dataset, crs) {
+  prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
+  suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
+  sf::st_read(
+    glue::glue("{prefix}{dataset}{suffix}")
+  ) |>
+    dplyr::rename_with(tolower) |>
+    sf::st_transform(crs)
+}
+
+load_ma_munis <- function(crs) {
+  message("Downloading Massachusetts municipal boundaries...")
+  get_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
+    dplyr::mutate(
+      town = stringr::str_to_title(town),
+      state = "MA"
+    ) |>
+    dplyr::select(town_id, pl_name = town, state) |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::where(is.character), 
+        stringr::str_to_upper)
+      )
+}
+
+load_state_list <- function() {
+  data.frame(
+    abb = state.abb,
+    name = state.name
+  )
+}
+
+load_bos_neighs <- function() {
+  readr::read_csv(
+    "https://raw.githubusercontent.com/mit-spatial-action/utility_datasets/main/bos_neigh.csv",
+    show_col_types = FALSE
+  )
+}
+
+
+load_lu_lookup <- function() {
+  readr::read_csv(
+    "https://raw.githubusercontent.com/MAPC/landparcels/master/land_use_lookup.csv",
+    show_col_types = FALSE
+  )
+}
+
+
+load_zips_by_state <- function(states) {
+  all <- list()
+  for (s in states) {
+    all[[s]] <- tigris::zctas(cb = FALSE, year = 2010, state = s) |>
+      dplyr::mutate(state = s) |>
+      dplyr::select(zip = ZCTA5CE10, state)
+  }
+  zips <- dplyr::bind_rows(all) |> 
+    dplyr::group_by(zip) |>
+    dplyr::mutate(
+      state_ambig = dplyr::case_when(
+        dplyr::n() > 1 ~ TRUE,
+        .default = FALSE
+      )
+    ) |>
+    dplyr::ungroup()
+  ma <- zips |>
+    dplyr::filter(state == "MA") |>
+    sf::st_transform(2249)
+  zips <- sf::st_drop_geometry(zips)
+  list(
+    all = zips,
+    unambig = dplyr::filter(zips, !state_ambig),
+    ma = ma,
+    ma_unambig = dplyr::filter(ma, !state_ambig)
+  )
+}
+
+load_filings <- function(ma_munis, bos_neighs, town_ids = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
   #' @returns A dataframe.
@@ -190,19 +276,11 @@ load_filings <- function(town_ids = FALSE, crs = 2249) {
   )
   # Set limit if test = TRUE
   if (!isFALSE(town_ids)) {
-    q_filter <- MA_MUNIS |>
+    q_filter <- ma_munis |>
       dplyr::filter(town_id %in% town_ids) |>
       dplyr::pull(id) 
     if (35 %in% town_ids) {
-      neighs <- file.path(
-          DATA_DIR, 
-          stringr::str_c(BOS_NEIGH, "csv", sep = ".")
-        ) |>
-        readr::read_delim(
-          delim = ",",
-          show_col_types = FALSE
-          ) |>
-        std_uppercase(c("Name")) |>
+      neighs <- bos_neighs |>
         dplyr::pull(Name)
       q_filter <- c(q_filter, neighs)
     }
