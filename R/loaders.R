@@ -215,15 +215,21 @@ load_address_points <- function(ma_munis, crs) {
   
   all <- list()
   for (id in muni_ids) {
-    filename <- glue::glue("AddressPts_M{id}")
-    url <- glue::glue("{url_base}{filename}.zip")
-    # print(url)
-    all[[id]] <- get_shp_from_remote_zip(
-      url,
-      shpfile = glue::glue("{filename}.shp"),
-      crs = crs
-    ) |>
-      dplyr::select(addr_pt_id)
+    if (id == '035') {
+      # Boston handler---MassGIS does not maintain the Boston Address list.
+      all[[id]] <- get_from_arc("b6bffcace320448d96bb84eabb8a075f_0", 2249) |>
+        dplyr::select(addr_pt_id = parcel) |>
+        dplyr::filter(addr_pt_id != "" & !is.na(addr_pt_id))
+    } else {
+      filename <- glue::glue("AddressPts_M{id}")
+      url <- glue::glue("{url_base}{filename}.zip")
+      all[[id]] <- get_shp_from_remote_zip(
+        url,
+        shpfile = glue::glue("{filename}.shp"),
+        crs = crs
+      ) |>
+        dplyr::select(addr_pt_id)
+    }
   }
   
   df <- dplyr::bind_rows(all)
@@ -236,9 +242,14 @@ load_address_points <- function(ma_munis, crs) {
     ) |>
     dplyr::left_join(
       df,
-      multiple = "first"
-    )
+      multiple = "first",
+      by = "addr_pt_id"
+    ) |>
+    sf::st_set_geometry("geometry") |>
+    dplyr::select(count)
 }
+
+a <- load_address_points(MA_MUNIS, crs = 2249)
 
 load_place_names <- function(crs, ma_munis) {
   
