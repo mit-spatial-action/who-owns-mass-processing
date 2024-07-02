@@ -530,6 +530,74 @@ std_use_codes <- function(df, col){
     )
 }
 
+std_estimate_units <- function(df) {
+  df |>
+    dplyr::mutate(
+      units = dplyr::case_when(
+        is.na(units) ~ 0,
+        .default = units
+      ),
+      units = dplyr::case_when(
+        # Single-family.
+        use_code == '101' ~ 1,
+        # Two-family.
+        use_code == '104' ~ 2,
+        # Three-family.
+        use_code == '105' ~ 3,
+        # 4-8 Unit
+        # ========
+        use_code == '111' & units == 0 & dplyr::between(unit_count, 4, 8) ~
+          unit_count,
+        use_code == '111' & units == 0 & !dplyr::between(unit_count, 4, 8) ~
+          4,
+        use_code == '111' & dplyr::between(units, 4, 8) ~
+          units,
+        use_code == '111' & units != 0 & !dplyr::between(units, 4, 8) & dplyr::between(unit_count, 4, 8)~
+          unit_count,
+        use_code == '111' & units != 0 & !dplyr::between(units, 4, 8) & !dplyr::between(unit_count, 4, 8)~
+          4,
+        # 112: >8 Unit
+        # ========
+        use_code == '112' & units == 0 & unit_count > 8 ~
+          unit_count,
+        use_code == '112' & units == 0 & unit_count <= 8 ~
+          9,
+        use_code == '112' & units > 8 & units == unit_count ~
+          units,
+        use_code == '112' & units > 8 & units > unit_count ~
+          units,
+        use_code == '112' & units > 8 & units < unit_count ~
+          unit_count,
+        use_code == '112' & dplyr::between(units, 1, 8) & unit_count <= 8 ~
+          9,
+        use_code == '112' & dplyr::between(units, 1, 8) & unit_count > 8 ~
+          unit_count,
+        # 102: Condos
+        # ========
+        use_code == '102' & units == 0 ~
+          unit_count,
+        use_code == '102' & units != 0 & units == unit_count ~
+          units - 1,
+        use_code == '102' & units != 0 & units > unit_count ~
+          units - 1,
+        use_code == '102' & units != 0 & units < unit_count ~
+          unit_count,
+        # 109: Multi House, 0xx: Multi-Use, 103: Mobile Home
+        # ========
+        use_code %in% c('109', '0xx', '103') & units == 0 ~
+          unit_count,
+        use_code %in% c('109', '0xx', '103') & units != 0 & units == unit_count ~
+          units,
+        use_code %in% c('109', '0xx', '103') & units != 0 & units > unit_count ~
+          units,
+        use_code %in% c('109', '0xx', '103') & units != 0 & units < unit_count ~
+          unit_count,
+        .default = units
+      )
+    ) |>
+    dplyr::select(-unit_count)
+}
+
 std_massachusetts <- function(df, cols, street_name = FALSE) {
   #' Replace variations of Massachusetts with MA
   #'
