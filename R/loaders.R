@@ -180,6 +180,95 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     dplyr::select(-c(addr_num, full_str))
 }
 
+get_remote_zip <- function(url, path) {
+  httr::GET(
+    paste0(url), 
+    httr::write_disk(path, overwrite = TRUE)
+  )
+}
+
+read_shp_from_zip <- function(path, layer) {
+  path <- stringr::str_c("/vsizip/", path, "/", layer)
+  sf::st_read(path, quiet=TRUE)
+}
+
+get_shp_from_remote_zip <- function(url, shpfile, crs) {
+  message(
+    glue::glue("Downloading {shpfile} from {url}...")
+  )
+  temp <- base::tempfile(fileext = ".zip")
+  get_remote_zip(
+    url = url,
+    path = temp
+  )
+  read_shp_from_zip(temp, shpfile) |>
+    dplyr::rename_with(tolower) |>
+    sf::st_transform(crs)
+}
+
+load_place_names <- function(crs, ma_munis) {
+  
+  ma_munis <- dplyr::select(ma_munis, muni_name = pl_name)
+  
+  df <- get_shp_from_remote_zip(
+    "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/geonames_shp.zip",
+    shpfile = "GEONAMES_PT_PLACES.shp",
+    crs = crs
+    ) |>
+    dplyr::rename(pl_name = labeltext) |>
+    dplyr::select(-angle) |>
+    dplyr::mutate(
+      pl_name = stringr::str_replace(pl_name, "BORO$", "BOROUGH"),
+      pl_name = stringr::str_remove_all(
+        pl_name, "(?<=\\b\\w)[ ]{1,2}(?=\\w\\b)"
+      ),
+      pl_name = stringr::str_replace_all(
+        pl_name, "([\\s]+)", " "
+      )
+    ) |>
+    sf::st_join(
+      ma_munis, join = sf::st_intersects
+    )
+  
+  df <- df |>
+    dplyr::filter(is.na(muni_name)) |>
+    dplyr::select(-muni_name) |>
+    sf::st_join(
+      ma_munis, join = sf::st_nearest_feature
+    ) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!is.na(muni_name))
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::distinct()
+  
+  df |>
+    dplyr::bind_rows(
+      ma_munis |>
+        sf::st_drop_geometry() |>
+        dplyr::filter(!(muni_name %in% df$pl_name)) |>
+        dplyr::mutate(
+          pl_name = muni_name
+        )
+    ) |>
+    dplyr::mutate(
+      tmp = dplyr::case_when(
+        stringr::str_detect(pl_name, "^(SOUTH|EAST|WEST|NORTH)\\w|PORT$") &
+          !stringr::str_detect(pl_name, " ") ~
+          stringr::str_c(
+            stringr::str_sub(pl_name, start = 1, end = 2),
+            " ",
+            stringr::str_sub(pl_name, start = 3)
+          ),
+        .default = pl_name
+      ),
+      pl_name_fuzzy = fuzzify_string(tmp)
+    ) |>
+    dplyr::select(-tmp) |>
+    dplyr::filter(!(pl_name == "CAMBRIDGE" & muni_name == "WORCESTER"))
+}
+
 get_from_arc <- function(dataset, crs) {
   prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
   suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
@@ -191,32 +280,35 @@ get_from_arc <- function(dataset, crs) {
 }
 
 load_ma_munis <- function(crs) {
+  #' Downloads MA municipalities from MassGIS ArcGIS Hub.
+  #'
+  #' @param crs Coordinate reference system for output.
+  #' @export
   message("Downloading Massachusetts municipal boundaries...")
   get_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
-    dplyr::mutate(
-      town = stringr::str_to_title(town),
-      state = "MA"
-    ) |>
-    dplyr::select(town_id, pl_name = town, state) |>
+    dplyr::select(town_id, pl_name = town) |>
     dplyr::mutate(
       dplyr::across(
         dplyr::where(is.character), 
         stringr::str_to_upper)
-      )
-}
-
-load_state_list <- function() {
-  data.frame(
-    abb = state.abb,
-    name = state.name
-  )
+      ) |>
+    dplyr::mutate(
+      pl_name = dplyr::case_when(
+        pl_name == "MANCHESTER" ~ "MANCHESTER BY THE SEA",
+        .default = pl_name
+      ),
+      pl_name = stringr::str_replace(pl_name, "BORO$", "BOROUGH")
+    )
 }
 
 load_bos_neighs <- function() {
   readr::read_csv(
     "https://raw.githubusercontent.com/mit-spatial-action/utility_datasets/main/bos_neigh.csv",
     show_col_types = FALSE
-  )
+  ) |>
+    dplyr::mutate(
+      name = toupper(name)
+    )
 }
 
 
@@ -227,10 +319,24 @@ load_lu_lookup <- function() {
   )
 }
 
+overlap_analysis <- function(x, y, threshold = 0) {
+  x |>
+    dplyr::mutate(
+      area = sf::st_area(geometry)
+    ) |>
+    sf::st_intersection(y) |>
+    dplyr::mutate(
+      overlap = units::drop_units(sf::st_area(geometry) / area)
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::filter(
+      overlap > threshold
+    )
+}
 
-load_zips_by_state <- function(states) {
+load_zips_by_state <- function(crs, ma_munis, threshold = 0.95) {
   all <- list()
-  for (s in states) {
+  for (s in state.abb) {
     all[[s]] <- tigris::zctas(cb = FALSE, year = 2010, state = s) |>
       dplyr::mutate(state = s) |>
       dplyr::select(zip = ZCTA5CE10, state)
@@ -238,28 +344,58 @@ load_zips_by_state <- function(states) {
   zips <- dplyr::bind_rows(all) |> 
     dplyr::group_by(zip) |>
     dplyr::mutate(
-      state_ambig = dplyr::case_when(
-        dplyr::n() > 1 ~ TRUE,
+      state_unambig = dplyr::case_when(
+        dplyr::n() == 1 ~ TRUE,
         .default = FALSE
       )
     ) |>
     dplyr::ungroup()
-  ma <- zips |>
+  
+  zips_ma <- zips |>
     dplyr::filter(state == "MA") |>
-    sf::st_transform(2249)
+    sf::st_transform(crs)
+  
   zips <- sf::st_drop_geometry(zips)
+  
+  ma_munis_clip <- ma_munis |>
+    sf::st_intersection(
+      sf::st_union(zips_ma)
+    )
+  
+  zips_ma_clip <- zips_ma |>
+    sf::st_intersection(
+      sf::st_union(ma_munis_clip)
+    )
+    
+  # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
+  # where the vast majority of a zip is contained w/in a single muni.)
+  ma_umanbig_zip_from_muni <- overlap_analysis(ma_munis_clip, 
+                                               zips_ma_clip, 
+                                               threshold = threshold) |>
+    dplyr::select(zip, state, pl_name)
+  
+  # Identify cases where munis can be unambiguously assigned
+  # from ZIPS (i.e., where the vast majority of a muni is contained w/in
+  # a single zip).
+  ma_unambig_muni_from_zip <- overlap_analysis(zips_ma_clip, 
+                                               ma_munis_clip, 
+                                               threshold = threshold) |>
+    dplyr::select(zip, state, pl_name)
+  
   list(
-    all = zips,
-    unambig = dplyr::filter(zips, !state_ambig),
-    ma = ma,
-    ma_unambig = dplyr::filter(ma, !state_ambig)
+    all = dplyr::pull(zips, zip) |> unique(),
+    unambig = dplyr::filter(zips, state_unambig),
+    ma = zips_ma,
+    ma_unambig = dplyr::filter(zips_ma, state_unambig),
+    ma_unambig_zip_from_muni = ma_umanbig_zip_from_muni,
+    ma_unambig_muni_from_zip = ma_unambig_muni_from_zip
   )
 }
 
 load_filings <- function(ma_munis, bos_neighs, town_ids = FALSE, crs = 2249) {
   #' Pulls eviction filings from database.
   #'
-  #' @returns A dataframe.
+  #' @return A dataframe.
   #' @export
   # Construct SQL query.
   docket_col <- "docket_id"

@@ -1,0 +1,1718 @@
+USE_CODE,LUC_Assign,L3_Description,USE_DESC
+997V,997,Other,NA
+996V,996,"Other, Non-taxable condo common land",Other non Tax C
+996P,996,"Other, Non-taxable condo common land",NA
+995V,995,"Other, Open Space",NA
+995I,995,"Other, Open Space",OTHER OP SP IND
+995C,995,"Other, Open Space",NA
+993V,993,Improved County or Regional Correctional,NA
+992R,992,"Improved, County or Regional, Deeds or Admin",County/Reg Deed
+992I,992,"Improved, County or Regional, Deeds or Admin",county improved
+991V,991,"Vacant, County or Regional",County/Regional
+990V,990,121A Corporations,121A CORP
+990C,990,121A Corporations,121A CORP
+989V,989,"Improved , Other District",NA
+989R,989,"Improved , Other District",NA
+989I,989,"Improved , Other District",NA
+985V,985,"Improved Municipal or Public Safety, Other City or Town",NA
+985I,985,"Improved Municipal or Public Safety, Other City or Town",OTHER CITY
+981V,981,"Improved, Selectmen or City Council, Other City or Town",NA
+980V,980,"Vacant, Selectman or City Council, Other City or Town",NA
+976V,976,NA,NA
+975V,975,"Vacant, Transportation Authority",NA
+974V,974,"Vacant, Utility Authority",Municipal MDL-00
+973V,973,"Vacant, Housing Authority",Housing Authori
+972V,972,Transportation Authority,TRANS AUTH
+972I,972,Transportation Authority,TRANS AUTH
+972C,972,Transportation Authority,TRANS AUTH
+971V,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+971R,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+971I,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+971C,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+970V,970,Housing Authority,HSING AUTH MDL 00
+970R,970,Housing Authority,NA
+970M,970,Housing Authority,NA
+970I,970,Housing Authority,NA
+970C,970,Housing Authority,HOUSING AUTH COMM
+962V,962,Other,NA
+962R,962,Other,NA
+962D,962,Other,NA
+962C,962,Other,OTHER RELIG
+961W,961,Rectory or Parsonage,REC/PARSON WATER
+961V,961,Rectory or Parsonage,NA
+961R,961,Rectory or Parsonage,NA
+961C,961,Rectory or Parsonage,RECTORY
+960V,960,"Chruch, Mosque, Synagogue, Temple, etc.",NA
+960R,960,"Chruch, Mosque, Synagogue, Temple, etc.",Church Etc. MDL
+960I,960,"Chruch, Mosque, Synagogue, Temple, etc.",NA
+960C,960,"Chruch, Mosque, Synagogue, Temple, etc.","Church, etc. MDL"
+959V,959,"Housing, Other",NA
+959U,959,"Housing, Other",NA
+959R,959,"Housing, Other",NA
+959C,959,"Housing, Other",charitable housing comm
+958V,958,"Recreation, Active Use",NA
+958R,958,"Recreation, Active Use",recreation residential
+958I,958,"Recreation, Active Use",recreation industrial
+958C,958,"Recreation, Active Use",NA
+958A,958,"Recreation, Active Use",NA
+957V,957,Charitable Services,NA
+957U,957,Charitable Services,CHAR SER
+957R,957,Charitable Services,NA
+957M,957,Charitable Services,NA
+957I,957,Charitable Services,CHAR SERV IN
+957C,957,Charitable Services,CHARITABLE CM CONDO
+956V,956,"Libraries, Museums",LIBRARY VAC
+956R,956,"Libraries, Museums",LIBRARY RES
+956C,956,"Libraries, Museums",LIBRARY MDL 94
+955V,955,Hospitals,NA
+955R,955,Hospitals,NA
+955C,955,Hospitals,HOSP
+954V,954,"Function Halls, Community Centers",CHARITABLE VACANT
+954R,954,"Function Halls, Community Centers",NA
+954I,954,"Function Halls, Community Centers",NA
+954C,954,"Function Halls, Community Centers",NA
+953V,953,Cemeteries,NA
+953R,953,Cemeteries,NA
+953I,953,Cemeteries,NA
+953C,953,Cemeteries,CEMETERY IMP
+951V,951,Other,Char Other M-00
+951R,951,Other,Char Other M-01
+951I,951,Other,NA
+951C,951,Other,Char Other M-94
+951A,951,Other,NA
+950V,950,"Vacant, Conservation Organizations",NA
+950R,950,"Vacant, Conservation Organizations",NA
+947V,947,Other,NA
+946V,946,Vacant,Priv Edu M-00
+945R,945,Affiliated Housing,NA
+945C,945,Affiliated Housing,PRIV AFF HSING COMM
+944V,944,Auxiliary Athletic,NA
+944C,944,Auxiliary Athletic,NA
+943V,943,Other Educational,NA
+943I,943,Other Educational,Priv Other Edu
+943C,943,Other Educational,NA
+942V,942,College or University,VAC PRIV COL
+942R,942,College or University,PRVT COLLEGE
+942C,942,College or University,PRIV COLL
+941R,941,Secondary Level,PRI School MDL
+941I,941,Secondary Level,NA
+941C,941,Secondary Level,PRIV SEC LVL
+940V,940,Elementary Level,NA
+940R,940,Elementary Level,NA
+940C,940,Elementary Level,PRIV ELEM
+939V,939,"Improved, District",NA
+939R,939,"Improved, District",NA
+939C,939,"Improved, District",IMPRO CNTY
+938V,938,Vacant. District,NA
+937R,937,"Improved, Tax Title/Treasurer",MUN IMPR TT RES
+937C,937,"Improved, Tax Title/Treasurer",NA
+936V,936,"Vacant, Tax,Title/Treasurer",TAX TITLE VAC
+935V,935,"Improved, Muni public safety",NA
+935P,935,"Improved, Muni public safety",NA
+935I,935,"Improved, Muni public safety",improved public safety
+935H,935,"Improved, Muni public safety",NA
+935F,935,"Improved, Muni public safety",NA
+935C,935,"Improved, Muni public safety",improved public safety
+934V,934,"Improved, Education",VAC Educational
+934R,934,"Improved, Education",NA
+934I,934,"Improved, Education",NA
+934C,934,"Improved, Education",NA
+933V,933,"Vacant, Education",NA
+932V,932,"Vacant, Conservation",NA
+932R,932,"Vacant, Conservation",NA
+932I,932,"Vacant, Conservation",NA
+931V,931,"Improved, Selectmen or City Council",NA
+931R,931,"Improved, Selectmen or City Council",MUN IMPRVD RES
+931N,931,"Improved, Selectmen or City Council",NA
+931I,931,"Improved, Selectmen or City Council",NA
+931C,931,"Improved, Selectmen or City Council",NA
+930W,930,"Vacant, Selectman or City Council",MUN VACANT WATER
+930V,930,"Vacant, Selectman or City Council",Unknown
+930R,930,"Vacant, Selectman or City Council",NA
+930C,930,"Vacant, Selectman or City Council",COMM MASS MBTA
+929V,929,Other,NA
+929I,929,Other,MA-OTHER  MDL-96
+929C,929,Other,MA-OTHER  MDL-94
+928V,928,Div of Capital Asset Management,DCAM - VAC
+928C,928,Div of Capital Asset Management,NA
+927V,927,"Education - Umass, State Colleges, Comm Colleges",NA
+927C,927,"Education - Umass, State Colleges, Comm Colleges",NA
+926C,926,Judiciary,MA-JUDIC  MDL-94
+925V,925,Dept of Conservation and Recreation,CON & REC MDL-00
+925I,925,Dept of Conservation and Recreation,MDC  MDL-96
+925C,925,Dept of Conservation and Recreation,COMM MASS MDC
+924V,924,Mass Highway Dept.,MASS HWY MDL-00
+924R,924,Mass Highway Dept.,NA
+924I,924,Mass Highway Dept.,commonwealth mass  model 96
+924C,924,Mass Highway Dept.,NA
+923V,923,Dept of Mental Health,NA
+922V,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",MASS MILITARY
+922I,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",NA
+922C,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",MASS. MILITARY
+921V,921,"Div of Fisheries and Wildlife,  DFW Environ Law Enforcement",NA
+920V,920,"Dept of Conservation and Recreation, Div of Urban Parks",NON-PROFIT UNIMPROVED (VACANT)
+920R,920,"Dept of Conservation and Recreation, Div of Urban Parks",NON PROFIT MDL-01
+920C,920,"Dept of Conservation and Recreation, Div of Urban Parks",NON PROFIT MDL-94
+919V,919,Other,NA
+919R,919,Other,NA
+919C,919,Other,NA
+917V,917,"Education, Umass, State Colleges, Comm Colleges",NA
+917I,917,"Education, Umass, State Colleges, Comm Colleges",NA
+917C,917,"Education, Umass, State Colleges, Comm Colleges",NA
+915V,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+915R,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+915I,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+915E,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+915C,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+914V,914,Dept of Mental Health,NA
+913R,913,"Dept of Public Health, Soldiers' Homes",NA
+913I,913,"Dept of Public Health, Soldiers' Homes",SOLD HOME  MDL-96
+913C,913,"Dept of Public Health, Soldiers' Homes",SOLD HOME  MDL-94
+912V,912,"Dept of Correction, Div of Youth Services",DOC/DYS M-00
+912R,912,"Dept of Correction, Div of Youth Services",CORR REIMB  MDL-01
+912I,912,"Dept of Correction, Div of Youth Services",DOC/DYS M-96
+911V,911,"Div of Fisheries and Wildlife, Environmental Law Enforcement",NA
+910V,910,"Dept of Conservation and Recreation, Div of state parks",NA
+910R,910,"Dept of Conservation and Recreation, Div of state parks",DEM REIMB  MDL-01
+910C,910,NA,CHARITABLE  MDL-94
+910B,910,"Dept of Conservation and Recreation, Div of state parks",NA
+909V,909,NA,NA
+909R,909,NA,NA
+909I,909,NA,NA
+909C,909,NA,NA
+908V,970,NA,HSNG AUTH  MDL-00
+908U,970,NA,HSNG AUTH MDL
+908R,970,NA,Hsng Auth MDL
+908M,908,NA,NA
+908C,970,NA,HSNG AUTH  MDL-94
+907J,907,NA,NA
+906V,960,NA,CHURCH ETC MDL
+906R,960,NA,CHURCH ETC MDL-01
+906O,960,NA,CHURCH ETC MDL-06
+906I,960,NA,CHURCH ETC MDL
+906C,960,NA,CHURCH ETC  MDL-94
+905V,957,NA,CHARIT-MDL-00
+905R,957,NA,CHARIT MDL-01
+905O,957,NA,CHARIT MDL-06
+905I,905,NA,NA
+905C,955,NA,P/HOS CHAR  MDL-94
+905B,905,NA,NA
+904V,943,NA,PRI SCHOOL  MDL-00
+904U,943,NA,PRI SCHOOL  MDL-05
+904R,943,NA,PRI SCHOOL MDL-01
+904I,943,NA,PRI SCHOOL  MDL-96
+904C,943,NA,PRI SCHOOL  MDL-94
+903Z,903,NA,NA
+903V,930,NA,MUNICPAL MDL-0
+903U,903,NA,MUNICPAL MDL-05
+903R,903,NA,MUNICPAL MDL-0
+903L,903,NA,NA
+903J,903,NA,NA
+903I,904,NA,MUNICPAL MDL-96
+903C,903,NA,MUNICPAL  MDL-94
+903B,903,NA,NA
+903A,903,NA,PUB-SCHOOL  MDL-00
+902V,902,NA,COUNTY MDL-00
+902I,902,NA,NA
+902C,902,NA,NA
+901V,901,BLANK,COMM-MASS  MDL-00
+901T,901,BLANK,NA
+901S,901,BLANK,COMM-MASS  MDL-95
+901R,901,BLANK,COMM-MASS  MDL-01
+901I,901,BLANK,NA
+901C,901,BLANK,NA
+900V,900,United States Government,US GOVT  MDL-00
+900R,900,United States Government,US GOVT  MDL-01
+900I,900,United States Government,NA
+900C,900,United States Government,US GOV -COMM
+814C,814,NA,61B TARGET  M-9
+811V,811,Swimming Areas,NA
+810V,810,NA,61B HIKE  MDL-00
+807C,807,Hunting - areas for the hunting of wildlife and Fishing Areas,NA
+805V,805,Golfing - area of land arraged as a golf course,NA
+805R,805,Golfing - area of land arraged as a golf course,"Golfing - areas of land arranged as a golf course (Ch. 61B, not classified as Open Space) RES"
+805C,805,Golfing - area of land arraged as a golf course,NA
+801V,801,"Hiking - trails or paths, Camping - areas with sites for overnight camping, Nature Study - areas specifically for nature study or observation",NA
+800V,800,NA,NA
+800R,800,NA,NA
+722V,722,NA,NA
+722P,722,NA,NA
+720R,720,"Wet land, scrub land, rock land",NA
+720C,720,"Wet land, scrub land, rock land",NA
+720A,720,"Wet land, scrub land, rock land",NA
+719I,719,Nurseries,NA
+719A,719,Nurseries,NA
+718V,718,Pasture,PASTURE  MDL-00
+718R,718,Pasture,NA
+718P,718,Pasture,NA
+718O,718,Pasture,NA
+718A,718,Pasture,NA
+717V,717,Productive Woodland - woodlot,NA
+717P,717,Productive Woodland - woodlot,NA
+717B,717,Productive Woodland - woodlot,NA
+717A,717,Productive Woodland - woodlot,NA
+716V,716,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+716B,716,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+714V,714,"Orchards - pears, apples, grape vineyards, etc.",NA
+714C,714,"Orchards - pears, apples, grape vineyards, etc.",NA
+713V,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",FIELD CRPS  MDL-00
+713P,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+713O,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+713C,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+713A,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+712V,712,Truck Crops - Vegetables,TR CRP VEG  MDL-00
+712P,712,Truck Crops - Vegetables,NA
+712A,712,Truck Crops - Vegetables,NA
+711V,711,"Tobacco, Sod",NA
+710N,710,Cranberry Bog,NA
+710M,710,Cranberry Bog,NA
+710L,710,Cranberry Bog,NA
+710H,710,Cranberry Bog,NA
+710E,710,Cranberry Bog,NA
+710D,710,Cranberry Bog,NA
+710C,710,Cranberry Bog,NA
+710B,710,Cranberry Bog,NA
+710A,710,Cranberry Bog,NA
+610V,610,NA,NA
+610I,610,NA,NA
+601V,601,All land designated under Chapter 61,NA
+601U,601,All land designated under Chapter 61,NA
+601P,601,All land designated under Chapter 61,NA
+601B,601,All land designated under Chapter 61,NA
+601A,601,All land designated under Chapter 61,NA
+450V,450,Electric Generation Plants,NA
+442V,442,Undevelopable Land,NA
+441V,441,Potentially Developable Land,NA
+440V,440,Developable Land,NA
+433V,433,"radio, television trasmission facilities",NA
+433C,433,"radio, television trasmission facilities",NA
+432V,432,cable tv transmitting facilities,NA
+431V,431,telephone relay towers,NA
+431I,431,telephone relay towers,NA
+431A,431,telephone relay towers,NA
+430V,430,Telephone exchange stations,TEL X STA M-00
+428V,428,gas pressure control stations,NA
+427V,427,Natural or manufactured gas storage,NA
+426V,426,Gas pipeline right-of-way,NA
+424V,424,electricity regulating substations,ELECSUBSTA  MDL-00
+424I,424,electricity regulating substations,NA
+424C,424,electricity regulating substations,NA
+423V,423,electric transmission right-of-way,NA
+422V,422,NA,NA
+421V,421,liquid natural gas tanks,NA
+421I,421,liquid natural gas tanks,NA
+420I,420,tanks,NA
+412V,412,rock,NA
+412C,412,rock,NA
+410V,410,Sand and gravel,SAND & GRAVEL MDL-00
+410I,410,Sand and gravel,NA
+410C,410,Sand and gravel,SAND&GRAVL M-94
+404C,404,research and development facilities,R-D FACIL MDL
+403V,403,land - integral part of manufacturing operation,NA
+402I,402,office buildings - part of manufacturing operation,IND CONDO MDL
+402C,402,office buildings - part of manufacturing operation,IND OFFICE MDL-94
+401V,401,Warehouses for storage of manufactured products,IND WHSES MDL-00
+401C,401,Warehouses for storage of manufactured products,IND WHSES  MDL-94
+400V,400,Building for manufacturing operations,FACTORY  MDL-00
+400R,400,Building for manufacturing operations,NA
+400C,400,Building for manufacturing operations,FACTORY MDL-94
+393V,393,Ag/Horticultural land not included in Chapter 61A,NA
+393N,393,Ag/Horticultural land not included in Chapter 61A,NA
+392V,392,Undevelopable Land,NA
+390V,390,Developable Land,NA
+390R,390,Developable Land,NA
+390I,390,Developable Land,NA
+388V,388,"Other outdoor facilities - driving ranges, mini-golf, batting cages",NA
+388I,388,"Other outdoor facilities - driving ranges, mini-golf, batting cages",OTHR OUTDR M-96
+387R,387,summer camps,NA
+386V,386,camping facilities,NA
+386R,386,camping facilities,NA
+386I,386,camping facilities,NA
+385V,385,fish and game clubs,NA
+385C,385,fish and game clubs,NA
+384V,384,marinas,MARINAS  MDL-00
+384R,384,marinas,NA
+384I,384,marinas,NA
+384A,384,marinas,NA
+383V,383,Beaches or swimming pools,NA
+382V,382,riding stables,NA
+381V,381,tennis courts,NA
+381R,381,tennis courts,NA
+380V,380,Golf courses,NA
+380I,380,Golf courses,NA
+377I,377,"archery, billiards. And other indoor facilities",NA
+376I,376,gymnasiums and athletic clubs,NA
+375V,375,tennis and/or racquetball courts,NA
+375R,375,tennis and/or racquetball courts,NA
+371I,371,NA,ICE SKATE M-96
+371C,371,ice skating,NA
+369I,369,other cultural and entertainment properties,NA
+356V,356,"Misc public services - prof membership orgs, business associations",NA
+355V,355,funeral homes,FUNERAL HM  MDL-00
+355R,355,funeral homes,NA
+354U,354,Bus Transportation facilities,NA
+354I,354,Bus Transportation facilities,NA
+353V,353,Fraternal Organizations,PRIV CLUB  MDL-00
+351I,351,educational properties,NA
+34R,34R,NA,NA
+345I,404,NA,OFFICE LAB MDL-96
+343U,343,NA,NA
+343O,343,NA,NA
+342R,342,Medical Office Buildings,NA
+342O,342,Medical Office Buildings,PROF BLDG  MDL-06
+342I,342,Medical Office Buildings,NA
+341V,341,Bank Buildings,NA
+341S,341,Bank Buildings,NA
+341I,341,Bank Buildings,NA
+340V,340,General Office Buildings,OFFICE BLD  MDL-00
+340R,340,General Office Buildings,NA
+340O,340,General Office Buildings,NA
+340L,340,NA,OFF CONDO  MDL-96
+340I,340,General Office Buildings,OFF BLD MDL
+340C,340,General Office Buildings,OFF CONDO MDL
+33I,33I,NA,NA
+338V,338,Other motor vehicles sales and services,NA
+338I,338,Other motor vehicles sales and services,OTH MTR SS M-96
+337V,337,Parking Lots,NA
+337I,337,Parking Lots,PARK LOT  MDL-96
+335I,335,Car Wash facilities,NA
+334V,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",Outbuildings
+334S,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",GAS ST SRV  MDL-95
+334I,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",GAS ST SRV  MDL-96
+334C,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",NA
+333V,333,Fuel Services Areas - providing only fuel products,FUEL SV/PR MDL-00
+333I,333,Fuel Services Areas - providing only fuel products,NA
+332V,332,Auto Repair facilities,NA
+332S,332,Auto Repair facilities,AUTO REPR  MDL-95
+332R,332,Auto Repair facilities,NA
+332I,332,Auto Repair facilities,AUTO REPR MDL
+332C,332,Auto Repair facilities,NA
+331V,331,Automotive Supplies Sales and Serivice,NA
+331I,331,Automotive Supplies Sales and Serivice,NA
+331C,331,Automotive Supplies Sales and Serivice,NA
+330V,330,Automotive Vehicles Sales and Service,AUTO V S&S MDL
+330S,330,Automotive Vehicles Sales and Service,NA
+330I,330,Automotive Vehicles Sales and Service,"Automotive Vehicles Sales and Service, Table I"
+327V,327,NA,NA
+327R,327,NA,NA
+327C,327,NA,NA
+326U,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",NA
+326R,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",NA
+326I,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",REST/CLUBS  MDL-96
+326A,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",NA
+325V,325,Small Retail and Services stores (< 10K sq.ft.),CONV FOOD  MDL-00
+325R,325,Small Retail and Services stores (< 10K sq.ft.),NA
+325I,325,Small Retail and Services stores (< 10K sq.ft.),CONV FOOD  MDL-96
+325C,325,Small Retail and Services stores (< 10K sq.ft.),NA
+324I,324,Supermarkets (> 10k sq. ft.),NA
+323V,323,Shopping Centers/Malls,NA
+323I,323,Shopping Centers/Malls,MALL  M-96
+323C,323,Shopping Centers/Malls,NA
+322V,322,"Discount Stores, Junior Department Stores, Department Stores",STORE/SHOP  MDL-00
+322R,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+322O,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+322L,322,"Discount Stores, Junior Department Stores, Department Stores",COMM BLDG  MDL-96
+322K,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+322I,322,"Discount Stores, Junior Department Stores, Department Stores",STORE/SHOP  MDL-96
+322C,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+322A,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+321V,321,"Facilities providing buidling materials, hardware and farm equipment, heating, hardware, plumbing, lumber supplies and wquipment",HRDWARE ST MDL
+321I,321,"Facilities providing buidling materials, hardware and farm equipment, heating, hardware, plumbing, lumber supplies and wquipment",HRDWARE ST  MDL-96
+31I,31I,NA,NA
+318V,318,Commercial Greenhouses,NA
+318C,318,Commercial Greenhouses,NA
+317V,317,"Farm Buildings - barns, silos, utility shed, etc.",NA
+316V,316,"Other Storage, Warehouse and Distribution facilities",COMM WHSE  MDL-00
+316S,316,"Other Storage, Warehouse and Distribution facilities",NA
+316R,316,"Other Storage, Warehouse and Distribution facilities",NA
+316I,316,"Other Storage, Warehouse and Distribution facilities",COMM WHSE  MDL-96
+316C,316,"Other Storage, Warehouse and Distribution facilities",NA
+316A,316,"Other Storage, Warehouse and Distribution facilities",NA
+315V,315,"Piers, Wharves, Docks and related facilities that are used for storage and transit of goods",NA
+315I,315,"Piers, Wharves, Docks and related facilities that are used for storage and transit of goods",NA
+314V,314,Trucking Terminals,NA
+314I,314,Trucking Terminals,NA
+314C,314,Trucking Terminals,NA
+313V,313,Lumber Yards,NA
+313I,313,Lumber Yards,NA
+313C,313,Lumber Yards,NA
+311V,311,Bottled Gas and Propane Gas Tanks,NA
+311I,311,Bottled Gas and Propane Gas Tanks,NA
+310V,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",RTL OIL ST  MDL-00
+310S,310,NA,RTL OIL ST  MDL-95
+310L,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",NA
+310I,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",RTL OIL ST  MDL-96
+303A,303,BLANK,ACC COM LND
+302R,302,"Inns, Resorts, or Tourist Homes",NA
+301R,301,Motels,NA
+301O,301,Motels,NA
+300R,300,Hotels,NA
+300I,300,Hotels,NA
+140R,140,Child Care Facility,Child Care Facility Res
+140I,140,Child Care Facility,DAY CARE MDL-96
+140C,140,Child Care Facility,CHILD CARE C
+13C,13C,NA,NA
+132V,132,Undevelopable Land,Undevelopable Residential Land VACANT
+132R,132,Undevelopable Land,NA
+131V,131,Potentially Developable Land,Potentially Developable Residential Land VACANT
+130V,130,Developable Land,RES ACLNDV  MDL-00
+130R,130,Developable Land,NA
+130B,130,Developable Land,NA
+126R,126,NA,NA
+126C,126,NA,NA
+125R,125,Other Congregate Housing which includes non-transient shared living arrangements,NA
+125C,125,Other Congregate Housing which includes non-transient shared living arrangements,OTHR LIV F  MDL-94
+123C,123,Residence Halls or Dormitories,NA
+121C,121,Rooming and Boarding Houses,NA
+113C,113,NA,NA
+112V,112,Greater than Eight Units,APT OVER 8 MDL-00
+112R,112,Greater than Eight Units,"Apartment, Old Style"
+112M,112,Greater than Eight Units,NA
+112I,112,Greater than Eight Units,APT OVER 8 MDL-96
+112C,112,Greater than Eight Units,APT OVER 8 MDL
+111V,111,NA,APT 4-8 MDL-00
+111R,111,Four to Eight Units,NA
+111M,111,Four to Eight Units,NA
+111J,111,Four to Eight Units,NA
+111E,111,Four to Eight Units,NA
+111C,111,Four to Eight Units,APT 4-UNT MDL
+109V,109,Multiple houses on a single parcel,Multi Hses  M-0
+109T,109,Multiple houses on a single parcel,NA
+109R,109,Multiple houses on a single parcel,NA
+109M,109,Multiple houses on a single parcel,NA
+109C,109,Multiple houses on a single parcel,NA
+107V,107,BLANK,NA
+106V,106,Accessory Land with improvement,Ac Imp MDL-00
+106R,106,Accessory Land with improvement,NA
+106I,106,Accessory Land with improvement,AC LND IMP MDL-96
+106C,106,Accessory Land with improvement,NA
+105R,105,Three Family,NA
+105M,105,Three Family,NA
+104R,104,Two Family,Unknown
+104M,104,Two Family,NA
+104D,104,Two Family,NA
+104A,104,Two Family,NA
+103V,103,Mobile Home,NA
+103R,103,Mobile Home,NA
+103P,103,Mobile Home,NA
+103I,103,Mobile Home,NA
+103C,103,Mobile Home,NA
+103A,103,Mobile Home,NA
+102V,102,Condominium,Condo NL MDL-0
+102U,102,Condominium,AFFORDABLE  MDL-05
+102R,102,Condominium,NA
+102M,102,Condominium,NA
+102I,102,Condominium,NA
+102H,102,Condominium,NA
+102C,102,Condominium,NA
+101V,131,NA,Single Family Residential VACANT
+101R,101,Single Family,NA
+101M,101,Single Family,NA
+101H,101,Single Family,NA
+101F,101,Single Family,NA
+101C,101,Single Family,NA
+101B,101,Single Family,NA
+101A,101,Single Family,NA
+098,0xx,Multiple Uses,NA
+097,0xx,Multiple Uses,NA
+0961,0xx,Multiple Uses,NA
+0960,960,"Chruch, Mosque, Synagogue, Temple, etc.",NA
+0956,0xx,Multiple Uses,NA
+0940,0xx,Multiple Uses,NA
+094,0xx,Multiple Uses,NA
+0938,0xx,Multiple Uses,NA
+0934,0xx,Multiple Uses,NA
+0931,0xx,Multiple Uses,NA
+0930,0xx,Multiple Uses,NA
+093,0xx,Multiple Uses,NA
+0920,0xx,Multiple Uses,NA
+0914,0xx,Multiple Uses,NA
+0910,0xx,Multiple Uses,NA
+091,0xx,Multiple Uses,NA
+0909,0xx,Multiple Uses,NA
+0905,0xx,Multiple Uses,NA
+0904,0xx,Multiple Uses,NA
+0903,0xx,Multiple Uses,NA
+089,0xx,Multiple Uses,NA
+0873,0xx,Multiple Uses,NA
+0870,0xx,Multiple Uses,NA
+087,0xx,Multiple Uses,NA
+0860,0xx,Multiple Uses,NA
+086,0xx,Multiple Uses,NA
+0840,0xx,Multiple Uses,NA
+084,0xx,Multiple Uses,NA
+0837,0xx,Multiple Uses,NA
+0831,0xx,Multiple Uses,NA
+0830,0xx,Multiple Uses,NA
+083,0xx,Multiple Uses,NA
+0816,0xx,Multiple Uses,NA
+0814,0xx,Multiple Uses,NA
+0811,0xx,Multiple Uses,NA
+0810,0xx,Multiple Uses,NA
+081,0xx,Multiple Uses,NA
+080C,0xx,Multiple Uses,NA
+0808,0xx,Multiple Uses,NA
+0807,0xx,Multiple Uses,NA
+0806,0xx,Multiple Uses,NA
+0805,0xx,Multiple Uses,NA
+0803,0xx,Multiple Uses,NA
+0802,0xx,Multiple Uses,NA
+0801,0xx,Multiple Uses,NA
+0800,0xx,Multiple Uses,NA
+078,0xx,Multiple Uses,NA
+0764,0xx,Multiple Uses,NA
+0763,0xx,Multiple Uses,NA
+0761,0xx,Multiple Uses,NA
+0760,0xx,Multiple Uses,NA
+076,0xx,Multiple Uses,NA
+0741,0xx,Multiple Uses,NA
+074,0xx,Multiple Uses,NA
+0736,0xx,Multiple Uses,NA
+0731,0xx,Multiple Uses,NA
+0730,0xx,Multiple Uses,NA
+073,0xx,Multiple Uses,NA
+0722,0xx,Multiple Uses,NA
+0720,0xx,Multiple Uses,NA
+0719,0xx,Multiple Uses,NA
+0718,0xx,Multiple Uses,NA
+0717,0xx,Multiple Uses,NA
+0716,0xx,Multiple Uses,NA
+0715,0xx,Multiple Uses,NA
+0714,0xx,Multiple Uses,NA
+0713,0xx,Multiple Uses,NA
+0712,0xx,Multiple Uses,NA
+0711,0xx,Multiple Uses,NA
+0710,0xx,Multiple Uses,NA
+071,0xx,Multiple Uses,NA
+068,0xx,Multiple Uses,NA
+0673,0xx,Multiple Uses,NA
+0670,0xx,Multiple Uses,NA
+067,0xx,Multiple Uses,NA
+0641,0xx,Multiple Uses,NA
+064,0xx,Multiple Uses,NA
+063,0xx,Multiple Uses,NA
+0610,0xx,Multiple Uses,NA
+061,0xx,Multiple Uses,NA
+0601,0xx,Multiple Uses,NA
+049C,0xx,Multiple Uses,NA
+0490,0xx,Multiple Uses,NA
+049,0xx,Multiple Uses,NA
+0487,0xx,Multiple Uses,NA
+0480,0xx,Multiple Uses,NA
+048,0xx,Multiple Uses,NA
+0475,0xx,Multiple Uses,NA
+0471,0xx,Multiple Uses,NA
+0470,0xx,Multiple Uses,NA
+047,0xx,Multiple Uses,NA
+0460,0xx,Multiple Uses,NA
+046,0xx,Multiple Uses,NA
+0452,0xx,Multiple Uses,NA
+0450,0xx,Multiple Uses,NA
+0439,0xx,Multiple Uses,NA
+0431,0xx,Multiple Uses,NA
+043,0xx,Multiple Uses,NA
+0424,0xx,Multiple Uses,NA
+042,0xx,Multiple Uses,NA
+041R,0xx,Multiple Uses,NA
+041I,0xx,Multiple Uses,Unknown
+041E,0xx,Multiple Uses,NA
+0418,0xx,Multiple Uses,NA
+0417,0xx,Multiple Uses,NA
+0416,0xx,Multiple Uses,NA
+0413,0xx,Multiple Uses,NA
+0410,0xx,Multiple Uses,NA
+041,0xx,Multiple Uses,NA
+040C,0xx,Multiple Uses,NA
+0402,0xx,Multiple Uses,NA
+0401,0xx,Multiple Uses,NA
+0400,0xx,Multiple Uses,NA
+0393,0xx,Multiple Uses,NA
+0392,0xx,Multiple Uses,NA
+0391,0xx,Multiple Uses,NA
+0390,0xx,Multiple Uses,NA
+039,0xx,Multiple Uses,NA
+038V,0xx,Multiple Uses,NA
+038R,0xx,Multiple Uses,NA
+038I,0xx,Multiple Uses,NA
+038C,0xx,Multiple Uses,NA
+0388,0xx,Multiple Uses,NA
+0387,0xx,Multiple Uses,NA
+0386,0xx,Multiple Uses,NA
+0385,0xx,Multiple Uses,NA
+0384,0xx,Multiple Uses,NA
+0382,0xx,Multiple Uses,NA
+0381,0xx,Multiple Uses,NA
+0380,0xx,Multiple Uses,NA
+038,0xx,Multiple Uses,NA
+0377,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0376,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0375,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0374,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0371,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0370,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+037,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
+0368,0xx,Multiple Uses,NA
+0367,0xx,Multiple Uses,NA
+0366,0xx,Multiple Uses,NA
+0362,0xx,Multiple Uses,NA
+0361,0xx,Multiple Uses,NA
+0360,0xx,Multiple Uses,NA
+036,0xx,Multiple Uses,NA
+035I,355,NA,FUNERAL HM  MDL-96
+0355,0xx,Multiple Uses,NA
+0353,0xx,Multiple Uses,NA
+0351,0xx,Multiple Uses,NA
+0350,0xx,Multiple Uses,NA
+034R,340,NA,OFFICE BLD  MDL-01
+034I,340,NA,OFFICE BLD  MDL-96
+034C,0xx,Multiple Uses,NA
+034B,342,NA,PROF BLDG M-01
+0347,0xx,Multiple Uses,NA
+0346,0xx,Multiple Uses,NA
+0343,0xx,Multiple Uses,NA
+0342,0xx,Multiple Uses,NA
+0341,0xx,Multiple Uses,NA
+0340,0xx,Multiple Uses,NA
+034,0xx,Multiple Uses,NA
+033R,0xx,Multiple Uses,NA
+033I,0xx,Multiple Uses,NA
+0338,0xx,Multiple Uses,NA
+0334,0xx,Multiple Uses,NA
+0332,0xx,Multiple Uses,NA
+0331,0xx,Multiple Uses,NA
+0330,0xx,Multiple Uses,NA
+032R,322,NA,STORE/SHOP  MDL-01
+032L,326,NA,REST/CLUBS  MDL-96
+032I,0xx,Multiple Uses,STORE/SHOP  MDL-96
+032C,0xx,Multiple Uses,NA
+0327,0xx,Multiple Uses,NA
+0326,0xx,Multiple Uses,NA
+0325,0xx,Multiple Uses,NA
+0323,0xx,Multiple Uses,NA
+0322,0xx,Multiple Uses,NA
+0321,0xx,Multiple Uses,NA
+0320,0xx,Multiple Uses,NA
+032,0xx,Multiple Uses,NA
+031X,0xx,"Multiple Use, primarily commercial",NA
+031V,0xx,"Multiple Use, primarily commercial",NA
+031R,0xx,"Multiple Use, primarily commercial",PRI COMM MDL-01
+031I,0xx,"Multiple Use, primarily commercial",NA
+031F,0xx,"Multiple Use, primarily commercial",NA
+031C,0xx,"Multiple Use, primarily commercial",NA
+031B,0xx,"Multiple Use, primarily commercial",NA
+0319,0xx,"Multiple Use, primarily commercial",NA
+0318,0xx,"Multiple Use, primarily commercial",NA
+0317,0xx,"Multiple Use, primarily commercial",NA
+0316,0xx,"Multiple Use, primarily commercial",NA
+0315,0xx,"Multiple Use, primarily commercial",NA
+0314,0xx,"Multiple Use, primarily commercial",NA
+0313,0xx,"Multiple Use, primarily commercial",NA
+0312,0xx,"Multiple Use, primarily commercial",NA
+0311,0xx,"Multiple Use, primarily commercial",NA
+0310,0xx,"Multiple Use, primarily commercial",NA
+031,0xx,"Multiple Use, primarily commercial",NA
+0306,0xx,Multiple Uses,NA
+0302,0xx,Multiple Uses,NA
+0301,0xx,Multiple Uses,NA
+0300,0xx,Multiple Uses,NA
+0230,0xx,Multiple Uses,NA
+023,0xx,Multiple Uses,NA
+021,0xx,"Multiple Use, primarily open space",NA
+0197,0xx,Multiple Uses,NA
+0193,0xx,Multiple Uses,NA
+0190,0xx,Multiple Uses,NA
+019,0xx,Multiple Uses,NA
+018R,0xx,Multiple Uses,NA
+0187,0xx,Multiple Uses,NA
+0186,0xx,Multiple Uses,NA
+0183,0xx,Multiple Uses,NA
+0180,0xx,Multiple Uses,NA
+018,0xx,Multiple Uses,NA
+017V,0xx,Multiple Uses,NA
+017R,0xx,Multiple Uses,NA
+0178,0xx,Multiple Uses,NA
+0176,0xx,Multiple Uses,NA
+0174,0xx,Multiple Uses,NA
+0173,0xx,Multiple Uses,NA
+0170,0xx,Multiple Uses,NA
+017,0xx,Multiple Uses,NA
+016R,0xx,Multiple Uses,NA
+0168,0xx,Multiple Uses,NA
+0167,0xx,Multiple Uses,NA
+0164,0xx,Multiple Uses,NA
+0163,0xx,Multiple Uses,NA
+0160,0xx,Multiple Uses,NA
+016,0xx,Multiple Uses,NA
+014C,0xx,Multiple Uses,NA
+0147,0xx,Multiple Uses,NA
+0146,0xx,Multiple Uses,NA
+0143,0xx,Multiple Uses,NA
+0140,0xx,Multiple Uses,NA
+014,0xx,Multiple Uses,NA
+013V,0xx,"Multiple Use, primarily residential",NA
+013R,0xx,"Multiple Use, primarily residential",NA
+013M,0xx,"Multiple Use, primarily residential",NA
+013I,0xx,"Multiple Use, primarily residential",NA
+013C,0xx,"Multiple Use, primarily residential",NA
+0138,0xx,"Multiple Use, primarily residential",NA
+0137,0xx,"Multiple Use, primarily residential",NA
+0136,0xx,"Multiple Use, primarily residential",NA
+0135,0xx,"Multiple Use, primarily residential",NA
+0134,0xx,"Multiple Use, primarily residential",NA
+0133,0xx,"Multiple Use, primarily residential",NA
+0132,0xx,"Multiple Use, primarily residential",NA
+0131,0xx,"Multiple Use, primarily residential",NA
+0130,0xx,"Multiple Use, primarily residential",NA
+013,0xx,"Multiple Use, primarily residential",NA
+012O,0xx,Multiple Uses,NA
+012C,0xx,Multiple Uses,NA
+0123,0xx,Multiple Uses,NA
+0121,0xx,Multiple Uses,NA
+0120,0xx,Multiple Uses,NA
+012,0xx,Multiple Uses,NA
+011Z,0xx,Multiple Uses,NA
+011J,112,NA,Apts Over 8 M-9
+011I,0xx,Multiple Uses,NA
+011C,111,NA,APT 4-UNIT  MDL-94
+0114,0xx,Multiple Uses,NA
+0113,0xx,Multiple Uses,NA
+0112,0xx,Multiple Uses,NA
+0111,0xx,Multiple Uses,NA
+0110,0xx,Multiple Uses,NA
+011,0xx,Multiple Uses,NA
+010Z,0xx,Multiple Uses,NA
+010V,0xx,Multiple Uses,NA
+010R,0xx,Multiple Uses,NA
+010L,104,NA,TWO FAMILY  MDL-96
+010K,0xx,Multiple Uses,NA
+010J,104,NA,TWO FAMILY  MDL-94
+010I,0xx,Multiple Uses,NA
+010F,0xx,Multiple Uses,NA
+010D,0xx,Multiple Uses,NA
+010C,104,NA,Two Family MDL
+0109,0xx,Multiple Uses,NA
+0108,0xx,Multiple Uses,NA
+0107,0xx,Multiple Uses,NA
+0106,0xx,Multiple Uses,NA
+0105,0xx,Multiple Uses,NA
+0104,0xx,Multiple Uses,NA
+0103,0xx,Multiple Uses,NA
+0102,0xx,Multiple Uses,NA
+0101,0xx,Multiple Uses,NA
+001,0xx,Multiple Uses,NA
+000,0xx,NA,NA
+9999,999,NA,NA
+9980,998,NA,OWNER UNKN
+9972,997,Other,NA
+9971,997,Other,Other
+9970,997,Other,NA
+9960,996,"Other, Non-taxable condo common land",NA
+9950,995,"Other, Open Space",NA
+9941,994,Improved County or Regional Association Commission,NA
+9940,994,Improved County or Regional Association Commission,NA
+9930,993,Improved County or Regional Correctional,NA
+9921,992,"Improved, County or Regional, Deeds or Admin",NA
+9920,992,"Improved, County or Regional, Deeds or Admin",NA
+9910,991,"Vacant, County or Regional",NA
+9902,990,121A Corporations,NA
+9901,990,121A Corporations,NA
+9900,990,121A Corporations,NA
+9891,989,"Improved , Other District",NA
+9890,989,"Improved , Other District",NA
+9880,988,"Vacant, Other District",NA
+9851,985,"Improved Municipal or Public Safety, Other City or Town",NA
+9850,985,"Improved Municipal or Public Safety, Other City or Town",NA
+9820,982,"Vacant, Conservation, Other City or Town",NA
+9811,981,"Improved, Selectmen or City Council, Other City or Town",NA
+9810,981,"Improved, Selectmen or City Council, Other City or Town",NA
+9800,980,"Vacant, Selectman or City Council, Other City or Town",NA
+9771,977,NA,NA
+9750,975,"Vacant, Transportation Authority",NA
+9740,974,"Vacant, Utility Authority",NA
+9730,973,"Vacant, Housing Authority",NA
+9721,972,Transportation Authority,Commercial
+9720,972,Transportation Authority,NA
+9711,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+9710,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+9703,970,Housing Authority,Housing Authority
+9702,970,Housing Authority,Condominium
+9701,970,Housing Authority,Housing Authority
+9700,970,Housing Authority,NA
+9690,969,NA,NA
+9622,962,Other,RELIG OTHER C
+9621,962,Other,NA
+9620,962,Other,NA
+9613,961,Rectory or Parsonage,"Rectory, Parsonage"
+9612,961,Rectory or Parsonage,NA
+9611,961,Rectory or Parsonage,"Rectory, Parsonage"
+9610,961,Rectory or Parsonage,NA
+9603,960,"Chruch, Mosque, Synagogue, Temple, etc.",Colonial
+9602,960,"Chruch, Mosque, Synagogue, Temple, etc.",CHURCH/TEMPLE C
+9601,960,"Chruch, Mosque, Synagogue, Temple, etc.",Church
+9600,960,"Chruch, Mosque, Synagogue, Temple, etc.",NA
+9592,959,"Housing, Other",CHAR HOUSING C
+9591,959,"Housing, Other",CHAR HOUSING R
+9590,959,"Housing, Other",NA
+9582,958,"Recreation, Active Use",CHAR REC ACTIVE C
+9581,958,"Recreation, Active Use","Recreation, Active Use"
+9580,958,"Recreation, Active Use",NA
+9573,957,NA,CHAR SERVICES CONDO
+9572,957,Charitable Services,CHAR SERVICES V
+9571,957,Charitable Services,Charitable Svc
+9570,957,Charitable Services,NA
+9561,956,"Libraries, Museums",NA
+9560,956,"Libraries, Museums",NA
+9552,955,Hospitals,HOSPITAL C
+9551,955,Hospitals,NA
+9550,955,Hospitals,NA
+9542,954,"Function Halls, Community Centers",NA
+9541,954,"Function Halls, Community Centers",FUNC/FRAT ORG C
+9540,954,"Function Halls, Community Centers",NA
+9532,953,Cemeteries,NA
+9531,953,Cemeteries,NA
+9530,953,Cemeteries,NA
+9520,952,"Auxiliary Use (Storage, Barns, etc.)",NA
+9513,951,Other,NA
+9512,951,Other,NA
+9511,951,Other,Other
+9510,951,Other,NA
+9500,950,"Vacant, Conservation Organizations",NA
+9471,947,Other,NA
+9470,947,Other,NA
+9461,946,Vacant,NA
+9460,946,Vacant,NA
+9451,945,Affiliated Housing,NA
+9450,945,Affiliated Housing,NA
+9440,944,Auxiliary Athletic,NA
+9431,943,Other Educational,PRIV OTHER RDU C
+9430,943,Other Educational,NA
+9421,942,College or University,"Private College, University"
+9420,942,College or University,NA
+9411,941,Secondary Level,PRIV SECONDARY C
+9410,941,Secondary Level,NA
+9403,940,Elementary Level,Private Elementary Education
+9402,940,Elementary Level,Non Profit C
+9401,940,Elementary Level,PRIV ELEMENTARY C
+9400,940,Elementary Level,NA
+9391,939,"Improved, District",NA
+9390,939,"Improved, District",NA
+9383,938,Vacant. District,NA
+9380,938,Vacant. District,NA
+9373,937,"Improved, Tax Title/Treasurer",NA
+9371,937,"Improved, Tax Title/Treasurer",NA
+9370,937,"Improved, Tax Title/Treasurer",NA
+9363,936,"Vacant, Tax,Title/Treasurer",NA
+9362,936,"Vacant, Tax,Title/Treasurer",NA
+9360,936,"Vacant, Tax,Title/Treasurer",NA
+9351,935,"Improved, Muni public safety",TOWN PUBLIC SAFETY C
+9350,935,"Improved, Muni public safety",NA
+9341,934,"Improved, Education","Improved, Education"
+9340,934,"Improved, Education",NA
+9330,933,"Vacant, Education",NA
+9320,932,"Vacant, Conservation",NA
+9311,931,"Improved, Selectmen or City Council",Improved City
+9310,931,"Improved, Selectmen or City Council",NA
+9308,930,"Vacant, Selectman or City Council",Other Municipal
+9307,930,"Vacant, Selectman or City Council",Function Hall
+9306,930,"Vacant, Selectman or City Council",Conventional
+9305,930,"Vacant, Selectman or City Council",NA
+9304,930,"Vacant, Selectman or City Council",Non Profit Commercial
+9302,930,"Vacant, Selectman or City Council",Charitable Org C
+9301,930,"Vacant, Selectman or City Council",Charitablr Org V
+9300,930,"Vacant, Selectman or City Council",NA
+9296,929,Other,OTHER/NR I
+9292,929,Other,NA
+9291,929,Other,NA
+9290,929,Other,NA
+9280,928,Div of Capital Asset Management,NA
+9270,927,"Education - Umass, State Colleges, Comm Colleges",NA
+9260,926,Judiciary,NA
+9252,925,Dept of Conservation and Recreation,NA
+9250,925,Dept of Conservation and Recreation,NA
+9246,924,Mass Highway Dept.,NA
+9245,924,Mass Highway Dept.,NA
+9244,924,Mass Highway Dept.,NA
+9242,924,Mass Highway Dept.,NA
+9240,924,Mass Highway Dept.,NA
+9231,923,Dept of Mental Health,NA
+9230,923,Dept of Mental Health,NA
+9223,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",NA
+9221,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts","Comm of Massachusetts, table 1"
+9220,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",NA
+9211,921,"Div of Fisheries and Wildlife,  DFW Environ Law Enforcement",NA
+9210,921,"Div of Fisheries and Wildlife,  DFW Environ Law Enforcement",NA
+9202,920,"Dept of Conservation and Recreation, Div of Urban Parks",NA
+9201,920,"Dept of Conservation and Recreation, Div of Urban Parks",DEM/NR I
+9200,920,"Dept of Conservation and Recreation, Div of Urban Parks",NA
+9194,919,Other,NA
+9191,919,Other,NA
+9190,919,Other,NA
+9180,918,"Dept of Environmental Protection, Low-level Radioactive Waster Management",NA
+9170,917,"Education, Umass, State Colleges, Comm Colleges",NA
+9160,916,Military Div - Campgrounds,NA
+9151,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+9150,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+9140,914,Dept of Mental Health,NA
+9131,913,"Dept of Public Health, Soldiers' Homes",NA
+9130,913,"Dept of Public Health, Soldiers' Homes",NA
+9120,912,"Dept of Correction, Div of Youth Services",NA
+9114,911,"Div of Fisheries and Wildlife, Environmental Law Enforcement",NA
+9111,911,"Div of Fisheries and Wildlife, Environmental Law Enforcement",NA
+9110,911,"Div of Fisheries and Wildlife, Environmental Law Enforcement",NA
+9106,910,"Dept of Conservation and Recreation, Div of state parks",DENV MNG I
+9101,910,"Dept of Conservation and Recreation, Div of state parks",Unknown
+9100,910,"Dept of Conservation and Recreation, Div of state parks",NA
+9090,909,NA,RELIGIOUS MDL
+9084,908,NA,Housing Authority
+9082,908,NA,NA
+9081,908,NA,NA
+9080,908,NA,NA
+9070,907,NA,NA
+9065,960,NA,Church R
+9064,906,NA,Church Commercial
+9062,960,NA,Church C
+9061,906,NA,Church Residential
+9060,906,NA,NA
+9054,957,NA,Charitable Org V
+9052,957,NA,Charitable Org C
+9051,957,NA,Charitable Org R
+9050,905,NA,NA
+9042,943,NA,Private School C
+9041,943,NA,Priv School R
+9040,904,NA,NA
+9039,900,United States Government,Municipal I
+9038,903,NA,Municipal C
+9037,903,NA,Municipal R
+9036,903,NA,Exempt Condo
+9035,903,NA,TOWN-PROP MDL
+9034,903,NA,EXEMPT
+9033,903,NA,PUB-SCHOOL MDL
+9032,903,NA,FIRE MDL-96
+9031,903,NA,POLICE MDL-96
+9030,903,NA,NA
+9020,902,NA,NA
+9016,901,BLANK,NA
+9013,919,NA,Comm Mass I
+9011,919,NA,Comm Mass V
+9010,901,BLANK,NA
+9006,900,United States Government,U S Govt
+9005,900,United States Government,US Govt Land
+9003,900,United States Government,US Government
+9002,900,United States Government,NA
+9001,900,United States Government,US Government
+9000,900,United States Government,NA
+8150,815,Productive Woodland - woodlot,NA
+8140,814,"Target Shooting - areas for target shooting such as archery, skeet or approved firearms",NA
+8130,813,Public Non-Commercial Flying - areas for gliding or hang gliding,NA
+8120,812,Picknicking Areas,NA
+8110,811,Swimming Areas,NA
+8080,808,Fishing Areas,NA
+8070,807,Hunting - areas for the hunting of wildlife and Fishing Areas,NA
+8060,806,Horseback Riding - trails or areas,NA
+8050,805,Golfing - area of land arraged as a golf course,NA
+8040,804,Boating - areas for recreational boating and supporting land facilities,NA
+8030,803,Nature Study,NA
+8020,802,camping,NA
+8010,801,"Hiking - trails or paths, Camping - areas with sites for overnight camping, Nature Study - areas specifically for nature study or observation",NA
+8000,800,NA,RECRTION
+7222,722,NA,NA
+7221,722,NA,NA
+7220,722,NA,NONPRWETLD
+7201,720,"Wet land, scrub land, rock land",NA
+7200,720,"Wet land, scrub land, rock land",NA
+7190,719,Nurseries,NA
+7180,718,Pasture,NA
+7171,717,Productive Woodland - woodlot,NA
+7170,717,Productive Woodland - woodlot,NA
+7161,716,"Necessary related land - farm roads, ponds, land under farm buildings",Tillable R
+7160,716,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+7150,715,Christmas Trees,NA
+7140,714,"Orchards - pears, apples, grape vineyards, etc.",NA
+7132,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+7131,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+7130,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+7121,712,Truck Crops - Vegetables,NA
+7120,712,Truck Crops - Vegetables,NA
+7110,711,"Tobacco, Sod",NA
+7102,710,Cranberry Bog,NA
+7101,710,Cranberry Bog,NA
+7100,710,Cranberry Bog,NA
+7010,701,NA,NA
+7000,700,NA,NA
+6100,610,NA,FOREST C61
+6020,602,Christmas Trees,NA
+6010,601,All land designated under Chapter 61,NA
+6000,600,NA,NA
+4990,499,NA,NA
+4521,452,"Electric Generation Plants, Agreement Value",NA
+4520,452,"Electric Generation Plants, Agreement Value",NA
+4510,451,"Electric Generation Plants, Renewable",NA
+4501,450,Electric Generation Plants,NA
+4500,450,Electric Generation Plants,NA
+4490,409,NA,IND CONDO
+4460,446,NA,NA
+4430,443,NA,NA
+4421,442,Undevelopable Land,NA
+4420,442,Undevelopable Land,NA
+4410,441,Potentially Developable Land,NA
+4401,440,Developable Land,NA
+4400,440,Developable Land,NA
+4340,434,NA,NA
+4332,433,"radio, television trasmission facilities",NA
+4331,433,"radio, television trasmission facilities",NA
+4330,433,"radio, television trasmission facilities",NA
+4320,432,cable tv transmitting facilities,NA
+4311,431,telephone relay towers,NA
+4310,431,telephone relay towers,NA
+4300,430,Telephone exchange stations,NA
+4281,428,gas pressure control stations,NA
+4280,428,gas pressure control stations,NA
+4273,427,Natural or manufactured gas storage,NA
+4270,427,Natural or manufactured gas storage,NA
+4260,426,Gas pipeline right-of-way,NA
+4250,425,gas production plants,NA
+4241,424,electricity regulating substations,Electric Substation V
+4240,424,electricity regulating substations,NA
+4231,423,electric transmission right-of-way,NA
+4230,423,electric transmission right-of-way,NA
+4221,422,NA,NA
+4220,422,NA,NA
+4210,421,liquid natural gas tanks,NA
+4200,420,tanks,NA
+4130,413,other,NA
+4120,412,rock,NA
+4106,401,Warehouses for storage of manufactured products,Warehouse
+4104,402,office buildings - part of manufacturing operation,Office Building
+4102,410,Sand and gravel,NA
+4101,410,Sand and gravel,NA
+4100,410,Sand and gravel,NA
+4095,409,NA,NA
+4060,406,NA,LAB OFFICE
+4050,405,NA,Condo Industrial
+4041,404,research and development facilities,NA
+4040,404,research and development facilities,NA
+4030,403,land - integral part of manufacturing operation,NA
+4027,402,office buildings - part of manufacturing operation,Office Building - part of manufacturing operation
+4022,402,office buildings - part of manufacturing operation,IND BLDG
+4021,402,office buildings - part of manufacturing operation,IND CONDO MDL
+4020,402,office buildings - part of manufacturing operation,NA
+4015,401,Warehouses for storage of manufactured products,NA
+4010,401,Warehouses for storage of manufactured products,NA
+4005,400,Building for manufacturing operations,NA
+4001,400,Building for manufacturing operations,NA
+4000,400,Building for manufacturing operations,NA
+3940,394,NA,NA
+3939,393,Ag/Horticultural land not included in Chapter 61A,NA
+3930,393,Ag/Horticultural land not included in Chapter 61A,NA
+3922,392,Undevelopable Land,CRMCL REC LND
+3921,392,Undevelopable Land,UNDVCNDLND
+3920,392,Undevelopable Land,NA
+3910,391,Potentially Developable Land,NA
+3906,390,Developable Land,NA
+3900,390,Developable Land,NA
+3890,389,Structures on land classifed under chapter 61b,NA
+3881,388,"Other outdoor facilities - driving ranges, mini-golf, batting cages",NA
+3880,388,"Other outdoor facilities - driving ranges, mini-golf, batting cages",NA
+3870,387,summer camps,NA
+3860,386,camping facilities,NA
+3852,385,fish and game clubs,Fish & Game C
+3850,385,fish and game clubs,NA
+3842,384,marinas,NA
+3841,384,marinas,YACHT CLUB
+3840,384,marinas,NA
+3831,383,Beaches or swimming pools,NA
+3830,383,Beaches or swimming pools,NA
+3820,382,riding stables,NA
+3810,381,tennis courts,NA
+3801,380,Golf courses,Golf Course C
+3800,380,Golf courses,NA
+3772,377,"archery, billiards. And other indoor facilities",NA
+3770,377,"archery, billiards. And other indoor facilities",NA
+3760,376,gymnasiums and athletic clubs,NA
+3751,375,tennis and/or racquetball courts,NA
+3750,375,tennis and/or racquetball courts,NA
+3740,374,health spas,NA
+3730,373,swimming pools,NA
+3720,372,roller skating,NA
+3710,371,ice skating,NA
+3700,370,Bowling,NA
+3690,369,other cultural and entertainment properties,NA
+3680,368,fairgrounds and amusement parks,NA
+3670,367,race tracks,NA
+3660,366,arenas and field houses,NA
+3650,365,stadiums,NA
+3640,364,legitimate theaters,NA
+3630,363,drive in movies,NA
+3620,362,motion picture theaters,NA
+3610,361,Art galleries,NA
+3600,360,Museums,NA
+3580,343,NA,OFFICE CONDO
+3570,327,NA,RETAIL CONDO
+3560,356,"Misc public services - prof membership orgs, business associations",NA
+3550,355,funeral homes,NA
+3543,354,Bus Transportation facilities,NA
+3542,354,Bus Transportation facilities,NA
+3541,354,Bus Transportation facilities,NA
+3540,354,Bus Transportation facilities,NA
+3530,353,Fraternal Organizations,NA
+3521,352,"Day care centers, adult",NA
+3520,352,"Day care centers, adult",NA
+3510,351,educational properties,NA
+3500,350,Property used for postal services,NA
+3470,347,NA,NA
+3450,345,NA,OFFICE LAB MDL-94
+3440,344,NA,Condo Medical
+3430,343,NA,CONDO-OFC
+3429,342,Medical Office Buildings,Medical Office Building
+3422,342,Medical Office Buildings,NA
+3421,342,Medical Office Buildings,PROF CONDO MDL
+3420,342,Medical Office Buildings,NA
+3410,341,Bank Buildings,NA
+3408,340,General Office Buildings,NA
+3407,340,General Office Buildings,COM COMMON
+3403,340,General Office Buildings,NA
+3402,340,General Office Buildings,OFFICEBLDG
+3401,340,General Office Buildings,OFF CONDO MDL
+3400,340,General Office Buildings,NA
+3390,339,NA,GAS MART
+3380,338,Other motor vehicles sales and services,NA
+3371,337,Parking Lots,NA
+3370,337,Parking Lots,NA
+3361,336,Parking Garages,NA
+3360,336,Parking Garages,NA
+3350,335,Car Wash facilities,NA
+3345,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",Gasoline service Stations
+3340,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",NA
+3331,333,NA,Outbuildings
+3330,333,Fuel Services Areas - providing only fuel products,NA
+3327,332,Auto Repair facilities,NA
+3326,332,Auto Repair facilities,Auto Repair
+3323,332,Auto Repair facilities,NA
+3321,332,Auto Repair facilities,NA
+3320,332,Auto Repair facilities,NA
+3310,331,Automotive Supplies Sales and Serivice,NA
+3302,330,Automotive Vehicles Sales and Service,NA
+3301,330,Automotive Vehicles Sales and Service,"Auto Sales, table 1"
+3300,330,Automotive Vehicles Sales and Service,NA
+3290,329,NA,COMM CONDO
+3280,328,NA,RETAIL CON MDL-06
+3270,327,NA,Condo Retail
+3260,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",NA
+3255,325,Small Retail and Services stores (< 10K sq.ft.),NA
+3251,325,Small Retail and Services stores (< 10K sq.ft.),NA
+3250,325,Small Retail and Services stores (< 10K sq.ft.),NA
+3240,324,Supermarkets (> 10k sq. ft.),NA
+3230,323,Shopping Centers/Malls,NA
+3228,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+3225,327,NA,Inn/Condo
+3224,327,NA,Retail Condo
+3223,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+3222,322,"Discount Stores, Junior Department Stores, Department Stores",COMM BLDG  MDL-94
+3221,322,"Discount Stores, Junior Department Stores, Department Stores",RTL CONDO MDL
+3220,322,"Discount Stores, Junior Department Stores, Department Stores",NA
+3210,321,"Facilities providing buidling materials, hardware and farm equipment, heating, hardware, plumbing, lumber supplies and wquipment",NA
+3190,319,NA,Condo Industrial
+3180,318,Commercial Greenhouses,NA
+3171,317,"Farm Buildings - barns, silos, utility shed, etc.",NA
+3170,317,"Farm Buildings - barns, silos, utility shed, etc.",NA
+3165,316,"Other Storage, Warehouse and Distribution facilities",NA
+3161,316,"Other Storage, Warehouse and Distribution facilities",NA
+3160,316,"Other Storage, Warehouse and Distribution facilities",NA
+3150,315,"Piers, Wharves, Docks and related facilities that are used for storage and transit of goods",NA
+3140,314,Trucking Terminals,NA
+3135,313,Lumber Yards,NA
+3132,313,Lumber Yards,NA
+3131,313,Lumber Yards,NA
+3130,313,Lumber Yards,NA
+3120,312,Grain and Feed Elevators,NA
+3110,311,Bottled Gas and Propane Gas Tanks,NA
+3108,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",NA
+3101,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",Oil Products Retail V
+3100,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",NA
+3070,307,NA,NA
+3060,306,"Care and Treatment Facilities - designed and used on a transient basis, including half-way houses or other types of facilities that service the needs of people",NA
+3050,305,Private Hospitals,NA
+3041,304,Nursing Homes - includes property designed for minimal care with or without medical facilities,"Nursing Homes - includes property designed for minimal care with or without medical facilities (Same as 304, 1 is specific to Town use only)"
+3040,304,Nursing Homes - includes property designed for minimal care with or without medical facilities,NA
+3031,303,BLANK,NA
+3030,303,BLANK,ASSTD LVNG
+3020,302,"Inns, Resorts, or Tourist Homes",NA
+3012,301,Motels,NA
+3011,301,Motels,NA
+3010,301,Motels,NA
+3000,300,Hotels,NA
+2920,292,NA,NA
+2900,290,"Wet land, scrub land, rock land",NA
+2850,285,Hunting - areas for the hunting of wildlife and Fishing Areas,NA
+2840,284,Horseback Riding - trails or areas,NA
+2810,281,"Hiking - trails or paths, Camping - areas with sites for overnight camping, Nature Study - areas specifically for nature study or observation",NA
+2780,278,Pasture,NA
+2770,277,Productive Woodland - woodlot,NA
+2760,276,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+2740,274,"Orchards - pears, apples, grape vineyards, etc.",NA
+2730,273,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+2720,272,Truck Crops - Vegetables,NA
+2610,261,All land designated under Chapter 61,NA
+2210,221,Underwater Land or Marshes not under public ownership located in commercially zoned area,NA
+2200,220,Commercial Vacant Land,NA
+2020,202,Underwater Land or Marshes not under public ownership located in  residential areas,NA
+2013,201,Residential Open Land,NA
+2010,201,Residential Open Land,NA
+1504,150,NA,NA
+1503,150,NA,NA
+1502,150,NA,NA
+1501,150,NA,NA
+1500,150,NA,NA
+1401,140,Child Care Facility,NA
+1400,140,Child Care Facility,NA
+1333,133,NA,NA
+1327,132,Undevelopable Land,RES COMMON
+1325,132,Undevelopable Land,RES CR
+1323,132,Undevelopable Land,UNDEV LAND WATER
+1322,132,Undevelopable Land,RES-UDV-PARK LND
+1321,132,Undevelopable Land,RES ACLNNV
+1320,132,Undevelopable Land,NA
+1317,131,Potentially Developable Land,NA
+1313,131,Potentially Developable Land,RES PO RVR
+1311,131,Potentially Developable Land,NA
+1310,131,Potentially Developable Land,NA
+1306,130,Developable Land,NA
+1303,130,Developable Land,DEV LAND WTR
+1302,130,Developable Land,NA
+1301,130,Developable Land,RES ACLNPO
+1300,130,Developable Land,NA
+1259,125,Other Congregate Housing which includes non-transient shared living arrangements,NA
+1252,125,Other Congregate Housing which includes non-transient shared living arrangements,Other Residential C
+1251,125,Other Congregate Housing which includes non-transient shared living arrangements,ASSIST LIV RES
+1250,125,Other Congregate Housing which includes non-transient shared living arrangements,NA
+1240,124,"Rectories, Convents, Monastaries",NA
+1230,123,Residence Halls or Dormitories,NA
+1220,122,Fraternity and Sorority Houses,NA
+1212,121,Rooming and Boarding Houses,Boarding House C
+1211,121,Rooming and Boarding Houses,NA
+1210,121,Rooming and Boarding Houses,NA
+1140,114,NA,NA
+1129,112,Greater than Eight Units,NA
+1125,112,Greater than Eight Units,NA
+1124,112,Greater than Eight Units,NA
+1121,112,Greater than Eight Units,NA
+1120,112,Greater than Eight Units,NA
+1114,111,Four to Eight Units,NA
+1113,111,Four to Eight Units,NA
+1112,111,Four to Eight Units,Apt-co-op
+1111,111,Four to Eight Units,Apt 6-8
+1110,111,Four to Eight Units,NA
+1098,109,Multiple houses on a single parcel,"Multiuse, Residential, 4-8 Apartment"
+1095,109,Multiple houses on a single parcel,"Multiuse, Residential, 3 Family"
+1094,109,Multiple houses on a single parcel,"Multiuse, Residential, 2 Family"
+1093,109,Multiple houses on a single parcel,NA
+1092,109,Multiple houses on a single parcel,NA
+1091,109,Multiple houses on a single parcel,"Multiuse, Residential, 1 Family"
+1090,109,Multiple houses on a single parcel,NA
+1080,108,BLANK,NA
+1073,107,BLANK,NA
+1070,107,BLANK,NA
+1068,106,Accessory Land with improvement,NA
+1067,106,Accessory Land with improvement,Residential-COV-PKG
+1063,106,Accessory Land with improvement,AC IMP WTR
+1062,106,Accessory Land with improvement,Residential Land-IMP PT UNDEV
+1061,106,Accessory Land with improvement,Residential Land-IMP PT DEV
+1060,106,Accessory Land with improvement,NA
+1058,105,Three Family,NA
+1053,105,Three Family,THREE FAM WTR
+1051,105,Three Family,NA
+1050,105,Three Family,NA
+1048,104,Two Family,NA
+1045,104,NA,TWO FAM IN LAW
+1043,104,Two Family,TWO FAMILY WTR
+1042,104,Two Family,NA
+1041,104,Two Family,NA
+1040,104,Two Family,NA
+1035,103,Mobile Home,MHP/ House
+1034,103,Mobile Home,Mobile Hm w/C
+1032,103,Mobile Home,MHP Land
+1031,103,Mobile Home,NA
+1030,103,Mobile Home,NA
+1029,102,NA,Condo
+1027,102,Condominium,COMMON LN
+1024,102,Condominium,NA
+1023,102,Condominium,Condo Vac
+1022,102,Condominium,NA
+1021,102,Condominium,Condo NL MDL-0
+1020,102,Condominium,NA
+1018,101,Single Family,NA
+1017,101,Single Family,NA
+1016,101,Single Family,NA
+1015,101,Single Family,SINGLE FAM IN LAW
+1014,101,Single Family,Single Family with Auxilliary Apartment
+1013,101,Single Family,SFR WATER  MDL-01
+1012,101,Single Family,Single Family Ocean
+1011,101,Single Family,Single Family No Land
+1010,101,Single Family,NA
+1001,100,NA,NA
+999,999,NA,Unknown
+998,998,NA,"Condominium Common Land - Class 4 Industrial, Exempt"
+997,997,Other,NA
+996,996,"Other, Non-taxable condo common land",NA
+995,995,"Other, Open Space",NA
+994,994,Improved County or Regional Association Commission,NA
+993,993,Improved County or Regional Correctional,NA
+992,992,"Improved, County or Regional, Deeds or Admin",NA
+991,991,"Vacant, County or Regional",NA
+990,990,121A Corporations,NA
+989,989,"Improved , Other District",NA
+988,988,"Vacant, Other District",NA
+987,987,NA,NA
+986,986,NA,NA
+985,985,"Improved Municipal or Public Safety, Other City or Town",NA
+983,983,NA,NA
+982,982,"Vacant, Conservation, Other City or Town",NA
+981,981,"Improved, Selectmen or City Council, Other City or Town",NA
+980,980,"Vacant, Selectman or City Council, Other City or Town",NA
+979,979,NA,NA
+978,978,NA,NA
+977,977,NA,Neighborhood Development Associates vacant (non-profit subsidiary of housing authority)
+976,976,NA,Neighborhood Development Associates improved (non-profit subsidiary of housing authority)
+975,975,"Vacant, Transportation Authority",NA
+974,974,"Vacant, Utility Authority",NA
+973,973,"Vacant, Housing Authority",NA
+972,972,Transportation Authority,NA
+971,971,"Utility Authority, Electric, Light, Sewer, Water",NA
+970,970,Housing Authority,NA
+969,969,NA,NA
+968,968,NA,NA
+966,966,NA,NA
+965,965,NA,NA
+964,964,NA,Other
+963,963,NA,Religious - Vacant or Accessory Land
+962,962,Other,NA
+961,961,Rectory or Parsonage,NA
+960,960,"Chruch, Mosque, Synagogue, Temple, etc.",mixed use church
+959,959,"Housing, Other",NA
+958,958,"Recreation, Active Use",NA
+957,957,Charitable Services,NA
+956,956,"Libraries, Museums",MIXED USE EXEMPT
+955,955,Hospitals,NA
+954,954,"Function Halls, Community Centers",NA
+953,953,Cemeteries,NA
+952,952,"Auxiliary Use (Storage, Barns, etc.)",NA
+951,951,Other,NA
+950,950,"Vacant, Conservation Organizations",NA
+948,948,NA,NA
+947,947,Other,NA
+946,946,Vacant,NA
+945,945,Affiliated Housing,NA
+944,944,Auxiliary Athletic,NA
+943,943,Other Educational,NA
+942,942,College or University,NA
+941,941,Secondary Level,NA
+940,940,Elementary Level,NA
+939,939,"Improved, District",NA
+938,938,Vacant. District,NA
+937,937,"Improved, Tax Title/Treasurer",NA
+936,936,"Vacant, Tax,Title/Treasurer",NA
+935,935,"Improved, Muni public safety",NA
+934,934,"Improved, Education",NA
+933,933,"Vacant, Education",NA
+932,932,"Vacant, Conservation",NA
+931,931,"Improved, Selectmen or City Council",NA
+930,930,"Vacant, Selectman or City Council",NA
+929,929,Other,NA
+928,928,Div of Capital Asset Management,NA
+927,927,"Education - Umass, State Colleges, Comm Colleges",NA
+926,926,Judiciary,NA
+925,925,Dept of Conservation and Recreation,NA
+924,924,Mass Highway Dept.,NA
+923,923,Dept of Mental Health,NA
+922,922,"Dept of Corrections, Div of Youth Services, Mass Military, State Police, Sheiff's Depts",NA
+921,921,"Div of Fisheries and Wildlife,  DFW Environ Law Enforcement",NA
+920,920,"Dept of Conservation and Recreation, Div of Urban Parks",NA
+919,919,Other,NA
+918,918,"Dept of Environmental Protection, Low-level Radioactive Waster Management",NA
+917,917,"Education, Umass, State Colleges, Comm Colleges",NA
+916,916,Military Div - Campgrounds,NA
+915,915,"Dept of Conservation and Recreation, Div of Water Supply Protection",NA
+914,914,Dept of Mental Health,NA
+913,913,"Dept of Public Health, Soldiers' Homes",Dept. of Public Health (DPH) - Soldiers' Homes
+912,912,"Dept of Correction, Div of Youth Services",NA
+911,911,"Div of Fisheries and Wildlife, Environmental Law Enforcement",NA
+910,910,"Dept of Conservation and Recreation, Div of state parks",NA
+909,909,NA,Railroad ROW - Titled Ownership
+908,908,NA,NA
+907,907,NA,NA
+906,906,NA,NA
+905,905,NA,NA
+904,904,NA,NA
+903,903,NA,NA
+902,902,NA,NA
+901,901,BLANK,NA
+900,900,United States Government,NA
+861,68,NA,Mixed Use (Chapter 61 and 61b land)
+831,831,NA,NA
+815,815,Productive Woodland - woodlot,NA
+814,814,"Target Shooting - areas for target shooting such as archery, skeet or approved firearms",NA
+812,812,Picknicking Areas,NA
+811,811,Swimming Areas,NA
+810,810,Nordic Skiing,NA
+809,809,Apline Skiing,NA
+808,808,Fishing Areas,NA
+807,807,Hunting - areas for the hunting of wildlife and Fishing Areas,NA
+806,806,Horseback Riding - trails or areas,NA
+805,805,Golfing - area of land arraged as a golf course,NA
+804,804,Boating - areas for recreational boating and supporting land facilities,NA
+803,803,Nature Study,NA
+802,802,camping,NA
+801,801,"Hiking - trails or paths, Camping - areas with sites for overnight camping, Nature Study - areas specifically for nature study or observation",NA
+800,800,NA,NA
+783,783,NA,Chapter 61A/chapter 61B/Commercial
+722,722,NA,Non-productive Woodland (Chapter Land)
+720,720,"Wet land, scrub land, rock land",NA
+719,719,Nurseries,"Nurseries (Ch. 61A, not classified as Open Space)"
+718,718,Pasture,"Pasture (Ch. 61A, not classified as Open Space)"
+717,717,Productive Woodland - woodlot,NA
+716,716,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+715,715,Christmas Trees,NA
+714,714,"Orchards - pears, apples, grape vineyards, etc.",NA
+713,713,"Field Crops - hay, wheat, tillable forage cropland, etc.",61A/Residential/Commercial
+712,712,Truck Crops - Vegetables,NA
+711,711,"Tobacco, Sod",NA
+710,710,Cranberry Bog,NA
+610,610,NA,NA
+602,602,Christmas Trees,NA
+601,601,All land designated under Chapter 61,NA
+470,470,NA,NA
+465,465,NA,NA
+452,452,"Electric Generation Plants, Agreement Value",NA
+451,451,"Electric Generation Plants, Renewable",NA
+450,450,Electric Generation Plants,NA
+446,446,NA,NA
+445,445,NA,Industrial Condominiums
+444,444,NA,Condo Warehouse
+442,442,Undevelopable Land,NA
+441,441,Potentially Developable Land,NA
+440,440,Developable Land,NA
+439,439,NA,NA
+438,438,NA,NA
+437,437,NA,NA
+436,436,NA,Internet Service Provider
+435,435,NA,Submarine Cable Terminus
+434,434,NA,Cell Site
+433,433,"radio, television trasmission facilities",NA
+432,432,cable tv transmitting facilities,NA
+431,431,telephone relay towers,NA
+430,430,Telephone exchange stations,NA
+428,428,gas pressure control stations,NA
+427,427,Natural or manufactured gas storage,NA
+426,426,Gas pipeline right-of-way,NA
+425,425,gas production plants,NA
+424,424,electricity regulating substations,NA
+423,423,electric transmission right-of-way,NA
+422,422,NA,NA
+421,421,liquid natural gas tanks,NA
+420,420,tanks,NA
+417,417,NA,NA
+415,415,NA,NA
+414,414,NA,NA
+413,413,other,NA
+412,412,rock,NA
+411,411,gypsum,NA
+410,410,Sand and gravel,NA
+409,4,NA,Unknown
+408,408,NA,NA
+407,407,NA,Clean-Manufacturing
+406,406,NA,High-Tech
+405,405,NA,Industrial Condominiums
+404,404,research and development facilities,NA
+403,403,land - integral part of manufacturing operation,NA
+402,402,office buildings - part of manufacturing operation,Ind-Whse/Office
+401,401,Warehouses for storage of manufactured products,mixed use industrial warehouse
+400,400,Building for manufacturing operations,NA
+399,399,NA,NA
+395,395,NA,NA
+394,394,NA,"Mixed Use commercial/exempt/industrial, primarily commercial"
+393,393,Ag/Horticultural land not included in Chapter 61A,NA
+392,392,Undevelopable Land,NA
+391,391,Potentially Developable Land,POT DEVEL
+390,390,Developable Land,NA
+389,389,Structures on land classifed under chapter 61b,NA
+388,388,"Other outdoor facilities - driving ranges, mini-golf, batting cages",NA
+387,387,summer camps,NA
+386,386,camping facilities,"Mixed Use - 385 ? fish and game, 392 ? com udv lnd, 814 ? Chapter 61 B Recreational land target and range and 601 ? Chapter land 61 forestry"
+385,385,fish and game clubs,"Multiple Use, primarily recreational, table 5"
+384,384,marinas,NA
+383,383,Beaches or swimming pools,NA
+382,382,riding stables,NA
+381,381,tennis courts,Commercial/chapter 61B/Residential
+380,380,Golf courses,NA
+379,379,NA,NA
+378,378,NA,NA
+377,377,"archery, billiards. And other indoor facilities",NA
+376,376,gymnasiums and athletic clubs,NA
+375,375,tennis and/or racquetball courts,NA
+374,374,health spas,NA
+373,373,swimming pools,NA
+372,372,roller skating,NA
+371,371,ice skating,NA
+370,370,Bowling,NA
+369,369,other cultural and entertainment properties,NA
+368,368,fairgrounds and amusement parks,NA
+367,367,race tracks,NA
+366,366,arenas and field houses,NA
+365,365,stadiums,NA
+364,364,legitimate theaters,Multiple use - theater
+363,363,drive in movies,NA
+362,362,motion picture theaters,NA
+361,361,Art galleries,Multiple use - art galleries
+360,360,Museums,NA
+358,358,NA,NA
+357,357,NA,NA
+356,356,"Misc public services - prof membership orgs, business associations",NA
+355,355,funeral homes,Funeral Homes
+354,354,Bus Transportation facilities,NA
+353,353,Fraternal Organizations,NA
+352,352,"Day care centers, adult",NA
+351,351,educational properties,NA
+350,350,Property used for postal services,NA
+349,349,NA,Medical Office Condominium
+348,348,NA,NA
+347,347,NA,"Mixed Use - Agricultural/Horticultural, Nurseries, Wet land, scrub land, rock land (Ch. 61A, not classified as Open Space)"
+346,346,NA,"Commercial, Industrial, and Chapter 61B"
+345,345,NA,Condo Retail
+344,344,NA,Industrial Condominium
+343,343,NA,Unknown
+342,342,Medical Office Buildings,mixed use professional building
+341,341,Bank Buildings,NA
+340,340,General Office Buildings,NA
+339,339,NA,Unknown
+338,338,Other motor vehicles sales and services,NA
+337,337,Parking Lots,NA
+336,336,Parking Garages,NA
+335,335,Car Wash facilities,Car Wash Facilities
+334,334,"Gasoline Service Stations - providing engine repair or maintenance services, and fuel products",NA
+333,333,Fuel Services Areas - providing only fuel products,NA
+332,332,Auto Repair facilities,Multiple use - auto repair facilities
+331,331,Automotive Supplies Sales and Serivice,AUTO S S&S
+330,330,Automotive Vehicles Sales and Service,NA
+329,329,NA,RTL-CONDO
+328,328,NA,Retail Condominium
+327,327,NA,Unknown
+326,326,"Eating and Drinking Establishments - restaurants, fast food, diners, bars, nightclubs",REST/CLUBS
+325,325,Small Retail and Services stores (< 10K sq.ft.),STORE
+324,324,Supermarkets (> 10k sq. ft.),NA
+323,323,Shopping Centers/Malls,NA
+322,322,"Discount Stores, Junior Department Stores, Department Stores",mixed use  store/shop model 94
+321,321,"Facilities providing buidling materials, hardware and farm equipment, heating, hardware, plumbing, lumber supplies and wquipment",NA
+320,320,NA,Retail Condominiums
+319,319,NA,Condominium-Warehouse
+318,318,Commercial Greenhouses,NA
+317,317,"Farm Buildings - barns, silos, utility shed, etc.","Mixed Use (Primarily Commercial, Residential, some Agricultureal Chapter)"
+316,316,"Other Storage, Warehouse and Distribution facilities",mixed use commercial warehouse
+315,315,"Piers, Wharves, Docks and related facilities that are used for storage and transit of goods",NA
+314,314,Trucking Terminals,NA
+313,313,Lumber Yards,NA
+312,312,Grain and Feed Elevators,NA
+311,311,Bottled Gas and Propane Gas Tanks,NA
+310,310,"Tanks holding fuel and oil products for retail distribution, either above ground or below ground",NA
+309,309,NA,NA
+308,308,NA,NA
+307,307,NA,NA
+306,306,"Care and Treatment Facilities - designed and used on a transient basis, including half-way houses or other types of facilities that service the needs of people",NA
+305,305,Private Hospitals,Private Hospitals
+304,304,Nursing Homes - includes property designed for minimal care with or without medical facilities,NA
+303,303,BLANK,Commercial Misc
+302,302,"Inns, Resorts, or Tourist Homes",NA
+301,301,Motels,MOTELS
+300,300,Hotels,NA
+292,292,NA,NA
+281,281,"Hiking - trails or paths, Camping - areas with sites for overnight camping, Nature Study - areas specifically for nature study or observation",NA
+279,279,Nurseries,NA
+278,278,Pasture,NA
+277,277,Productive Woodland - woodlot,NA
+276,276,"Necessary related land - farm roads, ponds, land under farm buildings",NA
+273,273,"Field Crops - hay, wheat, tillable forage cropland, etc.",NA
+272,272,Truck Crops - Vegetables,NA
+271,271,"Tobacco, Sod",NA
+261,261,All land designated under Chapter 61,NA
+211,211,Non-productive Vacant Land,NA
+210,210,Non-productive Agricultural Land,NA
+202,202,Underwater Land or Marshes not under public ownership located in  residential areas,NA
+201,201,Residential Open Land,NA
+199,199,NA,NA
+198,106,NA,"Condominium, Residential Parking"
+193,193,NA,"Mixed Use residential/exempt/ commercial, primarily residential"
+179,179,NA,"Mixed use, primarily residential, with classified agricultural/horticultural use and an exempt windmill"
+178,178,NA,Residential/chapter 61A/chapter 61B
+173,173,NA,Residential/61A/Commercial
+172,172,NA,Condominium
+171,171,NA,NA
+170,170,NA,NA
+167,167,NA,"Mixed use, residential and Chapter 61, 61B"
+160,160,NA,NA
+150,150,NA,garage
+142,140,Child Care Facility,Day Care
+140,140,Child Care Facility,NA
+139,139,NA,Mixed Use
+138,0xx,Multiple Uses,"Residential, Commercial, Recreational"
+137,137,NA,"Has house, commercial retail store, and sits on Chapter Land"
+136,136,NA,NA
+135,135,NA,NA
+134,134,NA,"Mixed Use residential/commercial/industrial, primarily residential"
+133,0xx,"Multiple Use, primarily residential",Multiuse Residential-COM
+132,132,Undevelopable Land,NA
+131,131,Potentially Developable Land,Potentially Developable Residential Land
+130,130,Developable Land,NA
+127,127,NA,NA
+126,126,NA,APT OVER 8
+125,125,Other Congregate Housing which includes non-transient shared living arrangements,NA
+124,124,"Rectories, Convents, Monastaries",NA
+123,123,Residence Halls or Dormitories,NA
+122,122,Fraternity and Sorority Houses,NA
+121,121,Rooming and Boarding Houses,NA
+120,120,NA,NA
+119,119,NA,NA
+118,118,NA,NA
+117,117,NA,NA
+116,116,NA,NA
+115,115,NA,NA
+114,114,NA,NA
+113,113,NA,Unknown
+112,112,Greater than Eight Units,APT OVER 8
+111,111,Four to Eight Units,APT 4-UNIT
+110,110,NA,Other
+109,109,Multiple houses on a single parcel,Multi Hses
+108,108,BLANK,Res - 61B
+107,107,BLANK,Single Family with Accessory Apartment
+106,106,Accessory Land with improvement,NA
+105,105,Three Family,NA
+104,104,Two Family,Two Family MDL-01
+103,103,Mobile Home,NA
+102,102,Condominium,NA
+101,101,Single Family,NA
+98,980,NA,"Vacant, Selectmen or City Council, Other City or Town (Municipal)"
+94,94,NA,Cell tower on municipal land
+93,340,NA,Office-General
+91,9,NA,Unknown
+49,49,NA,Cell phone tower on town-owned property
+48,48,NA,"Mixed Use (Primarily Industrial, some Recreation)"
+47,47,NA,"Mixed Use (Primarily Industrial, some Agriculture)"
+46,46,NA,"Mixed Use (Primarily Industrial, some Forest)"
+43,43,NA,"Mixed Use (Primarily Industrial, some Commercial)"
+39,39,NA,Mixed Use
+38,38,NA,"Mixed Use (Primarily Commercial, some Recreation)"
+37,37,NA,"Mixed Use (Primarily Commercial, some Agriculture)"
+36,36,NA,"Mixed Use (Primarily Commercial, some Forest)"
+34,34,NA,"Mixed Use (Primarily Commercial, some Industrial)"
+31,0xx,"Multiple Use, primarily commercial","Mixed Use (Primarily Commercial, some Residential)"
+27,0xx,Multiple Uses,NA
+26,0xx,Multiple Uses,NA
+25,0xx,Multiple Uses,NA
+23,23,NA,OS / Commercial
+18,18,NA,"Mixed Use (Primarily Residential, some Recreation)"
+17,17,NA,"Mixed Use (Primarily Residential, some Agriculture)"
+16,0xx,Multiple Uses,"Mixed Use (Primarily Residential, some Forest)"
+14,14,NA,"Mixed Use (Primarily Residential, some Industrial)"
+13,0xx,"Multiple Use, primarily residential","Mixed Use (Primarily Residential, some Commercial)"
+11,0,NA,Unknown
+10,0xx,Multiple Uses,NA
+7,7,NA,Mixed Use
+0,0,NA,Unknown
