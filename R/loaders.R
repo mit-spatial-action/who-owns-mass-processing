@@ -249,8 +249,6 @@ load_address_points <- function(ma_munis, crs) {
     dplyr::select(count)
 }
 
-a <- load_address_points(MA_MUNIS, crs = 2249)
-
 load_place_names <- function(crs, ma_munis) {
   
   ma_munis <- dplyr::select(ma_munis, muni_name = pl_name)
