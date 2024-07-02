@@ -206,6 +206,40 @@ get_shp_from_remote_zip <- function(url, shpfile, crs) {
     sf::st_transform(crs)
 }
 
+load_address_points <- function(ma_munis, crs) {
+  
+  muni_ids <- dplyr::pull(ma_munis, town_id) |>
+    stringr::str_pad(3, side = "left", pad = "0")
+  
+  url_base <- "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/mad/town_exports/addr_pts/"
+  
+  all <- list()
+  for (id in muni_ids) {
+    filename <- glue::glue("AddressPts_M{id}")
+    url <- glue::glue("{url_base}{filename}.zip")
+    # print(url)
+    all[[id]] <- get_shp_from_remote_zip(
+      url,
+      shpfile = glue::glue("{filename}.shp"),
+      crs = crs
+    ) |>
+      dplyr::select(addr_pt_id)
+  }
+  
+  df <- dplyr::bind_rows(all)
+  
+  df |>
+    sf::st_drop_geometry() |>
+    dplyr::group_by(addr_pt_id) |>
+    dplyr::summarise(
+      count = dplyr::n()
+    ) |>
+    dplyr::left_join(
+      df,
+      multiple = "first"
+    )
+}
+
 load_place_names <- function(crs, ma_munis) {
   
   ma_munis <- dplyr::select(ma_munis, muni_name = pl_name)

@@ -519,7 +519,8 @@ std_use_codes <- function(df, col){
   df |> 
     dplyr::left_join(
       lu,
-      by = c("use_code" = "use_code")
+      by = c("use_code" = "use_code"),
+      na_matches = "never"
     ) |>
     dplyr::select(
       -c(use_code)
