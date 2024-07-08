@@ -42,7 +42,7 @@ load_parcels <- function(path, town_ids=NULL, crs = CRS) {
   #' @param path Path to MassGIS Parcels GDB.
   #' @param test Whether to only load a sample subset of rows.
   #' @export
-  q <- "SELECT LOC_ID FROM L3_TAXPAR_POLY"
+  q <- "SELECT LOC_ID, TOWN_ID FROM L3_TAXPAR_POLY"
   if (!is.null(town_ids)) {
     q <- stringr::str_c(
         q, 
@@ -63,7 +63,6 @@ load_parcels <- function(path, town_ids=NULL, crs = CRS) {
     dplyr::mutate(
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
-  
 }
 
 load_inds <- function(path) {
@@ -88,46 +87,6 @@ load_inds <- function(path) {
     dplyr::rename_with(stringr::str_to_lower)
 }
 
-residential_filter <- function(df, col) {
-  #' Filter assessors records by MA residential use codes.
-  #' Massachusetts Codebook
-  #' https://www.mass.gov/files/documents/2016/08/wr/classificationcodebook.pdf
-  #' Boston Codebook
-  #' https://www.cityofboston.gov/Images_Documents/MA_OCCcodes_tcm3-16189.pdf
-  #' @param df A dataframe.
-  #' @param cols The columns containing the use codes.
-  #' @returns A dataframe.
-  #' @export
-  df |>
-    dplyr::filter(
-      stringr::str_detect(
-        get({{ col }}), stringr::str_c(c(
-          # Residential use codes.
-          "^0?10[13-59][0-9A-Z]?$",
-          # Apartments.
-          "^0?11[1-5][0-9A-Z]?$",
-          # Subsidized Housing.
-          "^0?12[5-7]",
-          # Mixed use codes.
-          "^0((1[0-9])|([1-9]1))[A-Z]?$",
-          # Boston Housing Authority.
-          "^908[A-Z]?",
-          # Housing authority outside Boston.
-          "^0?970[A-Z]?",
-          # Section 121-A Property...
-          # (Tax-exempt 'blight' redevelopment.)
-          # in Boston
-          "^0?907[A-Z]?",
-          # outside Boston.
-          "^990[A-Z]?",
-          # 'Other' Housing.
-          "^959[A-Z]?",
-          "^000"
-        ), collapse = "|")
-      )
-    )
-}
-
 load_assess <- function(path = ".", town_ids = FALSE) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
@@ -139,7 +98,7 @@ load_assess <- function(path = ".", town_ids = FALSE) {
       # Property metadata.
       "PROP_ID", "LOC_ID", "FY", 
       # Parcel address.
-      "SITE_ADDR", "ADDR_NUM", "FULL_STR", "CITY", "ZIP", 
+      "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID", "ZIP", 
       # Owner name and address.
       "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
       # Last sale date and price.
@@ -192,28 +151,21 @@ load_assess <- function(path = ".", town_ids = FALSE) {
     )
 }
 
-get_remote_zip <- function(url, path) {
-  httr::GET(
-    paste0(url), 
-    httr::write_disk(path, overwrite = TRUE)
-  )
-}
-
-read_shp_from_zip <- function(path, layer) {
+load_shp_from_zip <- function(path, layer) {
   path <- stringr::str_c("/vsizip/", path, "/", layer)
   sf::st_read(path, quiet=TRUE)
 }
 
-get_shp_from_remote_zip <- function(url, shpfile, crs = CRS) {
+load_shp_from_remote_zip <- function(url, shpfile, crs = CRS) {
   message(
     glue::glue("Downloading {shpfile} from {url}...")
   )
   temp <- base::tempfile(fileext = ".zip")
-  get_remote_zip(
-    url = url,
-    path = temp
+  httr::GET(
+    paste0(url), 
+    httr::write_disk(temp, overwrite = TRUE)
   )
-  read_shp_from_zip(temp, shpfile) |>
+  load_shp_from_zip(temp, shpfile) |>
     dplyr::rename_with(tolower) |>
     sf::st_transform(crs)
 }
@@ -229,13 +181,13 @@ load_address_points <- function(ma_munis, crs = CRS) {
   for (id in muni_ids) {
     if (id == '035') {
       # Boston handler---MassGIS does not maintain the Boston Address list.
-      all[[id]] <- get_from_arc("b6bffcace320448d96bb84eabb8a075f_0", CRS) |>
+      all[[id]] <- load_from_arc("b6bffcace320448d96bb84eabb8a075f_0", CRS) |>
         dplyr::select(addr_pt_id = parcel) |>
         dplyr::filter(addr_pt_id != "" & !is.na(addr_pt_id))
     } else {
       filename <- glue::glue("AddressPts_M{id}")
       url <- glue::glue("{url_base}{filename}.zip")
-      all[[id]] <- get_shp_from_remote_zip(
+      all[[id]] <- load_shp_from_remote_zip(
         url,
         shpfile = glue::glue("{filename}.shp"),
         crs = crs
@@ -265,7 +217,7 @@ load_places <- function(crs = CRS, ma_munis) {
   
   ma_munis <- dplyr::select(ma_munis, muni_name = pl_name)
   
-  df <- get_shp_from_remote_zip(
+  df <- load_shp_from_remote_zip(
     "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/geonames_shp.zip",
     shpfile = "GEONAMES_PT_PLACES.shp",
     crs = crs
@@ -329,7 +281,7 @@ load_places <- function(crs = CRS, ma_munis) {
     dplyr::select(-n)
 }
 
-get_from_arc <- function(dataset, crs = CRS) {
+load_from_arc <- function(dataset, crs = CRS) {
   prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
   suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
   sf::st_read(
@@ -414,7 +366,7 @@ load_ma_munis <- function(crs = CRS) {
   #' @param crs Coordinate reference system for output.
   #' @export
   message("Downloading Massachusetts municipal boundaries...")
-  get_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
+  load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
     dplyr::select(town_id, pl_name = town) |>
     dplyr::mutate(
       dplyr::across(

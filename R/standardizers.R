@@ -71,7 +71,7 @@ std_remove_special <- function(df, cols) {
   std_replace_generic(
     df, 
     cols, 
-    pattern = "[^[:alnum:][:space:]\\/\\-\\#\\'\\`\\,]", 
+    pattern = "[^[:alnum:][:space:]\\/\\-\\#\\'\\`\\,([0-9].[0-9])]", 
     replace = " "
     ) |>
     std_replace_generic(
@@ -682,36 +682,6 @@ std_select_address <- function(df,
     )
 }
 
-st_get_zips <- function(sdf, zip_col, state = "MA", crs = 2249) {
-  #' Get ZIP codes based on actual parcel location.
-  #' (These are frequently misreported.)
-  #'
-  #' @param sdf A sf dataframe.
-  #' @param zip_col Name the column to which you want postal codes written.
-  #' @param state State of your study. (TODO: multiple states?)
-  #' @param crs EPSG code of appropriate coordinate reference system.
-  #' @returns A dataframe.
-  #' @export
-  sdf |>
-    dplyr::mutate(
-      point = sf::st_point_on_surface(geometry)
-    ) |>
-    sf::st_set_geometry("point") |>
-    sf::st_join(
-      tigris::zctas(cb = FALSE, state = state, year = 2010) |>
-        sf::st_transform(crs) |>
-        dplyr::select(ZCTA5CE10)
-    ) |>
-    sf::st_set_geometry("geometry") |>
-    dplyr::select(
-      -c(point)
-    ) |>
-    dplyr::mutate(
-      !!zip_col := ZCTA5CE10
-    ) |>
-    dplyr::select(-c(ZCTA5CE10))
-}
-
 st_get_censusgeo <- function(sdf, state = "MA", crs = 2249) {
   #' Bind census geography IDs to geometries of interest.
   #'
@@ -884,7 +854,28 @@ std_flow_multiline_address <- function(df) {
     std_replace_blank("addr")
 }
 
-fill_muni_postal_spatial <- function(df, parcels, ma_munis, ma_postals) {
+std_fill_postal_sp <- function(df, parcels, zips, crs=CRS) {
+  ma_zips <- zips |>
+    dplyr::filter(ma) |>
+    sf::st_transform(crs)
+  
+  df <- df |> 
+    dplyr::filter(!(postal %in% ma_zips$zip)) |>
+    dplyr::left_join(sf::st_point_on_surface(parcels), by=dplyr::join_by(loc_id)) |>
+    sf::st_as_sf() |>
+    sf::st_join(dplyr::select(ma_zips, zip)) |>
+    dplyr::mutate(
+      postal = zip
+    ) |>
+    dplyr::select(-zip) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(postal %in% ma_zips$zip)
+    ) |>
+    sf::st_drop_geometry()
+}
+
+std_fill_muni_sp <- function(df, parcels, ma_munis, ma_postals) {
   df <- df |>
     dplyr::left_join(sf::st_point_on_surface(parcels), by=c("loc_id" = "loc_id")) |>
     sf::st_as_sf() 
@@ -900,19 +891,6 @@ fill_muni_postal_spatial <- function(df, parcels, ma_munis, ma_postals) {
       df |>
         dplyr::filter(muni %in% ma_munis$pl_name)
     )
-  
-  df <- df |> 
-    dplyr::filter(!(postal %in% ma_postals$zip)) |>
-    sf::st_join(dplyr::select(ma_postals, zip)) |>
-    dplyr::mutate(
-      postal = zip
-    ) |>
-    dplyr::select(-zip) |>
-    dplyr::bind_rows(
-      df |>
-        dplyr::filter(postal %in% ma_postals$zip)
-    ) |>
-    sf::st_drop_geometry()
 }
 
 std_address_range <- function(df) {
@@ -978,9 +956,7 @@ std_address_range <- function(df) {
     dplyr::select(-c(parsed, addr_temp, addr_range))
 }
 
-std_address_by_matching <- function(df, zips, places) {
-  #' Walks through a series of possible matching steps using, e.g.,
-  
+std_fill_state_by_zip <- function(df, zips) {
   df <- df |>
     dplyr::filter(is.na(state), !is.na(postal)) |>
     dplyr::left_join(
@@ -1000,6 +976,33 @@ std_address_by_matching <- function(df, zips, places) {
       df |>
         dplyr::filter(!is.na(state) | is.na(postal))
     )
+}
+
+std_fill_zip_by_muni <- function(df, zips) {
+  df <- df |>
+    dplyr::filter(is.na(postal), !is.na(muni)) |>
+    dplyr::left_join(
+      zips |>
+        sf::st_drop_geometry() |>
+        dplyr::filter(!is.na(muni_unambig_from)) |>
+        dplyr::select(pl_name = muni_unambig_from, zip),
+      by = c("muni" = "pl_name")
+    ) |>
+    dplyr::mutate(
+      postal = dplyr::case_when(
+        !is.na(zip) ~ zip,
+        .default = postal
+      )
+    ) |>
+    dplyr::select(-zip) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!is.na(postal) | is.na(muni))
+    )
+}
+
+std_address_by_matching <- function(df, zips, places) {
+  #' Walks through a series of possible matching steps using, e.g.,
   
   # Direct matches to municipality names.
   df_ma <- df |>
@@ -1106,25 +1109,7 @@ std_address_by_matching <- function(df, zips, places) {
         dplyr::filter(match | is.na(muni))
     )
   
-  df_ma <- df_ma |>
-    dplyr::filter(is.na(postal), !is.na(muni)) |>
-    dplyr::left_join(
-      zips |>
-        dplyr::filter(!is.na(muni_unambig_from)) |>
-        dplyr::select(pl_name = muni_unambig_from, zip),
-      by = c("muni" = "pl_name")
-    ) |>
-    dplyr::mutate(
-      postal = dplyr::case_when(
-        !is.na(zip) ~ zip,
-        .default = postal
-      )
-    ) |>
-    dplyr::select(-zip) |>
-    dplyr::bind_rows(
-      df_ma |>
-        dplyr::filter(!is.na(postal) | is.na(muni))
-    )
+  
   
   df_ma <- df_ma |>
     dplyr::filter(!match & !is.na(postal)) |>
@@ -1553,7 +1538,7 @@ std_flow_assess_parcel <- function(assess) {
   assess |>
     dplyr::select(
       prop_id, loc_id, fy, addr = site_addr, muni = city, postal = zip, 
-      state, country, use_code, units, bldg_val, land_val, total_val, ls_date, ls_price, 
+      state, country, luc, units, bldg_val, land_val, total_val, ls_date, ls_price, 
       bld_area, res_area
     ) |>
     # Apply string standardization workflow to string columns.
@@ -1565,6 +1550,7 @@ std_flow_assess_parcel <- function(assess) {
     ) |>
     # Spatially match those addresses that can't be completely standardized with
     # reference to the table.
+    # DEPRECATED - use std_fill_postal_sp, std_fill_muni_sp
     fill_muni_postal_spatial(PARCELS, ma_munis = MA_MUNIS, ma_postals = ZIPS$ma) |>
     std_flow_multiline_address() |>
     std_address_range() |>
