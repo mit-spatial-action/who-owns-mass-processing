@@ -5,6 +5,8 @@ require(magrittr)
 # Use cached tigris geographies
 options(tigris_use_cache = TRUE)
 
+CRS <- 2249
+
 TEST_MUNIS <- c(274, 49, 176)
 
 DATA_DIR <- "data"

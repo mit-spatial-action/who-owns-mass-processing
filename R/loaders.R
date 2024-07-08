@@ -35,7 +35,7 @@ load_agents <- function(df, cols, drop_na_col) {
     dplyr::filter(!is.na(get({{ drop_na_col }})))
 }
 
-load_parcels <- function(path, town_ids=NULL, crs = 2249) {
+load_parcels <- function(path, town_ids=NULL, crs = CRS) {
   #' Load assessing table from MassGIS geodatabase.
   #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
   #' 
@@ -177,7 +177,19 @@ load_assess <- function(path = ".", town_ids = FALSE) {
         TRUE ~ site_addr
       )
     ) |>
-    dplyr::select(-c(addr_num, full_str))
+    dplyr::select(-c(addr_num, full_str)) |>
+    std_use_codes("use_code") |>
+    # Filter residential land use codes.
+    dplyr::filter(luc %in% c(
+      '101', '102', '103', '104', 
+      '105', '109', '111', '112', 
+      '0xx', '970', '908', '959'
+      )
+    ) |>
+    # All parcels are in MA, in the US...
+    dplyr::mutate(
+      state = "MA", country = "US"
+    )
 }
 
 get_remote_zip <- function(url, path) {
@@ -192,7 +204,7 @@ read_shp_from_zip <- function(path, layer) {
   sf::st_read(path, quiet=TRUE)
 }
 
-get_shp_from_remote_zip <- function(url, shpfile, crs) {
+get_shp_from_remote_zip <- function(url, shpfile, crs = CRS) {
   message(
     glue::glue("Downloading {shpfile} from {url}...")
   )
@@ -206,7 +218,7 @@ get_shp_from_remote_zip <- function(url, shpfile, crs) {
     sf::st_transform(crs)
 }
 
-load_address_points <- function(ma_munis, crs) {
+load_address_points <- function(ma_munis, crs = CRS) {
   
   muni_ids <- dplyr::pull(ma_munis, town_id) |>
     stringr::str_pad(3, side = "left", pad = "0")
@@ -217,7 +229,7 @@ load_address_points <- function(ma_munis, crs) {
   for (id in muni_ids) {
     if (id == '035') {
       # Boston handler---MassGIS does not maintain the Boston Address list.
-      all[[id]] <- get_from_arc("b6bffcace320448d96bb84eabb8a075f_0", 2249) |>
+      all[[id]] <- get_from_arc("b6bffcace320448d96bb84eabb8a075f_0", CRS) |>
         dplyr::select(addr_pt_id = parcel) |>
         dplyr::filter(addr_pt_id != "" & !is.na(addr_pt_id))
     } else {
@@ -249,7 +261,7 @@ load_address_points <- function(ma_munis, crs) {
     dplyr::select(count)
 }
 
-load_place_names <- function(crs, ma_munis) {
+load_places <- function(crs = CRS, ma_munis) {
   
   ma_munis <- dplyr::select(ma_munis, muni_name = pl_name)
   
@@ -309,10 +321,15 @@ load_place_names <- function(crs, ma_munis) {
       pl_name_fuzzy = fuzzify_string(tmp)
     ) |>
     dplyr::select(-tmp) |>
-    dplyr::filter(!(pl_name == "CAMBRIDGE" & muni_name == "WORCESTER"))
+    dplyr::filter(!(pl_name == "CAMBRIDGE" & muni_name == "WORCESTER")) |>
+    # Remove placenames that appear in multiple places.
+    # These are not useful for deduplication.
+    dplyr::add_count(pl_name) |>
+    dplyr::filter(n == 1) |>
+    dplyr::select(-n)
 }
 
-get_from_arc <- function(dataset, crs) {
+get_from_arc <- function(dataset, crs = CRS) {
   prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
   suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
   sf::st_read(
@@ -322,7 +339,76 @@ get_from_arc <- function(dataset, crs) {
     sf::st_transform(crs)
 }
 
-load_ma_munis <- function(crs) {
+load_conn <- function(remote=FALSE) {
+  if (remote) {
+    dbname <- "DB_NAME"
+    host <- "DB_HOST"
+    port <- "DB_PORT"
+    user <- "DB_USER"
+    password <- "DB_PASS"
+  } else {
+    dbname <- "LOCAL_DB_NAME"
+    host <- "LOCAL_DB_HOST"
+    port <- "LOCAL_DB_PORT"
+    user <- "LOCAL_DB_USER"
+    password <- "LOCAL_DB_PASS"
+  }
+  DBI::dbConnect(
+    RPostgres::Postgres(),
+    dbname = Sys.getenv(dbname),
+    host = Sys.getenv(host),
+    port = Sys.getenv(port),
+    user = Sys.getenv(user),
+    password = Sys.getenv(password),
+    sslmode = "allow"
+  )
+}
+
+load_check_for_table <- function(conn, table) {
+  if(table %in% DBI::dbListTables(conn)) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+load_postgis_ingest <- function(df, conn, layer_name, overwrite=FALSE) {
+  sf::st_write(
+    df, 
+    dsn = conn, 
+    layer = layer_name,
+    delete_layer = overwrite
+  )
+}
+
+load_postgis_read <- function(conn, layer_name) {
+  sf::st_read(
+    dsn = conn,
+    layer = layer_name,
+    quiet = TRUE
+  )
+}
+
+load_layer_flow <- function(conn, layer_name, loader, refresh=FALSE) {
+  table_exists <- load_check_for_table(conn, layer_name)
+  if(!table_exists | refresh) {
+    if(!table_exists) {
+      message(glue::glue("Table {layer_name} does not exist in PostGIS."))
+    } else {
+      message(glue::glue("Table {layer_name} exists, but user specified refresh."))
+    }
+    df <- loader
+    message(glue::glue("Writing {layer_name} to PostGIS database."))
+    df <- df |>
+      load_postgis_ingest(conn, layer_name=layer_name, overwrite=refresh)
+  } else {
+    message(glue::glue("Reading {layer_name} from PostGIS database."))
+    df <- load_postgis_read(conn, layer_name=layer_name)
+  }
+  df
+}
+
+load_ma_munis <- function(crs = CRS) {
   #' Downloads MA municipalities from MassGIS ArcGIS Hub.
   #'
   #' @param crs Coordinate reference system for output.
@@ -377,7 +463,7 @@ overlap_analysis <- function(x, y, threshold = 0) {
     )
 }
 
-load_zips_by_state <- function(crs, ma_munis, threshold = 0.95) {
+load_zips <- function(crs = CRS, ma_munis, threshold = 0.95) {
   all <- list()
   for (s in state.abb) {
     all[[s]] <- tigris::zctas(cb = FALSE, year = 2010, state = s) |>
@@ -392,50 +478,49 @@ load_zips_by_state <- function(crs, ma_munis, threshold = 0.95) {
         .default = FALSE
       )
     ) |>
-    dplyr::ungroup()
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      ma = state == "MA",
+      ma_unambig = ma & state_unambig
+    )
   
   zips_ma <- zips |>
-    dplyr::filter(state == "MA") |>
+    dplyr::filter(ma) |>
     sf::st_transform(crs)
-  
-  zips <- sf::st_drop_geometry(zips)
   
   ma_munis_clip <- ma_munis |>
     sf::st_intersection(
       sf::st_union(zips_ma)
     )
-  
+
   zips_ma_clip <- zips_ma |>
     sf::st_intersection(
       sf::st_union(ma_munis_clip)
     )
-    
+
   # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
   # where the vast majority of a zip is contained w/in a single muni.)
-  ma_umanbig_zip_from_muni <- overlap_analysis(ma_munis_clip, 
-                                               zips_ma_clip, 
+  ma_unambig_zip_from_muni <- overlap_analysis(ma_munis_clip,
+                                               zips_ma_clip,
                                                threshold = threshold) |>
-    dplyr::select(zip, state, pl_name)
+    dplyr::select(zip, muni_unambig_from = pl_name)
   
+  zips <- zips |>
+    dplyr::left_join(ma_unambig_zip_from_muni, by=dplyr::join_by(zip))
+
   # Identify cases where munis can be unambiguously assigned
   # from ZIPS (i.e., where the vast majority of a muni is contained w/in
   # a single zip).
-  ma_unambig_muni_from_zip <- overlap_analysis(zips_ma_clip, 
-                                               ma_munis_clip, 
+  ma_unambig_muni_from_zip <- overlap_analysis(zips_ma_clip,
+                                               ma_munis_clip,
                                                threshold = threshold) |>
-    dplyr::select(zip, state, pl_name)
+    dplyr::select(zip, muni_unambig_to = pl_name)
   
-  list(
-    all = dplyr::pull(zips, zip) |> unique(),
-    unambig = dplyr::filter(zips, state_unambig),
-    ma = zips_ma,
-    ma_unambig = dplyr::filter(zips_ma, state_unambig),
-    ma_unambig_zip_from_muni = ma_umanbig_zip_from_muni,
-    ma_unambig_muni_from_zip = ma_unambig_muni_from_zip
-  )
+  zips |>
+    dplyr::left_join(ma_unambig_muni_from_zip, by=dplyr::join_by(zip))
 }
 
-load_filings <- function(ma_munis, bos_neighs, town_ids = FALSE, crs = 2249) {
+load_filings <- function(ma_munis, bos_neighs, town_ids = FALSE, crs = CRS) {
   #' Pulls eviction filings from database.
   #'
   #' @return A dataframe.
