@@ -899,11 +899,11 @@ std_address_range <- function(df) {
       # Extract address, accounting for possible presence of half-addresses.
       addr_range = stringr::str_detect(
         addr, 
-        "^[0-9]+[A-Z]{0,1} *(1 \\/ 2)?([ -]+[0-9]+[A-Z]{0,1} *(1 \\/ 2)?)+ +(?=[A-Z0-9])"
+        "^[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?([ -]+[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)+ +(?=[A-Z0-9])"
       ),
       addr_num = stringr::str_extract(
         addr, 
-        "^[0-9]+[A-Z]{0,1} *(1 \\/ 2)?([ -]+(([0-9]+[A-Z]{0,1} *(1 \\/ 2)?)*|[A-Z]))? +(?=[A-Z0-9])"
+        "^[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?([ -]+(([0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)*|[A-Z]))? +(?=[A-Z0-9])"
       ),
       # Extract address body.
       addr_body = stringr::str_remove(
