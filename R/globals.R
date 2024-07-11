@@ -17,7 +17,7 @@ INDS <- "CSC_CorporationsIndividualExport_VB.txt"
 # Filename of delimited text file containing corporate entities.
 CORPS <- "CSC_CorpDataExports_VB.txt"
 # Filename of MassGIS Parcels geodatabase.
-ASSESS_GDB <- "MassGIS_L3_Parcels.gdb"
+ASSESS_GDB_FOLDER <- "L3_AGGREGATE_FGDB_20240703/"
 
 # Name of delimited text output files.
 ASSESS_OUT_NAME <- "assess"
