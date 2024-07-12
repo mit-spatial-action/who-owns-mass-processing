@@ -143,18 +143,19 @@ load_postgis_ingest <- function(df, conn, layer_name, overwrite=FALSE) {
   if ("sf" %in% class(df)) {
     sf::st_write(
       df, 
-      dsn = conn, 
-      layer = layer_name,
-      delete_layer = overwrite
+      dsn=conn, 
+      layer=layer_name,
+      delete_layer=overwrite
     )
   } else {
     DBI::dbWriteTable(
-      conn = conn,
-      name = layer_name,
-      value = df,
-      overwrite = TRUE
+      conn=conn,
+      name=layer_name,
+      value=df,
+      overwrite=overwrite
     )
   }
+  df
 }
 
 load_postgis_read <- function(conn, layer_name, sf = TRUE) {
@@ -741,11 +742,16 @@ load_zips <- function(munis, crs, threshold = 0.95) {
 }
 
 load_companies <- function(path, filename, gdb_path) {
+  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   min_year <- load_gdb_vintages(gdb_path) |>
     dplyr::pull(cy) |>
     min()
-  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
-  readr::read_csv(file.path(path, filename)) |>
+  
+  readr::read_csv(
+    file.path(path, filename),
+    progress = FALSE,
+    show_col_types = FALSE
+    ) |>
     dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("20{min_year}-01-01")) |>
     dplyr::select(
       id = company_number,
@@ -762,7 +768,11 @@ load_companies <- function(path, filename, gdb_path) {
 
 load_officers <- function(path, filename, companies) {
   # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
-  readr::read_csv(file.path(path, filename)) |>
+  readr::read_csv(
+    file.path(path, filename),
+    progress = FALSE,
+    show_col_types = FALSE
+    ) |>
     dplyr::select(
       name, 
       position, 
