@@ -316,7 +316,7 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
     q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
     all[[muni_id]] <- sf::st_read(
-      glue::glue("{path}{file}"),
+      file.path(path, file),
       query = q,
       quiet = TRUE
     )  |>
