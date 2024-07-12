@@ -1,12 +1,14 @@
-# Corporate database copy.
-CSC*.txt
 # macOS finder file
 .DS_Store
+
 # Rproj/renv stuff
 renv/*
 .Renviron
 .RProj.user/*
 .Rproj.user
+.Rhistory
+sandbox.R
+
 *.RData
 # logr logs
 *.log
