@@ -1,33 +1,37 @@
-# Use cached tigris geographies
-options(tigris_use_cache = TRUE)
+# If true, load.R will re-ingest data from sources.
+REFRESH_DATA <- TRUE
 
-REFRESH_DATA <- FALSE
+# If not NULL, will run script on a subset of municipalities.
+# Can be provided as numeric or character vector.
+# TEST_MUNIS <- c(274, 49, 176)
 
+# To run on all MA municipalities, uncomment this line.
+TEST_MUNIS <- NULL
+
+# Coordinate Reference System into which spatial layers will be projected.
 CRS <- 2249
 
-TEST <- TRUE
-TEST_MUNIS <- c(274, 49, 176)
+# Folder containing OpenCorporates data products.
+OC_FOLDER <- '2024-04-12'
 
+# Name of file containing OpenCorporates companies.
+OC_COMPANIES <- "companies.csv"
+
+# Name of file containing OpenCorporates companies.
+OC_OFFICERS <- "officers.csv"
+
+# Filename of MassGIS Parcels geodatabase.
+ASSESS_GDB_FOLDER <- "L3_AGGREGATE_FGDB_20240703"
+
+# Name of directory where (some) source data is located.
 DATA_DIR <- "data"
+
 # Name of directory in which results are written.
 RESULTS_DIR <- "results"
-# Filename of delimited text file containing individuals.
-INDS <- "CSC_CorporationsIndividualExport_VB.txt"
-# Filename of delimited text file containing corporate entities.
-CORPS <- "CSC_CorpDataExports_VB.txt"
-# Filename of MassGIS Parcels geodatabase.
-ASSESS_GDB_FOLDER <- "L3_AGGREGATE_FGDB_20240703/"
 
-# Name of delimited text output files.
-ASSESS_OUT_NAME <- "assess"
-OWNERS_OUT_NAME <- "owners"
-CORPS_OUT_NAME <- "corps"
-INDS_OUT_NAME <- "inds"
-NODES_OUT_NAME <- "nodes"
-EDGES_OUT_NAME <- "edges"
-FILINGS_OUT_NAME <- "filings"
-# Name of RData image.
-RDATA_OUT_NAME <- "results"
+# Use cached tigris geographies.
+options(tigris_use_cache = TRUE)
+
 
 log_message <- function(status) {
   #' Print message to `logr` logs.

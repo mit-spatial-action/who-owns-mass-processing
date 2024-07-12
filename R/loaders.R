@@ -1,13 +1,22 @@
 # Load Helpers ====
 
-load_muni_subset <- function(test) {
-  if (test) {
-    ids <- TEST_MUNIS |>
-      stringr::str_pad(3, side = "left", pad = "0")
-  } else {
-    ids <- NULL
+load_test_muni_subset <- function(test_munis, munis) {
+  valid <- all(as.integer(test_munis) %in% dplyr::pull(munis, muni_id))
+  if(!valid) {
+    stop("Provided invalid test municipality ids.")
   }
-  ids
+}
+
+load_muni_subset <- function(test_munis, munis) {
+  load_test_muni_subset(
+    test_munis = test_munis, 
+    munis = munis
+  )
+  if (!is.null(test_munis)) {
+    test_munis <- test_munis |>
+      stringr::str_pad(3, side = "left", pad = "0")
+  }
+  test_munis
 }
 
 load_gdb_vintages <- function(path) {
@@ -218,7 +227,7 @@ load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
     q <- glue::glue("SELECT LOC_ID, TOWN_ID FROM M{muni_id}TaxPar")
     
     all[[muni_id]] <- sf::st_read(
-      glue::glue("{path}{file}"), 
+      file.path(path, file), 
       query = q, 
       quiet = TRUE
     ) |>
@@ -626,7 +635,7 @@ load_places <- function(munis, crs) {
           ),
         .default = pl_name
       ),
-      pl_name_fuzzy = fuzzify_string(tmp)
+      pl_name_fuzzy = std_fuzzify_string(tmp)
     ) |>
     dplyr::select(-tmp) |>
     dplyr::filter(!(pl_name == "CAMBRIDGE" & muni_name == "WORCESTER")) |>
@@ -731,7 +740,45 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     dplyr::left_join(ma_unambig_muni_from_zip, by=dplyr::join_by(zip))
 }
 
-# Need Rework ====
+load_companies <- function(path, filename, gdb_path) {
+  min_year <- load_gdb_vintages(gdb_path) |>
+    dplyr::pull(cy) |>
+    min()
+  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
+  readr::read_csv(file.path(path, filename)) |>
+    dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("20{min_year}-01-01")) |>
+    dplyr::select(
+      id = company_number,
+      name,
+      company_type,
+      nonprofit,
+      addr = registered_address.street_address,
+      muni = registered_address.locality,
+      state = registered_address.region,
+      postal = registered_address.postal_code,
+      country = registered_address.country
+    )
+}
+
+load_officers <- function(path, filename, companies) {
+  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
+  readr::read_csv(file.path(path, filename)) |>
+    dplyr::select(
+      name, 
+      position, 
+      addr = address.in_full, 
+      str = address.street_address, 
+      muni = address.locality,
+      state = address.region,
+      postal = address.postal_code,
+      country = address.country,
+      company_id = company_number
+    ) |>
+    dplyr::semi_join(companies, by = dplyr::join_by(company_id == id)) |>
+    std_replace_newline("addr")
+}
+
+# Deprecated ====
 
 load_corps <- function(path) {
   #' Load corporations, sourced from the MA Secretary of the Commonwealth.
