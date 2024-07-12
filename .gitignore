@@ -27,3 +27,8 @@ results/*.csv
 *.gpkg-wal
 *.gpkg-shm
 *.rds
+
+data/*
+
+!data/luc_crosswalk.csv
+!data/README.csv
