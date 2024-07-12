@@ -1,12 +1,11 @@
-# Required to use piping syntax using otherwise-explicit
-# namespacing.
-require(magrittr)
-
 # Use cached tigris geographies
 options(tigris_use_cache = TRUE)
 
+REFRESH_DATA <- FALSE
+
 CRS <- 2249
 
+TEST <- TRUE
 TEST_MUNIS <- c(274, 49, 176)
 
 DATA_DIR <- "data"
@@ -29,3 +28,33 @@ EDGES_OUT_NAME <- "edges"
 FILINGS_OUT_NAME <- "filings"
 # Name of RData image.
 RDATA_OUT_NAME <- "results"
+
+log_message <- function(status) {
+  #' Print message to `logr` logs.
+  #'
+  #' @param status Status to print.
+  #' @returns Nothing.
+  #' @export
+  time <- format(Sys.time(), "%a %b %d %X %Y")
+  message <- stringr::str_c(time, status, sep = ": ")
+  logr::log_print(message)
+}
+
+write_multi <- function(df, name, formats = c("csv", "rds", "pg")){
+  if ("csv" %in% formats) {
+    # Write pipe-delimited text file of edges.
+    readr::write_delim(
+      df,
+      file.path(RESULTS_DIR, stringr::str_c(name, "csv", sep = ".")),
+      delim = "|", 
+      quote = "needed"
+    )
+  }
+  if ("rds" %in% formats) {
+    saveRDS(
+      df, 
+      file = file.path(RESULTS_DIR, stringr::str_c(name, "rds", sep = "."))
+    )
+  }
+  df
+}
