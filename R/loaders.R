@@ -4,6 +4,18 @@ source("R/standardizers.R")
 # Load Helpers ====
 
 load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
+  #' Test Validity of Muni IDs and Pad
+  #' 
+  #' Tests whether provided municipality ids are valid (`stop()` if they are 
+  #' not) and pads them out to three characters with zeroes to the left.
+  #'
+  #' @param muni_ids Vector of municipality IDs.
+  #' @param path Path to data directory.
+  #' @param file CSV file containing municipality IDs.
+  #' 
+  #' @return A transformed vector of municipality IDs.
+  #' 
+  #' @export
   ids <- readr::read_csv(
       file.path(path, file), 
       progress=TRUE,
@@ -128,6 +140,7 @@ load_shp_from_remote_zip <- function(url, shpfile, crs) {
   #'    because (strangely), there is no fixed relationship between them.
   #' 
   #' @export
+  
   message(
     glue::glue("Downloading {shpfile} from {url}...")
   )
@@ -141,6 +154,18 @@ load_shp_from_remote_zip <- function(url, shpfile, crs) {
 }
 
 load_from_arc <- function(dataset, crs) {
+  #' Load Shapefile from .zip file.
+  #' 
+  #' Reads spatial dataset from ArcGIS open data portal.
+  #'
+  #' @param dataset ID of ArcGIS layer (generally listed after
+  #'    https://opendata.arcgis.com/api/v3/datasets/).
+  #' @param crs Coordinate reference system for resulting `sf` data frame.
+  #' 
+  #' @return `sf` data frame.
+  #' 
+  #' @export
+  
   prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
   suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
   sf::st_read(
@@ -153,6 +178,19 @@ load_from_arc <- function(dataset, crs) {
 # Database Functions ====
 
 load_conn <- function(remote=FALSE) {
+  #' Load DBMS Connection
+  #' 
+  #' Creates connection to remote or local PostGIS connection. Requires a
+  #' variables to be set in `.Renviron`.
+  #'
+  #' @param remote If `TRUE`, creates connection to remote db. If `FALSE`,
+  #'    creates connection to local PostGIS instance.
+  #' 
+  #' @return dbConnect() returns an S4 object that inherits from DBIConnection.
+  #'    This object is used to communicate with the database engine.
+  #' 
+  #' @export
+  
   if (remote) {
     dbname <- "DB_NAME"
     host <- "DB_HOST"
@@ -177,26 +215,49 @@ load_conn <- function(remote=FALSE) {
   )
 }
 
-load_check_for_table <- function(conn, table) {
-  if(table %in% DBI::dbListTables(conn)) {
+load_check_for_table <- function(conn, table_name) {
+  #' Check Whether Database Table Exists
+  #' 
+  #' Checks whether a specified table exists in a PostGIS database.
+  #'
+  #' @param conn A `DBIConnection`.
+  #' @param table_name Name of table to check for existence of.
+  #' 
+  #' @return `TRUE` if table exists, `FALSE` if it does not.
+  #' 
+  #' @export
+  
+  if(table_name %in% DBI::dbListTables(conn)) {
     return(TRUE)
   } else {
     return(FALSE)
   }
 }
 
-load_postgis_ingest <- function(df, conn, layer_name, overwrite=FALSE) {
+load_postgis_ingest <- function(df, conn, table_name, overwrite=FALSE) {
+  #' Write Table to PostGIS
+  #' 
+  #' Writes table to PostGIS.
+  #'
+  #' @param conn A `DBIConnection`.
+  #' @param table_name Name of table to write.
+  #' @overwrite If `TRUE`, overwrite table.
+  #' 
+  #' @return Unmodified data frame.
+  #' 
+  #' @export
+  
   if ("sf" %in% class(df)) {
     sf::st_write(
       df, 
       dsn=conn, 
-      layer=layer_name,
+      layer=table_name,
       delete_layer=overwrite
     )
   } else {
     DBI::dbWriteTable(
       conn=conn,
-      name=layer_name,
+      name=table_name,
       value=df,
       overwrite=overwrite
     )
@@ -204,7 +265,18 @@ load_postgis_ingest <- function(df, conn, layer_name, overwrite=FALSE) {
   df
 }
 
-load_postgis_read <- function(conn, layer_name, sf = TRUE) {
+load_postgis_read <- function(conn, table_name) {
+  #' Read table from PostGIS.
+  #' 
+  #' Reads table from PostGIS.
+  #'
+  #' @param conn A `DBIConnection`.
+  #' @param table_name Name of table to write.
+  #' 
+  #' @return Table as a data frame.
+  #' 
+  #' @export
+  
   q <- DBI::dbSendQuery(conn, "SELECT * FROM geometry_columns")
   
   geo_tables <- DBI::dbFetch(q) |> 
@@ -213,46 +285,67 @@ load_postgis_read <- function(conn, layer_name, sf = TRUE) {
   if (layer_name %in% geo_tables) {
     sf::st_read(
       dsn = conn,
-      layer = layer_name,
+      layer = table_name,
       quiet = TRUE
     )
   } else {
     DBI::dbReadTable(
       conn = conn,
-      name = layer_name
+      name = table_name
     )
   }
 }
 
-load_layer_flow <- function(conn, layer_name, loader, refresh=FALSE) {
+load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
+  #' Ingest table to or read table from PostGIS.
+  #' 
+  #' Either writes or reads a table, depending on parameter settings and table
+  #' existence.
+  #'
+  #' @param conn A `DBIConnection`.
+  #' @param table_name Name of table to write or read.
+  #' @param loader A dataframe or function to read dataframe.
+  #' 
+  #' @return Unmodified data frame.
+  #' 
+  #' @export
+  
   on.exit(DBI::dbDisconnect(conn))
-  table_exists <- load_check_for_table(conn, layer_name)
+  table_exists <- load_check_for_table(conn, table_name)
   if(!table_exists | refresh) {
     if(!table_exists) {
-      message(glue::glue("Table {layer_name} does not exist in PostGIS."))
+      message(glue::glue("Table {table_name} does not exist in PostGIS."))
     } else {
-      message(glue::glue("Table {layer_name} exists, but user specified refresh."))
+      message(glue::glue("Table {table_name} exists, but user specified refresh."))
     }
     df <- loader
-    message(glue::glue("Writing {layer_name} to PostGIS database."))
+    message(glue::glue("Writing {table_name} to PostGIS database."))
     df <- df |>
-      load_postgis_ingest(conn, layer_name=layer_name, overwrite=refresh)
+      load_postgis_ingest(conn, table_name=table_name, overwrite=refresh)
   } else {
-    message(glue::glue("Reading {layer_name} from PostGIS database."))
-    df <- load_postgis_read(conn, layer_name=layer_name)
+    message(glue::glue("Reading {table_name} from PostGIS database."))
+    df <- load_postgis_read(conn, table_name=table_name)
   }
   df
 }
 
 # Load Specific Layers ====
 
-load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
-  #' Load assessing table from MassGIS geodatabase.
-  #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
+load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL) {
+  #' Load Parcels from All Vintages Folder
   #' 
-  #' @param path Path to MassGIS Parcels GDB.
-  #' @param test Whether to only load a sample subset of rows.
+  #' Load parcels from MassGIS complete vintage tax parcel collection.
+  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
+  #'
+  #' @param gdb_path Path to collection of MassGIS Parcel GDBs.
+  #' @param crs Coordinate reference system for output.
+  #' @param muni_ids Vector of municipality IDs.
+  #' 
+  #' @return An `sf` dataframe containing MULTIPOLYGON parcels for specified 
+  #' municipalities.
+  #' 
   #' @export
+  
   vintages <- load_select_vintage(path)
   
   if (!is.null(muni_ids)) {
@@ -274,7 +367,7 @@ load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
     q <- glue::glue("SELECT LOC_ID, TOWN_ID FROM M{muni_id}TaxPar")
     
     all[[muni_id]] <- sf::st_read(
-      file.path(path, file), 
+      file.path(gdb_path, file), 
       query = q, 
       quiet = TRUE
     ) |>
@@ -292,13 +385,21 @@ load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
     )
 }
 
-load_parcels <- function(path, crs, muni_ids=NULL) {
-  #' Load assessing table from MassGIS geodatabase.
-  #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
+load_parcels <- function(gdb_path, crs, muni_ids=NULL) {
+  #' Load Parcels from Most Recent Parcel GDB
   #' 
-  #' @param path Path to MassGIS Parcels GDB.
-  #' @param test Whether to only load a sample subset of rows.
+  #' Load parcels from MassGIS "most current statewide data" product.
+  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
+  #'
+  #' @param gdb_path Path to MassGIS GDB.
+  #' @param crs Coordinate reference system for output.
+  #' @param muni_ids Vector of municipality IDs.
+  #' 
+  #' @return An `sf` dataframe containing MULTIPOLYGON parcels for specified 
+  #' municipalities.
+  #' 
   #' @export
+  
   q <- "SELECT LOC_ID, TOWN_ID FROM L3_TAXPAR_POLY"
   if (!is.null(muni_ids)) {
     q <- stringr::str_c(
@@ -309,7 +410,11 @@ load_parcels <- function(path, crs, muni_ids=NULL) {
       sep = " "
     )
   }
-  sf::st_read(path, query = q, quiet = TRUE) |>
+  sf::st_read(
+      gdb_path, 
+      query = q, 
+      quiet = TRUE
+    ) |>
     dplyr::rename_with(stringr::str_to_lower) |> 
     # Correct weird naming conventions of GDB.
     sf::st_set_geometry("shape") |>
@@ -322,18 +427,26 @@ load_parcels <- function(path, crs, muni_ids=NULL) {
     )
 }
 
-load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
+load_assess_all_vintages <- function(gdb_path, munis, muni_ids=NULL) {
+  #' Load Assessors' Tables from All Vintages Folder
+  #' 
   #' Load assessing table from MassGIS complete vintage tax parcel collection.
+  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
-  #' @param path Path to collection ofc MassGIS Parcels GDBs.
-  #' @param muni_ids list of town IDs
+  #' @param gdp_path Path to collection of MassGIS Parcel GDBs.
+  #' @param munis Municipalities, as loaded by `load_munis()`.
+  #' @param muni_ids Vector of municipality IDs.
+  #' 
+  #' @return A data frame of assessors' records for specified municipalities.
+  #' 
   #' @export
   
-  vintages <- load_select_vintage(path)
+  vintages <- load_select_vintage(gdb_path)
   if (!is.null(muni_ids)) {
     vintages <- vintages |>
       dplyr::filter(muni_id %in% muni_ids)
   }
+  
   cols <- c(
     # Property metadata.
     "PROP_ID", "LOC_ID", "FY", 
@@ -362,7 +475,7 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
     q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
     all[[muni_id]] <- sf::st_read(
-        file.path(path, file),
+        file.path(gdb_path, file),
         query = q,
         quiet = TRUE
       )  |>
@@ -390,23 +503,29 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
         dplyr::rename(muni = pl_name) |>
         dplyr::select(-hns), 
       by = dplyr::join_by(muni_id)
-    )
-  
-  # 
-  # |>
-  #   std_use_codes("use_code")
-  # 
-  # |>
-  #   std_fill_missing_units()
+    ) |>
+    std_fill_missing_units() |>
+    std_luc(
+      path = DATA_PATH
+    ) |>
+    std_flag_residential("luc") |>
+    std_units_from_luc("luc", "muni_id")
 }
 
-load_assess <- function(path = ".", munis, muni_ids=NULL) {
-  #' Load assessing table from MassGIS geodatabase.
-  #' https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip
+load_assess <- function(gdb_path, munis, muni_ids=NULL) {
+  #' Load Assessors' Tables from Most Recent Parcel GDB
+  #' 
+  #' Load assessing table from MassGIS "most current statewide data" product.
+  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
-  #' @param path Path to MassGIS Parcels GDB.
-  #' @param muni_ids list of town IDs
+  #' @param gdb_path Path to MassGIS GDB.
+  #' @param munis Municipalities, as loaded by `load_munis()`.
+  #' @param muni_ids Vector of municipality IDs.
+  #' 
+  #' @return A data frame of assessors' records for specified municipalities.
+  #' 
   #' @export
+  
   cols <- c(
     # Property metadata.
     "PROP_ID", "LOC_ID", "FY", 
@@ -435,7 +554,7 @@ load_assess <- function(path = ".", munis, muni_ids=NULL) {
     )
   }
   sf::st_read(
-    path,
+    gdb_path,
     query = q,
     quiet = TRUE
   ) |>
@@ -449,20 +568,41 @@ load_assess <- function(path = ".", munis, muni_ids=NULL) {
       )
     ) |>
     dplyr::select(-c(addr_num, full_str)) |>
-    std_use_codes("use_code") |>
     # All parcels are in MA, in the US...
     dplyr::mutate(
       muni_id = std_pad_muni_ids(muni_id),
       ls_date = lubridate::fast_strptime(ls_date, "%Y%m%d"),
       state = "MA", 
       country = "US"
+    )  |>
+    dplyr::left_join(
+      sf::st_drop_geometry(munis) |>
+        dplyr::rename(muni = pl_name) |>
+        dplyr::select(-hns), 
+      by = dplyr::join_by(muni_id)
     ) |>
     std_fill_missing_units() |>
-    dplyr::left_join(sf::st_drop_geometry(munis), by = dplyr::join_by(muni_id)) |>
-    dplyr::rename(muni = pl_name)
+    std_luc(
+      path = DATA_PATH
+    ) |>
+    std_flag_residential("luc") |>
+    std_units_from_luc("luc", "muni_id")
 }
 
 load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
+  #' Load MassGIS Master Address Data Points
+  #' 
+  #' Load Basic Address Points data prodoct from MassGIS Master Address Data.
+  #' See https://www.mass.gov/info-details/massgis-data-master-address-data-basic-address-points
+  #'
+  #' @param munis Municipalities, as loaded by `load_munis()`.
+  #' @param parcels Municipalities, as loaded by `load_parcels()`.
+  #' @param crs Coordinate reference system for output.
+  #' @param muni_ids Vector of municipality IDs.
+  #' 
+  #' @return An `sf` dataframe containing POINTs for each address per parcel.
+  #' 
+  #' @export
   
   if (is.null(muni_ids)) {
     muni_ids <- munis |>
@@ -726,7 +866,7 @@ load_munis <- function(crs) {
   #'
   #' @param crs Coordinate reference system for output.
   #' 
-  #' @return An `sf` dataframe.
+  #' @return An `sf` dataframe containing municipal boundaries as MULTIPOLYGONs.
   #' 
   #' @export
   
@@ -763,6 +903,9 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   #'
   #' @param crs Coordinate reference system for output.
   #' @param threshold Number between 0 and 1 that sets a threshold for ambiguity.
+  #' 
+  #' @return An `sf` dataframe containing ZIP boundaries as MULTIPOLYGONs.
+  #' 
   #' @export
   
   if(!dplyr::between(threshold, 0, 1)) {
@@ -828,6 +971,18 @@ load_zips <- function(munis, crs, threshold = 0.95) {
 # In-Progress ====
 
 load_companies <- function(path, gdb_path, filename = "companies.csv") {
+  #' Load OpenCorporates Companies
+  #' 
+  #' Load OpenCorporates companies.
+  #'
+  #' @param path Name of directory containing OpenCorporates data.
+  #' @param gdp_path Path to collection of MassGIS Parcel GDBs.
+  #' @param filename Name of file containing companies.
+  #' 
+  #' @return A data frame of companies.
+  #' 
+  #' @export
+  
   # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   min_year <- load_select_vintage(gdb_path) |>
     dplyr::pull(cy) |>
@@ -854,6 +1009,18 @@ load_companies <- function(path, gdb_path, filename = "companies.csv") {
 }
 
 load_officers <- function(path, companies, filename = "officers.csv") {
+  #' Load OpenCorporates Officers
+  #' 
+  #' Load OpenCorporates officers.
+  #'
+  #' @param path Name of directory containing OpenCorporates data.
+  #' @param companies Companies as loaded by `load_companies()`.
+  #' @param filename Name of file containing officers.
+  #' 
+  #' @return A data frame of officers.
+  #' 
+  #' @export
+  
   # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   readr::read_csv(
     file.path(path, filename),
@@ -988,7 +1155,7 @@ ingest_load <- function(
     load_conn(),
     "assess",
     load_assess_all_vintages(
-      path=file.path(data_path, gdb_path),
+      gdb_path=file.path(data_path, gdb_path),
       muni_ids=muni_ids,
       munis=MUNIS
     ),
@@ -1000,7 +1167,7 @@ ingest_load <- function(
     load_conn(),
     "parcels",
     loader=load_parcels_all_vintages(
-      path=file.path(data_path, gdb_path),
+      gdb_path=file.path(data_path, gdb_path),
       muni_ids=muni_ids,
       crs=crs
     ),
