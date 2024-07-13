@@ -1,4 +1,4 @@
-source("R/globals.R")
+source("R/utilities.R")
 source("R/standardizers.R")
 
 # Load Helpers ====
@@ -25,7 +25,7 @@ load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
   if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
     stop("Provided invalid test municipality ids. ❌❌❌")
   } else {
-    message("Municipality IDs are valid. 🚀🚀🚀")
+    util_log_message("Municipality IDs are valid. 🚀🚀🚀")
   }
   std_pad_muni_ids(muni_ids)
 }
@@ -141,9 +141,6 @@ load_shp_from_remote_zip <- function(url, shpfile, crs) {
   #' 
   #' @export
   
-  message(
-    glue::glue("Downloading {shpfile} from {url}...")
-  )
   temp <- base::tempfile(fileext = ".zip")
   on.exit(file.remove(temp))
   httr::GET(
@@ -169,7 +166,8 @@ load_from_arc <- function(dataset, crs) {
   prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
   suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
   sf::st_read(
-    glue::glue("{prefix}{dataset}{suffix}")
+    glue::glue("{prefix}{dataset}{suffix}"),
+    quiet=TRUE
   ) |>
     dplyr::rename_with(tolower) |>
     sf::st_transform(crs)
@@ -314,16 +312,32 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
   table_exists <- load_check_for_table(conn, table_name)
   if(!table_exists | refresh) {
     if(!table_exists) {
-      message(glue::glue("Table {table_name} does not exist in PostGIS."))
+      util_log_message(
+        glue::glue(
+          "Table '{table_name'} does not exist in PostGIS."
+          )
+        )
     } else {
-      message(glue::glue("Table {table_name} exists, but user specified refresh."))
+      util_log_message(
+        glue::glue(
+          "Table '{table_name}' exists in PostGIS, but user specified refresh."
+          )
+        )
     }
     df <- loader
-    message(glue::glue("Writing {table_name} to PostGIS database."))
+    util_log_message(
+      glue::glue(
+        "Writing table '{table_name}' to PostGIS database."
+        )
+      )
     df <- df |>
       load_postgis_ingest(conn, table_name=table_name, overwrite=refresh)
   } else {
-    message(glue::glue("Reading {table_name} from PostGIS database."))
+    util_log_message(
+      glue::glue(
+        "Reading table '{table_name}' from PostGIS database."
+        )
+      )
     df <- load_postgis_read(conn, table_name=table_name)
   }
   df
@@ -331,7 +345,7 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
 
 # Load Specific Layers ====
 
-load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL) {
+load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
   #' Load Parcels from All Vintages Folder
   #' 
   #' Load parcels from MassGIS complete vintage tax parcel collection.
@@ -340,18 +354,21 @@ load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL) {
   #' @param gdb_path Path to collection of MassGIS Parcel GDBs.
   #' @param crs Coordinate reference system for output.
   #' @param muni_ids Vector of municipality IDs.
+  #' @param quiet If `TRUE`, print incremental loading messages.
   #' 
   #' @return An `sf` dataframe containing MULTIPOLYGON parcels for specified 
   #' municipalities.
   #' 
   #' @export
   
-  vintages <- load_select_vintage(path)
+  vintages <- load_select_vintage(gdb_path)
   
   if (!is.null(muni_ids)) {
     vintages <- vintages |>
       dplyr::filter(muni_id %in% muni_ids)
   }
+  
+  util_log_message(glue::glue("Loading parcels."))
   
   all <- list()
   for (row in 1:nrow(vintages)) {
@@ -360,8 +377,9 @@ load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL) {
     cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
     fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
     
-    message(glue::glue("Loading parcels for muni {muni_id} (FY{fy}, CY{cy})."))
-    
+    if (!quiet) {
+      util_log_message(glue::glue("Loading parcels for muni {muni_id} (FY{fy}, CY{cy}).")) 
+    }
     
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
     q <- glue::glue("SELECT LOC_ID, TOWN_ID FROM M{muni_id}TaxPar")
@@ -410,6 +428,8 @@ load_parcels <- function(gdb_path, crs, muni_ids=NULL) {
       sep = " "
     )
   }
+  util_log_message(glue::glue("Loading parcels."))
+  
   sf::st_read(
       gdb_path, 
       query = q, 
@@ -427,15 +447,17 @@ load_parcels <- function(gdb_path, crs, muni_ids=NULL) {
     )
 }
 
-load_assess_all_vintages <- function(gdb_path, munis, muni_ids=NULL) {
+load_assess_all_vintages <- function(path, gdb_path, munis, muni_ids=NULL, quiet=FALSE) {
   #' Load Assessors' Tables from All Vintages Folder
   #' 
   #' Load assessing table from MassGIS complete vintage tax parcel collection.
   #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
+  #' @param path Path to data folder.
   #' @param gdp_path Path to collection of MassGIS Parcel GDBs.
   #' @param munis Municipalities, as loaded by `load_munis()`.
   #' @param muni_ids Vector of municipality IDs.
+  #' @param quiet If `TRUE`, print incremental loading messages.
   #' 
   #' @return A data frame of assessors' records for specified municipalities.
   #' 
@@ -464,13 +486,18 @@ load_assess_all_vintages <- function(gdb_path, munis, muni_ids=NULL) {
     "USE_CODE"
   )
   cols <- stringr::str_c(cols, collapse = ", ")
+  
+  util_log_message(glue::glue("Loading assessors' records."))
+  
   all <- list()
   for (row in 1:nrow(vintages)) {
     muni_id <- vintages |> dplyr::slice(row) |> dplyr::pull(muni_id)
     cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
     fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
     
-    message(glue::glue("Loading assessors table for muni {muni_id} (FY{fy}, CY{cy})."))
+    if (!quiet) {
+      util_log_message(glue::glue("Loading assessors records for muni {muni_id} (FY{fy}, CY{cy}).")) 
+    }
     
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
     q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
@@ -506,18 +533,19 @@ load_assess_all_vintages <- function(gdb_path, munis, muni_ids=NULL) {
     ) |>
     std_fill_missing_units() |>
     std_luc(
-      path = DATA_PATH
+      path = path
     ) |>
     std_flag_residential("luc") |>
     std_units_from_luc("luc", "muni_id")
 }
 
-load_assess <- function(gdb_path, munis, muni_ids=NULL) {
+load_assess <- function(path, gdb_path, munis, muni_ids=NULL) {
   #' Load Assessors' Tables from Most Recent Parcel GDB
   #' 
   #' Load assessing table from MassGIS "most current statewide data" product.
   #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
+  #' @param path Path to data folder.
   #' @param gdb_path Path to MassGIS GDB.
   #' @param munis Municipalities, as loaded by `load_munis()`.
   #' @param muni_ids Vector of municipality IDs.
@@ -553,6 +581,9 @@ load_assess <- function(gdb_path, munis, muni_ids=NULL) {
       sep = " "
     )
   }
+  
+  util_log_message(glue::glue("Loading assessors' records."))
+  
   sf::st_read(
     gdb_path,
     query = q,
@@ -583,13 +614,13 @@ load_assess <- function(gdb_path, munis, muni_ids=NULL) {
     ) |>
     std_fill_missing_units() |>
     std_luc(
-      path = DATA_PATH
+      path = path
     ) |>
     std_flag_residential("luc") |>
     std_units_from_luc("luc", "muni_id")
 }
 
-load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
+load_addresses <- function(munis, parcels, crs, muni_ids=NULL, quiet=FALSE) {
   #' Load MassGIS Master Address Data Points
   #' 
   #' Load Basic Address Points data prodoct from MassGIS Master Address Data.
@@ -599,6 +630,7 @@ load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
   #' @param parcels Municipalities, as loaded by `load_parcels()`.
   #' @param crs Coordinate reference system for output.
   #' @param muni_ids Vector of municipality IDs.
+  #' @param quiet If `TRUE`, print incremental loading messages.
   #' 
   #' @return An `sf` dataframe containing POINTs for each address per parcel.
   #' 
@@ -611,10 +643,17 @@ load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
   
   url_base <- "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/mad/town_exports/addr_pts/"
   
+  util_log_message(glue::glue("Loading addresses."))
+  
   all <- list()
   bos_id = "035"
   for (id in muni_ids) {
     if (id == bos_id) {
+      if (!quiet) {
+        util_log_message(
+          glue::glue("Downloading Boston addresses from ArcGIS service.")
+        )
+      }
       # Boston handler---MassGIS does not maintain the Boston Address list.
       all[[id]] <- load_from_arc("b6bffcace320448d96bb84eabb8a075f_0", crs) |>
         dplyr::filter(!is.na(street_body) & !is.na(street_full_suffix)) |>
@@ -683,6 +722,11 @@ load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
     } else {
       filename <- glue::glue("AddressPts_M{id}")
       url <- glue::glue("{url_base}{filename}.zip")
+      if (!quiet) {
+        util_log_message(
+          glue::glue("Downloading {filename} from {url}...")
+        )
+      }
       all[[id]] <- load_shp_from_remote_zip(
         url,
         shpfile = glue::glue("{filename}.shp"),
@@ -870,7 +914,7 @@ load_munis <- function(crs) {
   #' 
   #' @export
   
-  message("Downloading Massachusetts municipal boundaries...")
+  util_log_message("Downloading Massachusetts municipal boundaries...")
   load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
     dplyr::select(
       muni_id = town_id, 
@@ -901,6 +945,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   #' where ZIPS are unambiguously within single municipalities, and where 
   #' municipalities are unambiguously within single ZIPS.
   #'
+  #' @param munis Municipalities as read by `load_muni()`.
   #' @param crs Coordinate reference system for output.
   #' @param threshold Number between 0 and 1 that sets a threshold for ambiguity.
   #' 
@@ -913,10 +958,15 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   }
   
   all <- list()
-  for (s in state.abb) {
-    all[[s]] <- tigris::zctas(cb = FALSE, year = 2010, state = s) |>
-      dplyr::mutate(state = s) |>
-      dplyr::select(zip = ZCTA5CE10, state)
+  for (state in state.abb) {
+    all[[state]] <- tigris::zctas(
+        cb=FALSE, 
+        year=2010, 
+        state=state,
+        progress_bar=FALSE) |>
+      dplyr::mutate(state=state) |>
+      dplyr::select(zip=ZCTA5CE10, state) |>
+      suppressMessages()
   }
   zips <- dplyr::bind_rows(all) |> 
     dplyr::group_by(zip) |>
@@ -937,35 +987,53 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     sf::st_transform(crs)
   
   munis_clip <- munis |>
+    sf::st_set_agr("constant") |>
     sf::st_intersection(
-      sf::st_union(zips_ma)
+      sf::st_union(sf::st_set_agr(zips_ma, "constant"))
     )
-
+  
   zips_ma_clip <- zips_ma |>
+    sf::st_set_agr("constant") |>
     sf::st_intersection(
-      sf::st_union(munis_clip)
+      sf::st_union(sf::st_set_agr(munis_clip, "constant"))
     )
 
   # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
   # where the vast majority of a zip is contained w/in a single muni.)
-  ma_unambig_zip_from_muni <- std_calculate_overlap(munis_clip,
-                                               zips_ma_clip,
-                                               threshold = threshold) |>
-    dplyr::select(zip, muni_unambig_from = pl_name)
+  ma_unambig_zip_from_muni <- munis_clip |>
+    std_calculate_overlap(
+      zips_ma_clip, 
+      threshold=threshold
+      ) |>
+    dplyr::select(
+      zip, 
+      muni_unambig_from=pl_name
+      )
   
   zips <- zips |>
-    dplyr::left_join(ma_unambig_zip_from_muni, by=dplyr::join_by(zip))
+    dplyr::left_join(
+      ma_unambig_zip_from_muni, 
+      by=dplyr::join_by(zip)
+      )
 
   # Identify cases where munis can be unambiguously assigned
   # from ZIPS (i.e., where the vast majority of a muni is contained w/in
   # a single zip).
-  ma_unambig_muni_from_zip <- std_calculate_overlap(zips_ma_clip,
-                                               munis_clip,
-                                               threshold = threshold) |>
-    dplyr::select(zip, muni_unambig_to = pl_name)
+  ma_unambig_muni_from_zip <- zips_ma_clip |>
+    std_calculate_overlap(
+      munis_clip,
+      threshold=threshold
+      ) |>
+    dplyr::select(
+      zip, 
+      muni_unambig_to=pl_name
+      )
   
   zips |>
-    dplyr::left_join(ma_unambig_muni_from_zip, by=dplyr::join_by(zip))
+    dplyr::left_join(
+      ma_unambig_muni_from_zip, 
+      by=dplyr::join_by(zip)
+      )
 }
 
 # In-Progress ====
@@ -983,7 +1051,6 @@ load_companies <- function(path, gdb_path, filename = "companies.csv") {
   #' 
   #' @export
   
-  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   min_year <- load_select_vintage(gdb_path) |>
     dplyr::pull(cy) |>
     min()
@@ -1021,7 +1088,6 @@ load_officers <- function(path, companies, filename = "officers.csv") {
   #' 
   #' @export
   
-  # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   readr::read_csv(
     file.path(path, filename),
     progress = FALSE,
@@ -1104,12 +1170,12 @@ load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
 # Omnibus Ingestor/Loader ====
 
 ingest_load <- function(
-    data_path = DATA_PATH,
-    muni_ids = MUNI_IDS,
-    refresh = REFRESH,
-    crs = CRS,
-    gdb_path = GDB_PATH,
-    oc_path = OC_PATH
+    data_path,
+    muni_ids,
+    gdb_path,
+    oc_path,
+    crs,
+    refresh
     ) {
   
   # Test Validity of Municipality IDs ====
@@ -1119,7 +1185,7 @@ ingest_load <- function(
   )
   
   # Read Municipalities ====
-  MUNIS <<- load_layer_flow(
+  MUNIS <<- load_ingest_read(
     load_conn(),
     "munis",
     loader=load_munis(
@@ -1129,7 +1195,7 @@ ingest_load <- function(
   )
 
   # Read ZIPs ====
-  ZIPS <<- load_layer_flow(
+  ZIPS <<- load_ingest_read(
     load_conn(),
     "zips",
     load_zips(
@@ -1140,7 +1206,7 @@ ingest_load <- function(
   )
 
   # Read Placenames ====
-  PLACES <<- load_layer_flow(
+  PLACES <<- load_ingest_read(
     load_conn(),
     "places",
     load_places(
@@ -1151,44 +1217,48 @@ ingest_load <- function(
   )
 
   # Read Assessors Tables ====
-  ASSESS <<- load_layer_flow(
+  ASSESS <<- load_ingest_read(
     load_conn(),
     "assess",
     load_assess_all_vintages(
+      path=data_path,
       gdb_path=file.path(data_path, gdb_path),
       muni_ids=muni_ids,
-      munis=MUNIS
+      munis=MUNIS,
+      quiet=TRUE
     ),
     refresh=refresh
   )
 
   # Read Parcels ====
-  PARCELS <<- load_layer_flow(
+  PARCELS <<- load_ingest_read(
     load_conn(),
     "parcels",
     loader=load_parcels_all_vintages(
       gdb_path=file.path(data_path, gdb_path),
       muni_ids=muni_ids,
-      crs=crs
+      crs=crs,
+      quiet=TRUE
     ),
     refresh=refresh
   )
 
   # Read Master Address File ====
-  ADDRESSES <<- load_layer_flow(
+  ADDRESSES <<- load_ingest_read(
     load_conn(),
     "addresses",
     load_addresses(
       muni_ids=muni_ids,
       munis=MUNIS,
       parcels=PARCELS,
-      crs=crs
+      crs=crs,
+      quiet=TRUE
     ),
     refresh=refresh
   )
   
   # Read OpenCorpoates Companies ====
-  COMPANIES <<- load_layer_flow(
+  COMPANIES <<- load_ingest_read(
     load_conn(),
     "companies",
     load_companies(
@@ -1199,7 +1269,7 @@ ingest_load <- function(
   )
   
   # Read OpenCorporates Officers ====
-  OFFICERS <<- load_layer_flow(
+  OFFICERS <<- load_ingest_read(
     load_conn(),
     "officers",
     load_officers(
