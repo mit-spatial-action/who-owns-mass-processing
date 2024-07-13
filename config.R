@@ -25,3 +25,6 @@ RESULTS_PATH <- "results"
 
 # Use cached tigris geographies.
 options(tigris_use_cache = TRUE)
+
+# Prevent annoying "`summarise()` has grouped output by..." error.
+options(dplyr.summarise.inform = FALSE)
