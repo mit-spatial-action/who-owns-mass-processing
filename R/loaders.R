@@ -1,34 +1,47 @@
+source("R/globals.R")
+source("R/standardizers.R")
+
 # Load Helpers ====
 
-load_test_muni_subset <- function(test_munis, munis) {
-  valid <- all(as.integer(test_munis) %in% dplyr::pull(munis, muni_id))
-  if(!valid) {
-    stop("Provided invalid test municipality ids.")
+load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
+  ids <- readr::read_csv(
+      file.path(path, file), 
+      progress=TRUE,
+      show_col_types = FALSE) |>
+    dplyr::pull(muni_id)
+  
+  if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
+    stop("Provided invalid test municipality ids. ❌❌❌")
+  } else {
+    message("Municipality IDs are valid. 🚀🚀🚀")
   }
+  std_pad_muni_ids(muni_ids)
 }
 
-load_muni_subset <- function(test_munis, munis) {
-  load_test_muni_subset(
-    test_munis = test_munis, 
-    munis = munis
-  )
-  if (!is.null(test_munis)) {
-    test_munis <- test_munis |>
-      stringr::str_pad(3, side = "left", pad = "0")
-  }
-  test_munis
-}
-
-load_gdb_vintages <- function(path) {
+load_select_vintage <- function(path, recent = 3) {
+  #' Select Parcel Vintage
+  #' 
+  #' Decide which vintage to use per MA municipality based on a simple 
+  #' algorithm.
+  #'
+  #' @param path Path to collection of MassGIS parcel geodatabases.
+  #' @param recent Integer. How many years back algorithm should look in
+  #'    identifying most complete vintages.
+  #' 
+  #' @return A dataframe containing both `fy` and `cy`. Both are necessary
+  #'    because (strangely), there is no fixed relationship between them.
+  #' 
+  #' @export
+  
   gdb_list <- list.files(path)
   vintages <- data.frame(
     muni_id = stringr::str_extract(gdb_list, "(?<=M)[0-9]{3}"),
-    fy = as.numeric(stringr::str_extract(gdb_list, "(?<=_FY)[0-9]{2}")),
-    cy = as.numeric(stringr::str_extract(gdb_list, "(?<=_CY)[0-9]{2}"))
+    fy = as.numeric(stringr::str_extract(gdb_list, "(?<=_FY)[0-9]{2}")) + 2000,
+    cy = as.numeric(stringr::str_extract(gdb_list, "(?<=_CY)[0-9]{2}")) + 2000
   )
   
   most_complete_recent <- vintages |>
-    dplyr::filter(fy > 21) |>
+    dplyr::filter(fy > lubridate::year(Sys.Date()) - recent) |>
     dplyr::group_by(fy) |>
     dplyr::tally() |>
     dplyr::ungroup() |>
@@ -39,7 +52,7 @@ load_gdb_vintages <- function(path) {
       fy == max(fy)
     ) |>
     dplyr::pull(fy)
-  
+
   vintages <- vintages |>
     dplyr::group_by(muni_id) |>
     dplyr::mutate(
@@ -49,7 +62,7 @@ load_gdb_vintages <- function(path) {
         .default = FALSE
       )
     )
-  
+
   exact_matches <- vintages |>
     dplyr::filter(load) |>
     dplyr::mutate(
@@ -57,7 +70,7 @@ load_gdb_vintages <- function(path) {
     ) |>
     dplyr::filter(count == 1 | (count > 1 & cy == max(cy))) |>
     dplyr::select(-c(year_diff, load, count))
-  
+
   results <- vintages |>
     dplyr::filter(!load & min(year_diff) > 0) |>
     dplyr::mutate(
@@ -75,23 +88,56 @@ load_gdb_vintages <- function(path) {
 
 # Load from Services ====
 
-load_shp_from_zip <- function(path, layer) {
-  path <- stringr::str_c("/vsizip/", path, "/", layer)
-  sf::st_read(path, quiet=TRUE)
+load_shp_from_zip <- function(path, shpfile, crs) {
+  #' Load Shapefile from .zip file.
+  #' 
+  #' Reads a shapefile from a .zip file without requiring that the file be
+  #' unarchived. Uses vsizip from GDAL. 
+  #' 
+  #' N.B., seems like the kind of thing that could be OS dependent. Only tested
+  #' on macOS.
+  #'
+  #' @param path Path to .zip file.
+  #' @param shpfile Name of .shp file to be loaded.
+  #' @param crs Coordinate reference system for resulting `sf` data frame.
+  #' 
+  #' @return `sf` data frame.
+  #' 
+  #' @export
+  
+  path <- stringr::str_c("/vsizip/", path, "/", shpfile)
+  sf::st_read(path, quiet=TRUE) |>
+    sf::st_transform(crs) |>
+    dplyr::rename_with(tolower)
 }
 
 load_shp_from_remote_zip <- function(url, shpfile, crs) {
+  #' Load Shapefile from a Remote .zip
+  #' 
+  #' Downloads a remote ZIP file and reads a shapefile from a remote .zip file 
+  #' without requiring that the file be unarchived. Uses vsizip from GDAL. 
+  #' 
+  #' N.B., seems like the kind of thing that could be OS dependent. Only tested
+  #' on macOS.
+  #'
+  #' @param url URL of remote ZIP>
+  #' @param shpfile Name of .shp file to be loaded.
+  #' @param crs Coordinate reference system for resulting `sf` data frame.
+  #' 
+  #' @return A dataframe containing both `fy` and `cy`. Both are necessary
+  #'    because (strangely), there is no fixed relationship between them.
+  #' 
+  #' @export
   message(
     glue::glue("Downloading {shpfile} from {url}...")
   )
   temp <- base::tempfile(fileext = ".zip")
+  on.exit(file.remove(temp))
   httr::GET(
     paste0(url), 
     httr::write_disk(temp, overwrite = TRUE)
   )
-  load_shp_from_zip(temp, shpfile) |>
-    dplyr::rename_with(tolower) |>
-    sf::st_transform(crs)
+  load_shp_from_zip(temp, shpfile, crs)
 }
 
 load_from_arc <- function(dataset, crs) {
@@ -207,7 +253,7 @@ load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
   #' @param path Path to MassGIS Parcels GDB.
   #' @param test Whether to only load a sample subset of rows.
   #' @export
-  vintages <- load_gdb_vintages(path)
+  vintages <- load_select_vintage(path)
   
   if (!is.null(muni_ids)) {
     vintages <- vintages |>
@@ -218,10 +264,10 @@ load_parcels_all_vintages <- function(path, crs, muni_ids=NULL) {
   for (row in 1:nrow(vintages)) {
     
     muni_id <- vintages |> dplyr::slice(row) |> dplyr::pull(muni_id)
-    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy)
-    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy)
+    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
+    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
     
-    message(glue::glue("Loading parcels for muni {muni_id}."))
+    message(glue::glue("Loading parcels for muni {muni_id} (FY{fy}, CY{cy})."))
     
     
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
@@ -283,7 +329,7 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
   #' @param muni_ids list of town IDs
   #' @export
   
-  vintages <- load_gdb_vintages(path)
+  vintages <- load_select_vintage(path)
   if (!is.null(muni_ids)) {
     vintages <- vintages |>
       dplyr::filter(muni_id %in% muni_ids)
@@ -292,7 +338,7 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
     # Property metadata.
     "PROP_ID", "LOC_ID", "FY", 
     # Parcel address.
-    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID", "ZIP", 
+    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", "ZIP", 
     # Owner name and address.
     "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
     # Last sale date and price.
@@ -308,41 +354,50 @@ load_assess_all_vintages <- function(path, munis, muni_ids=NULL) {
   all <- list()
   for (row in 1:nrow(vintages)) {
     muni_id <- vintages |> dplyr::slice(row) |> dplyr::pull(muni_id)
-    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy)
-    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy)
+    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
+    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
     
-    message(glue::glue("Loading assessors table for muni {muni_id}."))
+    message(glue::glue("Loading assessors table for muni {muni_id} (FY{fy}, CY{cy})."))
     
     file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
     q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
     all[[muni_id]] <- sf::st_read(
-      file.path(path, file),
-      query = q,
-      quiet = TRUE
-    )  |>
+        file.path(path, file),
+        query = q,
+        quiet = TRUE
+      )  |>
       dplyr::rename_with(stringr::str_to_lower)
   }
   df <- dplyr::bind_rows(all) |>
-    # residential_filter("use_code") |>
     dplyr::mutate(
       site_addr = dplyr::case_when(
         is.na(site_addr) & 
           !is.na(addr_num) & 
           !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
-        TRUE ~ site_addr
+        .default = site_addr
       )
     ) |>
     dplyr::select(-c(addr_num, full_str)) |>
-    std_use_codes("use_code") |>
     # All parcels are in MA, in the US...
     dplyr::mutate(
-      state = "MA", country = "US"
+      muni_id = std_pad_muni_ids(muni_id),
+      ls_date = lubridate::fast_strptime(ls_date, "%Y%m%d", lt=FALSE),
+      state = "MA", 
+      country = "US"
     ) |>
-    dplyr::rename(muni_id = town_id) |>
-    std_fill_missing_units() |>
-    std_residential_flag() |>
-    dplyr::left_join(sf::st_drop_geometry(munis), by = dplyr::join_by(muni_id)) |>
-    dplyr::rename(muni = pl_name)
+    dplyr::left_join(
+      sf::st_drop_geometry(munis) |>
+        dplyr::rename(muni = pl_name) |>
+        dplyr::select(-hns), 
+      by = dplyr::join_by(muni_id)
+    )
+  
+  # 
+  # |>
+  #   std_use_codes("use_code")
+  # 
+  # |>
+  #   std_fill_missing_units()
 }
 
 load_assess <- function(path = ".", munis, muni_ids=NULL) {
@@ -356,7 +411,7 @@ load_assess <- function(path = ".", munis, muni_ids=NULL) {
     # Property metadata.
     "PROP_ID", "LOC_ID", "FY", 
     # Parcel address.
-    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID", "ZIP", 
+    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", "ZIP", 
     # Owner name and address.
     "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
     # Last sale date and price.
@@ -385,7 +440,6 @@ load_assess <- function(path = ".", munis, muni_ids=NULL) {
     quiet = TRUE
   ) |>
     dplyr::rename_with(stringr::str_to_lower) |>
-    # residential_filter("use_code") |>
     dplyr::mutate(
       site_addr = dplyr::case_when(
         is.na(site_addr) & 
@@ -398,33 +452,35 @@ load_assess <- function(path = ".", munis, muni_ids=NULL) {
     std_use_codes("use_code") |>
     # All parcels are in MA, in the US...
     dplyr::mutate(
-      state = "MA", country = "US"
+      muni_id = std_pad_muni_ids(muni_id),
+      ls_date = lubridate::fast_strptime(ls_date, "%Y%m%d"),
+      state = "MA", 
+      country = "US"
     ) |>
     std_fill_missing_units() |>
-    std_residential_flag() |>
-    dplyr::rename(muni_id = town_id) |>
     dplyr::left_join(sf::st_drop_geometry(munis), by = dplyr::join_by(muni_id)) |>
     dplyr::rename(muni = pl_name)
 }
 
-load_address_points <- function(munis, parcels, crs, muni_ids = NULL) {
+load_addresses <- function(munis, parcels, crs, muni_ids = NULL) {
   
   if (is.null(muni_ids)) {
     muni_ids <- munis |>
-      dplyr::pull(muni_id) |>
-      stringr::str_pad(3, side = "left", pad = "0")
+      dplyr::pull(muni_id)
   }
   
   url_base <- "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/mad/town_exports/addr_pts/"
   
   all <- list()
+  bos_id = "035"
   for (id in muni_ids) {
-    if (id == '035') {
+    if (id == bos_id) {
       # Boston handler---MassGIS does not maintain the Boston Address list.
       all[[id]] <- load_from_arc("b6bffcace320448d96bb84eabb8a075f_0", crs) |>
         dplyr::filter(!is.na(street_body) & !is.na(street_full_suffix)) |>
         dplyr::mutate(
           muni = "BOSTON",
+          muni_id = bos_id,
           is_range = as.logical(is_range),
           addr_body = stringr::str_to_upper(stringr::str_c(street_body, street_full_suffix, sep = " ")),
           state = "MA",
@@ -503,6 +559,7 @@ load_address_points <- function(munis, parcels, crs, muni_ids = NULL) {
             num1_sfx == "1/2" ~ num2 + 0.5,
             .default = num2
           ),
+          addrtwn_id = std_pad_muni_ids(addrtwn_id)
         ) |>
         dplyr::left_join(
           sf::st_drop_geometry(munis),
@@ -516,7 +573,7 @@ load_address_points <- function(munis, parcels, crs, muni_ids = NULL) {
           postal = zipcode,
           addr_start = num1,
           addr_end = num2,
-          -addrtwn_id
+          muni_id = addrtwn_id
         ) |>
         dplyr::mutate(
           addr_end = dplyr::case_when(
@@ -580,6 +637,20 @@ load_address_points <- function(munis, parcels, crs, muni_ids = NULL) {
 }
 
 load_places <- function(munis, crs) {
+  #' Load Massachusetts Geographic Place Names
+  #' 
+  #' Downloads Geographic Place Names from MassGIS Servers and performs some basic
+  #' standardization. Municipalities are required to link placenames to the name of
+  #' their containing municipality.
+  #'
+  #' @param munis Municipal boundaries loaded by `load_munis()`.
+  #' @param crs Coordinate reference system for output.
+  #' 
+  #' @return An dataframe depicting relationships between place names and
+  #'    municipalities, including a version of placename that can be used for 
+  #'    fuzzy matching.
+  #' 
+  #' @export
   
   munis <- dplyr::select(munis, muni_name = pl_name)
   
@@ -648,43 +719,56 @@ load_places <- function(munis, crs) {
 }
 
 load_munis <- function(crs) {
-  #' Downloads MA municipalities from MassGIS ArcGIS Hub.
+  #' Load Massachusetts Municipal Boundaries
+  #' 
+  #' Downloads MA municipalities from MassGIS ArcGIS Hub and flags
+  #' HNS municipalities.
   #'
   #' @param crs Coordinate reference system for output.
+  #' 
+  #' @return An `sf` dataframe.
+  #' 
   #' @export
+  
   message("Downloading Massachusetts municipal boundaries...")
   load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
-    dplyr::select(muni_id = town_id, pl_name = town) |>
+    dplyr::select(
+      muni_id = town_id, 
+      pl_name = town
+      ) |>
     dplyr::mutate(
       dplyr::across(
         dplyr::where(is.character), 
-        stringr::str_to_upper)
+        stringr::str_to_upper
+        ),
+      muni_id = std_pad_muni_ids(muni_id)
       ) |>
     dplyr::mutate(
       pl_name = dplyr::case_when(
-        pl_name == "MANCHESTER" ~ "MANCHESTER BY THE SEA",
+        pl_name == "MANCHESTER" ~ "MANCHESTER-BY-THE-SEA",
         .default = pl_name
       ),
       pl_name = stringr::str_replace(pl_name, "BORO$", "BOROUGH")
-    )
-}
-
-overlap_analysis <- function(x, y, threshold = 0) {
-  x |>
-    dplyr::mutate(
-      area = sf::st_area(geometry)
     ) |>
-    sf::st_intersection(y) |>
-    dplyr::mutate(
-      overlap = units::drop_units(sf::st_area(geometry) / area)
-    ) |>
-    sf::st_drop_geometry() |>
-    dplyr::filter(
-      overlap > threshold
-    )
+    std_flag_hns("pl_name")
 }
 
 load_zips <- function(munis, crs, threshold = 0.95) {
+  #' Load ZIP Boundaries
+  #' 
+  #' Downloads ZIP boundaries and attributes from US Census, subsequently
+  #' identifying cases where ZIPS are unambiguously within single states,
+  #' where ZIPS are unambiguously within single municipalities, and where 
+  #' municipalities are unambiguously within single ZIPS.
+  #'
+  #' @param crs Coordinate reference system for output.
+  #' @param threshold Number between 0 and 1 that sets a threshold for ambiguity.
+  #' @export
+  
+  if(!dplyr::between(threshold, 0, 1)) {
+    stop("Threshold must be between 0 and 1.")
+  }
+  
   all <- list()
   for (s in state.abb) {
     all[[s]] <- tigris::zctas(cb = FALSE, year = 2010, state = s) |>
@@ -721,7 +805,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
 
   # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
   # where the vast majority of a zip is contained w/in a single muni.)
-  ma_unambig_zip_from_muni <- overlap_analysis(munis_clip,
+  ma_unambig_zip_from_muni <- std_calculate_overlap(munis_clip,
                                                zips_ma_clip,
                                                threshold = threshold) |>
     dplyr::select(zip, muni_unambig_from = pl_name)
@@ -732,7 +816,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   # Identify cases where munis can be unambiguously assigned
   # from ZIPS (i.e., where the vast majority of a muni is contained w/in
   # a single zip).
-  ma_unambig_muni_from_zip <- overlap_analysis(zips_ma_clip,
+  ma_unambig_muni_from_zip <- std_calculate_overlap(zips_ma_clip,
                                                munis_clip,
                                                threshold = threshold) |>
     dplyr::select(zip, muni_unambig_to = pl_name)
@@ -741,18 +825,21 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     dplyr::left_join(ma_unambig_muni_from_zip, by=dplyr::join_by(zip))
 }
 
-load_companies <- function(path, filename, gdb_path) {
+# In-Progress ====
+
+load_companies <- function(path, gdb_path, filename = "companies.csv") {
   # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
-  min_year <- load_gdb_vintages(gdb_path) |>
+  min_year <- load_select_vintage(gdb_path) |>
     dplyr::pull(cy) |>
     min()
   
+  # print(min_year)
   readr::read_csv(
     file.path(path, filename),
     progress = FALSE,
     show_col_types = FALSE
-    ) |>
-    dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("20{min_year}-01-01")) |>
+  ) |>
+    dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("{min_year}-01-01")) |>
     dplyr::select(
       id = company_number,
       name,
@@ -766,13 +853,13 @@ load_companies <- function(path, filename, gdb_path) {
     )
 }
 
-load_officers <- function(path, filename, companies) {
+load_officers <- function(path, companies, filename = "officers.csv") {
   # THIS IS INCOMPLETE. WORKING ON PROCESSING IN LOCAL sandbox.R
   readr::read_csv(
     file.path(path, filename),
     progress = FALSE,
     show_col_types = FALSE
-    ) |>
+  ) |>
     dplyr::select(
       name, 
       position, 
@@ -788,65 +875,6 @@ load_officers <- function(path, filename, companies) {
     std_replace_newline("addr")
 }
 
-# Deprecated ====
-
-load_corps <- function(path) {
-  #' Load corporations, sourced from the MA Secretary of the Commonwealth.
-  #'
-  #' @param path Path to delimited text Corporations file
-  #' @returns A dataframe.
-  #' @export
-  readr::read_delim(
-    path,
-    delim = "|",
-    col_select = c(
-      DataID, EntityName,
-      AgentName, AgentAddr1, AgentAddr2, AgentCity,
-      AgentState, AgentPostalCode, ActiveFlag
-    ),
-    show_col_types = FALSE
-  ) |>
-    dplyr::rename(
-      id_corp = DataID
-    ) |>
-    dplyr::rename_with(stringr::str_to_lower)
-}
-
-load_agents <- function(df, cols, drop_na_col) {
-  #' Load agents, which are listed alongside corporations.
-  #'
-  #' @param df Dataframe created by `load_corps`
-  #' @param cols Columns containing fields describing agents.
-  #' @param drop_na_col Column for which NA rows should be dropped.
-  #' @returns A dataframe of corporate agents.
-  #' @export
-  df |>
-    dplyr::select(all_of(cols)) |>
-    dplyr::filter(!is.na(get({{ drop_na_col }})))
-}
-
-load_inds <- function(path) {
-  #' Load individuals from corporate db, 
-  #' sourced from the MA Secretary of the Commonwealth.
-  #'
-  #' @param path Path to delimited text Corporations file
-  #' @returns A dataframe.
-  #' @export
-  readr::read_delim(
-    path,
-    delim = "|",
-    col_select = c(
-      DataID, FirstName, LastName, BusAddr1,
-      ResAddr1
-    ),
-    show_col_types = FALSE
-  ) |>
-    dplyr::rename(
-      id_corp = DataID
-    ) |>
-    dplyr::rename_with(stringr::str_to_lower)
-}
-
 load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
   #' Pulls eviction filings from database.
   #'
@@ -859,7 +887,7 @@ load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
   cols <- stringr::str_c(
     c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry"), 
     collapse = ","
-    )
+  )
   q <- stringr::str_c(
     "SELECT", cols, 
     "FROM", filings_table, "AS f",
@@ -883,19 +911,19 @@ load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
   }
   # Pull filings.
   conn <- DBI::dbConnect(
-      RPostgres::Postgres(),
-      dbname = Sys.getenv("DB_NAME"),
-      host = Sys.getenv("DB_HOST"),
-      port = Sys.getenv("DB_PORT"),
-      user = Sys.getenv("DB_USER"),
-      password = Sys.getenv("DB_PASS"),
-      sslmode = "allow"
-    ) 
+    RPostgres::Postgres(),
+    dbname = Sys.getenv("DB_NAME"),
+    host = Sys.getenv("DB_HOST"),
+    port = Sys.getenv("DB_PORT"),
+    user = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    sslmode = "allow"
+  ) 
   filings <- conn |>
     sf::st_read(
       query=q,
       quiet = TRUE
-      )
+    )
   
   DBI::dbDisconnect(conn)
   
@@ -905,3 +933,171 @@ load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
     dplyr::rename_with(stringr::str_to_lower) |>
     dplyr::filter(!is.na(add1))
 }
+
+# Omnibus Ingestor/Loader ====
+
+ingest_load <- function(
+    data_path = DATA_PATH,
+    muni_ids = MUNI_IDS,
+    refresh = REFRESH,
+    crs = CRS,
+    gdb_path = GDB_PATH,
+    oc_path = OC_PATH
+    ) {
+  
+  # Test Validity of Municipality IDs ====
+  muni_ids <- load_test_muni_subset(
+    muni_ids=muni_ids,
+    path=data_path
+  )
+  
+  # Read Municipalities ====
+  MUNIS <<- load_layer_flow(
+    load_conn(),
+    "munis",
+    loader=load_munis(
+      crs=crs
+    ),
+    refresh=refresh
+  )
+
+  # Read ZIPs ====
+  ZIPS <<- load_layer_flow(
+    load_conn(),
+    "zips",
+    load_zips(
+      munis=MUNIS,
+      crs=crs
+    ),
+    refresh=refresh
+  )
+
+  # Read Placenames ====
+  PLACES <<- load_layer_flow(
+    load_conn(),
+    "places",
+    load_places(
+      munis=MUNIS,
+      crs=crs
+    ),
+    refresh=refresh
+  )
+
+  # Read Assessors Tables ====
+  ASSESS <<- load_layer_flow(
+    load_conn(),
+    "assess",
+    load_assess_all_vintages(
+      path=file.path(data_path, gdb_path),
+      muni_ids=muni_ids,
+      munis=MUNIS
+    ),
+    refresh=refresh
+  )
+
+  # Read Parcels ====
+  PARCELS <<- load_layer_flow(
+    load_conn(),
+    "parcels",
+    loader=load_parcels_all_vintages(
+      path=file.path(data_path, gdb_path),
+      muni_ids=muni_ids,
+      crs=crs
+    ),
+    refresh=refresh
+  )
+
+  # Read Master Address File ====
+  ADDRESSES <<- load_layer_flow(
+    load_conn(),
+    "addresses",
+    load_addresses(
+      muni_ids=muni_ids,
+      munis=MUNIS,
+      parcels=PARCELS,
+      crs=crs
+    ),
+    refresh=refresh
+  )
+  
+  # Read OpenCorpoates Companies ====
+  COMPANIES <<- load_layer_flow(
+    load_conn(),
+    "companies",
+    load_companies(
+      path=file.path(data_path, oc_path),
+      gdb_path=file.path(data_path, gdb_path)
+    ),
+    refresh=refresh
+  )
+  
+  # Read OpenCorporates Officers ====
+  OFFICERS <<- load_layer_flow(
+    load_conn(),
+    "officers",
+    load_officers(
+      path=file.path(data_path, oc_path),
+      companies=COMPANIES
+    ),
+    refresh=refresh
+  )
+}
+
+# Deprecated ====
+
+#' load_corps_deprec <- function(path) {
+#'   #' Load corporations, sourced from the MA Secretary of the Commonwealth.
+#'   #'
+#'   #' @param path Path to delimited text Corporations file
+#'   #' @return A dataframe.
+#'   #' @export
+#'   readr::read_delim(
+#'     path,
+#'     delim = "|",
+#'     col_select = c(
+#'       DataID, EntityName,
+#'       AgentName, AgentAddr1, AgentAddr2, AgentCity,
+#'       AgentState, AgentPostalCode, ActiveFlag
+#'     ),
+#'     show_col_types = FALSE
+#'   ) |>
+#'     dplyr::rename(
+#'       id_corp = DataID
+#'     ) |>
+#'     dplyr::rename_with(stringr::str_to_lower)
+#' }
+#' 
+#' load_agents_deprec <- function(df, cols, drop_na_col) {
+#'   #' Load agents, which are listed alongside corporations.
+#'   #'
+#'   #' @param df Dataframe created by `load_corps`
+#'   #' @param cols Columns containing fields describing agents.
+#'   #' @param drop_na_col Column for which NA rows should be dropped.
+#'   #' @return A dataframe of corporate agents.
+#'   #' @export
+#'   df |>
+#'     dplyr::select(all_of(cols)) |>
+#'     dplyr::filter(!is.na(get({{ drop_na_col }})))
+#' }
+#' 
+#' load_inds_deprec <- function(path) {
+#'   #' Load individuals from corporate db, 
+#'   #' sourced from the MA Secretary of the Commonwealth.
+#'   #'
+#'   #' @param path Path to delimited text Corporations file
+#'   #' @return A dataframe.
+#'   #' @export
+#'   readr::read_delim(
+#'     path,
+#'     delim = "|",
+#'     col_select = c(
+#'       DataID, FirstName, LastName, BusAddr1,
+#'       ResAddr1
+#'     ),
+#'     show_col_types = FALSE
+#'   ) |>
+#'     dplyr::rename(
+#'       id_corp = DataID
+#'     ) |>
+#'     dplyr::rename_with(stringr::str_to_lower)
+#' }

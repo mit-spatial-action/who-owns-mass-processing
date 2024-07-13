@@ -1,37 +1,30 @@
 # If true, load.R will re-ingest data from sources.
-REFRESH_DATA <- TRUE
+REFRESH <- TRUE
 
 # If not NULL, will run script on a subset of municipalities.
 # Can be provided as numeric or character vector.
-# TEST_MUNIS <- c(274, 49, 176)
+MUNI_IDS <- c(274, 49, 176, 35)
 
 # To run on all MA municipalities, uncomment this line.
-TEST_MUNIS <- NULL
+# MUNI_IDS <- NULL
 
 # Coordinate Reference System into which spatial layers will be projected.
 CRS <- 2249
 
 # Folder containing OpenCorporates data products.
-OC_FOLDER <- '2024-04-12'
-
-# Name of file containing OpenCorporates companies.
-OC_COMPANIES <- "companies.csv"
-
-# Name of file containing OpenCorporates companies.
-OC_OFFICERS <- "officers.csv"
+OC_PATH <- '2024-04-12'
 
 # Filename of MassGIS Parcels geodatabase.
-ASSESS_GDB_FOLDER <- "L3_AGGREGATE_FGDB_20240703"
+GDB_PATH <- "L3_AGGREGATE_FGDB_20240703"
 
 # Name of directory where (some) source data is located.
-DATA_DIR <- "data"
+DATA_PATH <- "data"
 
 # Name of directory in which results are written.
-RESULTS_DIR <- "results"
+RESULTS_PATH <- "results"
 
 # Use cached tigris geographies.
 options(tigris_use_cache = TRUE)
-
 
 log_message <- function(status) {
   #' Print message to `logr` logs.

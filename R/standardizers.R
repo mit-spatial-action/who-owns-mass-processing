@@ -116,6 +116,11 @@ std_counts_in_group <- function(df, cols, col_distinct) {
     dplyr::ungroup()
 }
 
+std_pad_muni_ids <- function(ids) {
+  ids |>
+    stringr::str_pad(3, side="left", pad="0")
+}
+
 # General Character Handlers ====
 
 std_squish <- function(df, cols) {
@@ -487,7 +492,7 @@ std_muni_names <- function(df, cols) {
     "^PRIDE CROSSING$" = "PRIDES CROSSING",
     "( ?MA(SSACHUSETTS)?| ST)$" = "",
     "FY[0-9]{4}$" = "",
-    "(MAN.* SEA|MANCHESTER)" = "MANCHESTER BY THE SEA",
+    "(MAN.* SEA|MANCHESTER)" = "MANCHESTER-BY-THE-SEA",
     "^ ?$" = ""
   )
   df <- df |>
@@ -598,10 +603,10 @@ std_massachusetts <- function(df, cols, street_name = FALSE) {
 }
 
 
-std_use_codes <- function(df, col){
+std_use_codes <- function(df, col, path = DATA_DIR, file = "luc_crosswalk.csv"){
   
   # Read Land Use Codes
-  lu <- readr::read_csv('data/comprehensive_adj_use.code_xwalk.csv', show_col_types = FALSE) |>
+  lu <- readr::read_csv(file.path(path, file), show_col_types = FALSE) |>
     dplyr::rename_with(tolower) |>
     dplyr::select(c(use_code, luc_assign))
   
@@ -714,21 +719,28 @@ std_remove_titles <- function(df, col) {
 
 # Unit Estimation ====
 
-std_property_units <- function(df) {
-  df |>
+std_units_from_luc <- function(df, col, muni_id_col) {
+  non_boston <- df |>
+    dplyr::filter(.data[[muni_id_col]] != '035')
+  
+  boston <- df |>
+    dplyr::filter(.data[[muni_id_col]] == '035')
+  
+  non_boston |>
     dplyr::mutate(
       units = dplyr::case_when(
         # Single-family.
-        luc == '101' ~ 1,
+        .data[[col]] == '101' ~ 1,
         # Two-family.
-        luc == '104' ~ 2,
+        .data[[col]] == '104' ~ 2,
         # Three-family.
-        luc == '105' ~ 3,
+        .data[[col]] == '105' ~ 3,
         # 102: Condos
-        luc == '102' ~ 1,
+        .data[[col]] == '102' ~ 1,
         .default = units
       )
-    )
+    ) |>
+    dplyr::bind_rows(boston)
 }
 
 std_fill_missing_units <- function(df) {
@@ -1396,6 +1408,16 @@ std_co_dba_attn <- function(df, col = "name", target_col = "name") {
 
 # Type Flags ====
 
+std_flag_hns <- function(df, col) {
+  hns_munis <- c(
+    "LYNN", "EVERETT", "CHELSEA", "BROCKTON", 
+    "FALL RIVER", "NEW BEDFORD", "BOSTON")
+  df |>
+    dplyr::mutate(
+      hns =  .data[[col]] %in% hns_munis
+    )
+}
+
 std_flag_condos <- function(df) {
   df |>
     dplyr::group_by(loc_id) |>
@@ -1474,6 +1496,42 @@ std_flag_trust <- function(df, col) {
         .data[[trustee_flag]],
         FALSE
       )
+    )
+}
+
+std_flag_residential <- function(df, col, name = "res") {
+  res_flags <- c(
+    # Single-Family
+    "101",
+    # Condo
+    "102",
+    # Mobile Home
+    "103",
+    # Two-Family
+    "104",
+    # Three-Family
+    "105",
+    # Multiple Houses on One Parcel
+    "109",
+    # 4-8 Units
+    "111",
+    # 8+ Units
+    "112",
+    # Affordable Housing Units (> 50%)
+    "114",
+    # Housing Authority (MA)
+    "970",
+    # Housing Authority (MA)
+    "980",
+    # 121A Corporations
+    # https://www.mass.gov/info-details/urban-redevelopment-corporations-urc
+    "990",
+    # Mixed Use with Residential
+    "0xxR"
+  )
+  df |>
+    dplyr::mutate(
+      !!name := .data[[col]] %in% res_flags
     )
 }
 
@@ -1573,6 +1631,50 @@ std_fill_muni_sp <- function(df, parcels, ma_munis, ma_postals) {
     dplyr::bind_rows(
       df |>
         dplyr::filter(muni %in% ma_munis$pl_name)
+    )
+}
+
+std_calculate_overlap <- function(x, y, threshold = 0) {
+  #' Calculate Overlap
+  #' 
+  #' Given two `sf` objects, returns a table of cases where the overlap is
+  #' greater than the threshold.
+  #' 
+  #' @param x An `sf` object.
+  #' @param y An `sf` object.
+  #' @param threshold Number between 0 and 1 that sets a threshold for ambiguity.
+  #' 
+  #' @return A data frame with columns 
+  #' resulting from the intersection of `x` and `y`.
+  #' @export
+  
+  if(!dplyr::between(threshold, 0, 1)) {
+    stop("Threshold must be between 0 and 1.")
+  }
+  
+  if(!("sf" %in% class(x))) {
+    stop("X is not an sf dataframe.")
+  }
+  
+  if(!("sf" %in% class(y))) {
+    stop("Y is not an sf dataframe.")
+  }
+  
+  if(sf::st_crs(x) != sf::st_crs(y)) {
+    stop("CRS of X and Y must match.")
+  }
+  
+  x |>
+    dplyr::mutate(
+      area = sf::st_area(geometry)
+    ) |>
+    sf::st_intersection(y) |>
+    dplyr::mutate(
+      overlap = units::drop_units(sf::st_area(geometry) / area)
+    ) |>
+    sf::st_drop_geometry() |>
+    dplyr::filter(
+      overlap > threshold
     )
 }
 
