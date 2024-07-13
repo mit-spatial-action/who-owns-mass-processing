@@ -9,7 +9,7 @@ run <- function() {
   )
   
   # Ingest or Load Data ====
-  ingest_load(
+  load_ingest_read(
     data_path = DATA_PATH,
     muni_ids = MUNI_IDS,
     refresh = REFRESH,

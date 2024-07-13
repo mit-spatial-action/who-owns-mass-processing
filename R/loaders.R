@@ -303,6 +303,7 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
   #' @param conn A `DBIConnection`.
   #' @param table_name Name of table to write or read.
   #' @param loader A dataframe or function to read dataframe.
+  #' @param refresh Whether to re-ingest data from source.
   #' 
   #' @return Unmodified data frame.
   #' 
@@ -1108,68 +1109,9 @@ load_officers <- function(path, companies, filename = "officers.csv") {
     std_replace_newline("addr")
 }
 
-load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
-  #' Pulls eviction filings from database.
-  #'
-  #' @return A dataframe.
-  #' @export
-  # Construct SQL query.
-  docket_col <- "docket_id"
-  filings_table <- "filings"
-  plaintiffs_table <- "plaintiffs"
-  cols <- stringr::str_c(
-    c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry"), 
-    collapse = ","
-  )
-  q <- stringr::str_c(
-    "SELECT", cols, 
-    "FROM", filings_table, "AS f",
-    sep = " "
-  )
-  # Set limit if test = TRUE
-  if (!isFALSE(town_ids)) {
-    q_filter <- munis |>
-      dplyr::filter(town_id %in% town_ids) |>
-      dplyr::pull(id) 
-    if (35 %in% town_ids) {
-      neighs <- bos_neighs |>
-        dplyr::pull(Name)
-      q_filter <- c(q_filter, neighs)
-    }
-    q_filter <- q_filter |>
-      stringr::str_c("UPPER(f.city) = '", ., "'") |>
-      stringr::str_c(., collapse = " OR ") |>
-      stringr::str_c("WHERE", ., sep = " ")
-    q <- stringr::str_c(q, q_filter, sep = " ")
-  }
-  # Pull filings.
-  conn <- DBI::dbConnect(
-    RPostgres::Postgres(),
-    dbname = Sys.getenv("DB_NAME"),
-    host = Sys.getenv("DB_HOST"),
-    port = Sys.getenv("DB_PORT"),
-    user = Sys.getenv("DB_USER"),
-    password = Sys.getenv("DB_PASS"),
-    sslmode = "allow"
-  ) 
-  filings <- conn |>
-    sf::st_read(
-      query=q,
-      quiet = TRUE
-    )
-  
-  DBI::dbDisconnect(conn)
-  
-  filings |> 
-    dplyr::select(-tidyselect::contains('..')) |>
-    sf::st_transform(crs) |>
-    dplyr::rename_with(stringr::str_to_lower) |>
-    dplyr::filter(!is.na(add1))
-}
-
 # Omnibus Ingestor/Loader ====
 
-ingest_load <- function(
+load_ingest_read <- function(
     data_path,
     muni_ids,
     gdb_path,
@@ -1177,6 +1119,22 @@ ingest_load <- function(
     crs,
     refresh
     ) {
+  #' Ingests/Read All Layers
+  #' 
+  #' Ingests or reads all layers, writing each to a globally scoped variable
+  #' (e.g., COMPANIES, ADDRESSES)
+  #'
+  #' @param data_path Data folder path.
+  #' @param muni_ids Vector of municipality IDs.
+  #' @param gdp_path Collection of MassGIS Parcel GDBs path.
+  #' @param oc_path OpenCorporates data path.
+  #' @param filename Name of file containing companies.
+  #' @param crs Coordinate reference system for output.
+  #' @param refresh Whether to re-ingest data from source.
+  #' 
+  #' @return Nothing, though binds layers to globally scoped variables.
+  #' 
+  #' @export
   
   # Test Validity of Municipality IDs ====
   muni_ids <- load_test_muni_subset(
@@ -1278,6 +1236,67 @@ ingest_load <- function(
     ),
     refresh=refresh
   )
+}
+
+# Needs rework ====
+
+load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
+  #' Pulls eviction filings from database.
+  #'
+  #' @return A dataframe.
+  #' @export
+  # Construct SQL query.
+  docket_col <- "docket_id"
+  filings_table <- "filings"
+  plaintiffs_table <- "plaintiffs"
+  cols <- stringr::str_c(
+    c(docket_col, "add1", "city", "zip", "state", "match_type", "geometry"), 
+    collapse = ","
+  )
+  q <- stringr::str_c(
+    "SELECT", cols, 
+    "FROM", filings_table, "AS f",
+    sep = " "
+  )
+  # Set limit if test = TRUE
+  if (!isFALSE(town_ids)) {
+    q_filter <- munis |>
+      dplyr::filter(town_id %in% town_ids) |>
+      dplyr::pull(id) 
+    if (35 %in% town_ids) {
+      neighs <- bos_neighs |>
+        dplyr::pull(Name)
+      q_filter <- c(q_filter, neighs)
+    }
+    q_filter <- q_filter |>
+      stringr::str_c("UPPER(f.city) = '", ., "'") |>
+      stringr::str_c(., collapse = " OR ") |>
+      stringr::str_c("WHERE", ., sep = " ")
+    q <- stringr::str_c(q, q_filter, sep = " ")
+  }
+  # Pull filings.
+  conn <- DBI::dbConnect(
+    RPostgres::Postgres(),
+    dbname = Sys.getenv("DB_NAME"),
+    host = Sys.getenv("DB_HOST"),
+    port = Sys.getenv("DB_PORT"),
+    user = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    sslmode = "allow"
+  ) 
+  filings <- conn |>
+    sf::st_read(
+      query=q,
+      quiet = TRUE
+    )
+  
+  DBI::dbDisconnect(conn)
+  
+  filings |> 
+    dplyr::select(-tidyselect::contains('..')) |>
+    sf::st_transform(crs) |>
+    dplyr::rename_with(stringr::str_to_lower) |>
+    dplyr::filter(!is.na(add1))
 }
 
 # Deprecated ====
