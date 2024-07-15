@@ -9,13 +9,14 @@ run <- function() {
   )
   
   # Ingest or Load Data ====
-  load_ingest_read(
+  load_ingest_read_all(
     data_path = DATA_PATH,
     muni_ids = MUNI_IDS,
     refresh = REFRESH,
     crs = CRS,
     gdb_path = GDB_PATH,
-    oc_path = OC_PATH
+    oc_path = OC_PATH,
+    tables = c("assess")
   )
   
   # Close log ====

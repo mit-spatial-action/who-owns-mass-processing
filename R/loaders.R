@@ -3,11 +3,24 @@ source("R/standardizers.R")
 
 # Load Helpers ====
 
-load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
+load_muni_table <- function(path, file="muni_ids.csv") { 
+  readr::read_csv(
+    file.path(path, file), 
+    progress=TRUE,
+    show_col_types = FALSE)
+}
+
+load_test_muni_ids <- function(muni_ids, path) {
   #' Test Validity of Muni IDs and Pad
   #' 
   #' Tests whether provided municipality ids are valid (`stop()` if they are 
   #' not) and pads them out to three characters with zeroes to the left.
+  #'
+  #' If need to create file...
+  #' MUNIS |> 
+  #'     sf::st_drop_geometry() |> 
+  #'     dplyr::select(muni_id, muni) |>
+  #'     readr::write_csv("data/muni_ids.csv")
   #'
   #' @param muni_ids Vector of municipality IDs.
   #' @param path Path to data directory.
@@ -16,10 +29,7 @@ load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
   #' @return A transformed vector of municipality IDs.
   #' 
   #' @export
-  ids <- readr::read_csv(
-      file.path(path, file), 
-      progress=TRUE,
-      show_col_types = FALSE) |>
+  ids <- load_muni_table(path)  |>
     dplyr::pull(muni_id)
   
   if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
@@ -30,13 +40,13 @@ load_test_muni_subset <- function(muni_ids, path, file="muni_ids.csv") {
   std_pad_muni_ids(muni_ids)
 }
 
-load_select_vintage <- function(path, recent = 3) {
+load_vintage_select <- function(gdb_path, muni_ids=NULL, recent = 3) {
   #' Select Parcel Vintage
   #' 
   #' Decide which vintage to use per MA municipality based on a simple 
   #' algorithm.
   #'
-  #' @param path Path to collection of MassGIS parcel geodatabases.
+  #' @param gdb_path Path to collection of MassGIS parcel geodatabases.
   #' @param recent Integer. How many years back algorithm should look in
   #'    identifying most complete vintages.
   #' 
@@ -45,12 +55,17 @@ load_select_vintage <- function(path, recent = 3) {
   #' 
   #' @export
   
-  gdb_list <- list.files(path)
+  gdb_list <- list.files(gdb_path)
   vintages <- data.frame(
     muni_id = stringr::str_extract(gdb_list, "(?<=M)[0-9]{3}"),
     fy = as.numeric(stringr::str_extract(gdb_list, "(?<=_FY)[0-9]{2}")) + 2000,
     cy = as.numeric(stringr::str_extract(gdb_list, "(?<=_CY)[0-9]{2}")) + 2000
   )
+  
+  if (!is.null(muni_ids)) {
+    vintages <- vintages |>
+      dplyr::filter(muni_id %in% muni_ids)
+  }
   
   most_complete_recent <- vintages |>
     dplyr::filter(fy > lubridate::year(Sys.Date()) - recent) |>
@@ -80,22 +95,37 @@ load_select_vintage <- function(path, recent = 3) {
     dplyr::mutate(
       count = dplyr::n()
     ) |>
-    dplyr::filter(count == 1 | (count > 1 & cy == max(cy))) |>
-    dplyr::select(-c(year_diff, load, count))
+    dplyr::filter(count == 1 | (count > 1 & cy == max(cy)))
 
-  results <- vintages |>
-    dplyr::filter(!load & min(year_diff) > 0) |>
-    dplyr::mutate(
-      min_diff = year_diff == min(year_diff)
-    ) |>
-    dplyr::filter(min_diff) |>
-    dplyr::mutate(
-      count = dplyr::n()
-    ) |>
-    dplyr::filter(count == 1 | (count > 1 & cy == max(cy))) |>
-    dplyr::select(-c(year_diff, load, min_diff, count)) |>
-    dplyr::bind_rows(exact_matches) |>
-    dplyr::ungroup()
+  unmatched <- vintages |>
+    dplyr::filter(!load & min(year_diff) > 0)
+  
+  if (nrow(unmatched) > 0) {
+    unmatched <- unmatched |>
+      dplyr::mutate(
+        min_diff = year_diff == min(year_diff)
+      ) |>
+      dplyr::filter(min_diff) |>
+      dplyr::mutate(
+        count = dplyr::n()
+      ) |>
+      dplyr::filter(count == 1 | (count > 1 & cy == max(cy))) |>
+      dplyr::select(-min_diff)
+  }
+  exact_matches |>
+    dplyr::bind_rows(unmatched) |>
+    dplyr::ungroup() |>
+    dplyr::select(-c(year_diff, load, count))
+}
+
+load_gdb_is_file <- function(path) {
+  file <- file.exists(path) && !dir.exists(path)
+  if (file) {
+    util_log_message("Single geodatabase provided.")
+  } else {
+    util_log_message("Folder of geodatabases provided.")
+  }
+  file
 }
 
 # Load from Services ====
@@ -344,15 +374,16 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
   df
 }
 
-# Load Specific Layers ====
+# Load Layers from Source ====
 
-load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
-  #' Load Parcels from All Vintages Folder
+load_parcels <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
+  #' Load Parcels from MassGIS Parcel GDB(s)
   #' 
-  #' Load parcels from MassGIS complete vintage tax parcel collection.
+  #' Load parcels from MassGIS tax parcel collection, presented either
+  #' as a single GDB or a folder of many vintages.
   #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
-  #' @param gdb_path Path to collection of MassGIS Parcel GDBs.
+  #' @param gdb_path Path to collection of MassGIS Parcel GDBs or single GDB.
   #' @param crs Coordinate reference system for output.
   #' @param muni_ids Vector of municipality IDs.
   #' @param quiet If `TRUE`, print incremental loading messages.
@@ -362,37 +393,57 @@ load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE)
   #' 
   #' @export
   
-  vintages <- load_select_vintage(gdb_path)
-  
-  if (!is.null(muni_ids)) {
-    vintages <- vintages |>
-      dplyr::filter(muni_id %in% muni_ids)
-  }
-  
   util_log_message(glue::glue("Loading parcels."))
   
-  all <- list()
-  for (row in 1:nrow(vintages)) {
+  single_gdb <- load_gdb_is_file(gdb_path)
+  
+  if (single_gdb) {
+    # If single gdb passed... ====
     
-    muni_id <- vintages |> dplyr::slice(row) |> dplyr::pull(muni_id)
-    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
-    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
+    q <- "SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM L3_TAXPAR_POLY"
     
-    if (!quiet) {
-      util_log_message(glue::glue("Loading parcels for muni {muni_id} (FY{fy}, CY{cy}).")) 
+    if (!is.null(muni_ids)) {
+      q <- stringr::str_c(
+        q, 
+        "WHERE TOWN_ID IN (", 
+        stringr::str_c(as.integer(muni_ids), collapse=", "), 
+        ")",
+        sep = " "
+      )
     }
     
-    file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
-    q <- glue::glue("SELECT LOC_ID, TOWN_ID FROM M{muni_id}TaxPar")
+    util_log_message(glue::glue("Loading parcels."))
     
-    all[[muni_id]] <- sf::st_read(
-      file.path(gdb_path, file), 
-      query = q, 
-      quiet = TRUE
-    ) |>
-      dplyr::rename_with(stringr::str_to_lower)
+    sf::st_read(gdb_path, query = q, quiet = TRUE)
+  } else {
+    # If folder of gdbs passed... ====
+    vintages <- load_vintage_select(gdb_path, muni_ids)
+    
+    all <- list()
+    for (row in 1:nrow(vintages)) {
+      
+      muni_id <- vintages[[row, 'muni_id']]
+      cy <- vintages[[row, 'cy']] - 2000
+      fy <- vintages[[row, 'fy']] - 2000
+      
+      if (!quiet) {
+        util_log_message(glue::glue("Loading parcels for muni {muni_id} (FY{fy}, CY{cy}).")) 
+      }
+      
+      file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
+      q <- glue::glue("SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM M{muni_id}TaxPar")
+      
+      all[[muni_id]] <- sf::st_read(
+          file.path(gdb_path, file), 
+          query = q, 
+          quiet = TRUE
+        )
+    }
+    df <- dplyr::bind_rows(all)
+    rm(all)
   }
-  dplyr::bind_rows(all) |> 
+  df |>
+    dplyr::rename_with(stringr::str_to_lower) |>
     # Correct weird naming conventions of GDB.
     sf::st_set_geometry("shape") |>
     sf::st_set_geometry("geometry") |>
@@ -404,118 +455,19 @@ load_parcels_all_vintages <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE)
     )
 }
 
-load_parcels <- function(gdb_path, crs, muni_ids=NULL) {
-  #' Load Parcels from Most Recent Parcel GDB
-  #' 
-  #' Load parcels from MassGIS "most current statewide data" product.
-  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
-  #'
-  #' @param gdb_path Path to MassGIS GDB.
-  #' @param crs Coordinate reference system for output.
-  #' @param muni_ids Vector of municipality IDs.
-  #' 
-  #' @return An `sf` dataframe containing MULTIPOLYGON parcels for specified 
-  #' municipalities.
-  #' 
-  #' @export
-  
-  q <- "SELECT LOC_ID, TOWN_ID FROM L3_TAXPAR_POLY"
-  if (!is.null(muni_ids)) {
-    q <- stringr::str_c(
-      q, 
-      "WHERE TOWN_ID IN (", 
-      stringr::str_c(as.integer(muni_ids), collapse=", "), 
-      ")",
-      sep = " "
-    )
-  }
-  util_log_message(glue::glue("Loading parcels."))
-  
-  sf::st_read(
-      gdb_path, 
-      query = q, 
-      quiet = TRUE
-    ) |>
-    dplyr::rename_with(stringr::str_to_lower) |> 
-    # Correct weird naming conventions of GDB.
-    sf::st_set_geometry("shape") |>
-    sf::st_set_geometry("geometry") |>
-    # Reproject to specified CRS.
-    sf::st_transform(crs) |>
-    # Cast from MULTISURFACE to MULTIPOLYGON.
+load_assess_preprocess <- function(df, path) {
+  simp_cols <- c(
+    "addr", "muni", "postal", "own_addr", "own_muni", 
+    "own_postal", "own_state", "own_country")
+  df |>
+    dplyr::rename_with(stringr::str_to_lower) |>
+    dplyr::filter(!is.na(loc_id)) |>
     dplyr::mutate(
-      geometry = sf::st_cast(geometry, "MULTIPOLYGON")
-    )
-}
-
-load_assess_all_vintages <- function(path, gdb_path, munis, muni_ids=NULL, quiet=FALSE) {
-  #' Load Assessors' Tables from All Vintages Folder
-  #' 
-  #' Load assessing table from MassGIS complete vintage tax parcel collection.
-  #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
-  #'
-  #' @param path Path to data folder.
-  #' @param gdp_path Path to collection of MassGIS Parcel GDBs.
-  #' @param munis Municipalities, as loaded by `load_munis()`.
-  #' @param muni_ids Vector of municipality IDs.
-  #' @param quiet If `TRUE`, print incremental loading messages.
-  #' 
-  #' @return A data frame of assessors' records for specified municipalities.
-  #' 
-  #' @export
-  
-  vintages <- load_select_vintage(gdb_path)
-  if (!is.null(muni_ids)) {
-    vintages <- vintages |>
-      dplyr::filter(muni_id %in% muni_ids)
-  }
-  
-  cols <- c(
-    # Property metadata.
-    "PROP_ID", "LOC_ID", "FY", 
-    # Parcel address.
-    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", "ZIP", 
-    # Owner name and address.
-    "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
-    # Last sale date and price.
-    "LS_DATE", "LS_PRICE",
-    # Necessary to estimate unit counts.
-    "BLD_AREA", "RES_AREA", "UNITS",
-    # Assessed values.
-    "BLDG_VAL", "LAND_VAL", "TOTAL_VAL",
-    # Land use code.
-    "USE_CODE"
-  )
-  cols <- stringr::str_c(cols, collapse = ", ")
-  
-  util_log_message(glue::glue("Loading assessors' records."))
-  
-  all <- list()
-  for (row in 1:nrow(vintages)) {
-    muni_id <- vintages |> dplyr::slice(row) |> dplyr::pull(muni_id)
-    cy <- vintages |> dplyr::slice(row) |> dplyr::pull(cy) - 2000
-    fy <-vintages |> dplyr::slice(row) |> dplyr::pull(fy) - 2000
-    
-    if (!quiet) {
-      util_log_message(glue::glue("Loading assessors records for muni {muni_id} (FY{fy}, CY{cy}).")) 
-    }
-    
-    file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
-    q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
-    all[[muni_id]] <- sf::st_read(
-        file.path(gdb_path, file),
-        query = q,
-        quiet = TRUE
-      )  |>
-      dplyr::rename_with(stringr::str_to_lower)
-  }
-  df <- dplyr::bind_rows(all) |>
-    dplyr::mutate(
-      site_addr = dplyr::case_when(
-        is.na(site_addr) & 
+      addr = dplyr::case_when(
+        is.na(addr) & 
           !is.na(addr_num) & 
           !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
-        .default = site_addr
+        .default = addr
       )
     ) |>
     dplyr::select(-c(addr_num, full_str)) |>
@@ -527,29 +479,32 @@ load_assess_all_vintages <- function(path, gdb_path, munis, muni_ids=NULL, quiet
       country = "US"
     ) |>
     dplyr::left_join(
-      sf::st_drop_geometry(munis) |>
-        dplyr::rename(muni = pl_name) |>
-        dplyr::select(-hns), 
+      load_muni_table(path),
       by = dplyr::join_by(muni_id)
     ) |>
-    std_fill_missing_units() |>
-    std_luc(
-      path = path
-    ) |>
+    tidyr::replace_na(list(units = 0)) |>
+    std_luc(path=path) |>
     std_flag_residential("luc") |>
-    std_units_from_luc("luc", "muni_id")
+    std_units_from_luc("luc", "muni_id") |>
+    std_uppercase(simp_cols) |>
+    std_replace_blank(simp_cols) |>
+    std_remove_special(simp_cols) |>
+    std_spacing_characters(simp_cols) |>
+    std_leading_zeros(simp_cols, rmsingle = FALSE) |>
+    std_squish(simp_cols)
 }
 
-load_assess <- function(path, gdb_path, munis, muni_ids=NULL) {
-  #' Load Assessors' Tables from Most Recent Parcel GDB
+load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
+  #' Load Assessors' Tables from MassGIS Parcel GDB(s)
   #' 
-  #' Load assessing table from MassGIS "most current statewide data" product.
+  #' Load assessing table from MassGIS tax parcel collection, presented either
+  #' as a single GDB or a folder of many vintages.
   #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
   #'
   #' @param path Path to data folder.
-  #' @param gdb_path Path to MassGIS GDB.
-  #' @param munis Municipalities, as loaded by `load_munis()`.
+  #' @param gdb_path Path to collection of MassGIS Parcel GDBs or single GDB.
   #' @param muni_ids Vector of municipality IDs.
+  #' @param quiet If `TRUE`, print incremental loading messages.
   #' 
   #' @return A data frame of assessors' records for specified municipalities.
   #' 
@@ -559,9 +514,11 @@ load_assess <- function(path, gdb_path, munis, muni_ids=NULL) {
     # Property metadata.
     "PROP_ID", "LOC_ID", "FY", 
     # Parcel address.
-    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", "ZIP", 
+    "SITE_ADDR AS ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", 
+    "ZIP AS POSTAL", 
     # Owner name and address.
-    "OWNER1", "OWN_ADDR", "OWN_CITY", "OWN_STATE", "OWN_ZIP", "OWN_CO",
+    "OWNER1 AS OWN_NAME", "OWN_ADDR", "OWN_CITY AS OWN_MUNI", "OWN_STATE", 
+    "OWN_ZIP AS OWN_POSTAL", "OWN_CO AS OWN_COUNTRY",
     # Last sale date and price.
     "LS_DATE", "LS_PRICE",
     # Necessary to estimate unit counts.
@@ -572,62 +529,70 @@ load_assess <- function(path, gdb_path, munis, muni_ids=NULL) {
     "USE_CODE"
   )
   cols <- stringr::str_c(cols, collapse = ", ")
-  q <- stringr::str_c("SELECT", cols, "FROM L3_ASSESS", sep = " ")
-  if (!is.null(muni_ids)) {
-    q <- stringr::str_c(
-      q,
-      "WHERE TOWN_ID IN (",
-      paste(as.integer(muni_ids), collapse = ", "),
-      ")",
-      sep = " "
-    )
-  }
   
   util_log_message(glue::glue("Loading assessors' records."))
   
-  sf::st_read(
-    gdb_path,
-    query = q,
-    quiet = TRUE
-  ) |>
-    dplyr::rename_with(stringr::str_to_lower) |>
-    dplyr::mutate(
-      site_addr = dplyr::case_when(
-        is.na(site_addr) & 
-          !is.na(addr_num) & 
-          !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
-        TRUE ~ site_addr
+  single_gdb <- load_gdb_is_file(gdb_path)
+  
+  # If single gdb passed... ====
+  if (single_gdb) {
+    q <- stringr::str_c("SELECT", cols, "FROM L3_ASSESS", sep = " ")
+    if (!is.null(muni_ids)) {
+      q <- stringr::str_c(
+        q,
+        "WHERE TOWN_ID IN (",
+        paste(as.integer(muni_ids), collapse = ", "),
+        ")",
+        sep = " "
       )
-    ) |>
-    dplyr::select(-c(addr_num, full_str)) |>
-    # All parcels are in MA, in the US...
-    dplyr::mutate(
-      muni_id = std_pad_muni_ids(muni_id),
-      ls_date = lubridate::fast_strptime(ls_date, "%Y%m%d"),
-      state = "MA", 
-      country = "US"
-    )  |>
-    dplyr::left_join(
-      sf::st_drop_geometry(munis) |>
-        dplyr::rename(muni = pl_name) |>
-        dplyr::select(-hns), 
-      by = dplyr::join_by(muni_id)
-    ) |>
-    std_fill_missing_units() |>
-    std_luc(
-      path = path
-    ) |>
-    std_flag_residential("luc") |>
-    std_units_from_luc("luc", "muni_id")
+    }
+    
+    df <- sf::st_read(
+        gdb_path,
+        query = q,
+        quiet = TRUE
+      )
+  } else {
+    # If folder of gdbs passed... ====
+    util_log_message(glue::glue("Reading from collection of GDBs.")) 
+    vintages <- load_vintage_select(gdb_path, muni_ids)
+    
+    all <- list()
+    for (row in 1:nrow(vintages)) {
+      
+      muni_id <- vintages[[row, 'muni_id']]
+      cy <- vintages[[row, 'cy']] - 2000
+      fy <- vintages[[row, 'fy']] - 2000
+      
+      if (!quiet) {
+        util_log_message(glue::glue("Loading assessors records for muni {muni_id} (FY{fy}, CY{cy}).")) 
+      }
+      
+      file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
+      if (!file.exists(file.path(gdb_path, file))) {
+        stop("You've passed an invalid GDB directory.")
+      }
+      q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
+      
+      all[[muni_id]] <- sf::st_read(
+        file.path(gdb_path, file),
+        query = q,
+        quiet = TRUE
+      )
+    }
+    df <- dplyr::bind_rows(all)
+  }
+  
+  df |>
+    load_assess_preprocess(path)
 }
 
-load_addresses <- function(munis, parcels, crs, muni_ids=NULL, quiet=FALSE) {
+load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
   #' Load MassGIS Master Address Data Points
   #' 
   #' Load Basic Address Points data prodoct from MassGIS Master Address Data.
   #' See https://www.mass.gov/info-details/massgis-data-master-address-data-basic-address-points
   #'
-  #' @param munis Municipalities, as loaded by `load_munis()`.
   #' @param parcels Municipalities, as loaded by `load_parcels()`.
   #' @param crs Coordinate reference system for output.
   #' @param muni_ids Vector of municipality IDs.
@@ -637,6 +602,7 @@ load_addresses <- function(munis, parcels, crs, muni_ids=NULL, quiet=FALSE) {
   #' 
   #' @export
   
+  munis <- load_muni_table(path)
   if (is.null(muni_ids)) {
     muni_ids <- munis |>
       dplyr::pull(muni_id)
@@ -747,14 +713,14 @@ load_addresses <- function(munis, parcels, crs, muni_ids=NULL, quiet=FALSE) {
           addrtwn_id = std_pad_muni_ids(addrtwn_id)
         ) |>
         dplyr::left_join(
-          sf::st_drop_geometry(munis),
+          munis,
           dplyr::join_by(addrtwn_id == muni_id)
         ) |>
         dplyr::select(
           addr_num,
           addr_body = streetname,
           state,
-          muni = pl_name,
+          muni,
           postal = zipcode,
           addr_start = num1,
           addr_end = num2,
@@ -837,22 +803,22 @@ load_places <- function(munis, crs) {
   #' 
   #' @export
   
-  munis <- dplyr::select(munis, muni_name = pl_name)
+  munis <- dplyr::select(munis, muni)
   
   df <- load_shp_from_remote_zip(
-    "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/geonames_shp.zip",
-    shpfile = "GEONAMES_PT_PLACES.shp",
-    crs = crs
-  ) |>
-    dplyr::rename(pl_name = labeltext) |>
+      "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/geonames_shp.zip",
+      shpfile = "GEONAMES_PT_PLACES.shp",
+      crs = crs
+    ) |>
+    dplyr::rename(name = labeltext) |>
     dplyr::select(-angle) |>
     dplyr::mutate(
-      pl_name = stringr::str_replace(pl_name, "BORO$", "BOROUGH"),
-      pl_name = stringr::str_remove_all(
-        pl_name, "(?<=\\b\\w)[ ]{1,2}(?=\\w\\b)"
+      name = stringr::str_replace(name, "BORO$", "BOROUGH"),
+      name = stringr::str_remove_all(
+        name, "(?<=\\b\\w)[ ]{1,2}(?=\\w\\b)"
       ),
-      pl_name = stringr::str_replace_all(
-        pl_name, "([\\s]+)", " "
+      name = stringr::str_replace_all(
+        name, "([\\s]+)", " "
       )
     ) |>
     sf::st_join(
@@ -860,14 +826,14 @@ load_places <- function(munis, crs) {
     )
   
   df <- df |>
-    dplyr::filter(is.na(muni_name)) |>
-    dplyr::select(-muni_name) |>
+    dplyr::filter(is.na(muni)) |>
+    dplyr::select(-muni) |>
     sf::st_join(
       munis, join = sf::st_nearest_feature
     ) |>
     dplyr::bind_rows(
       df |>
-        dplyr::filter(!is.na(muni_name))
+        dplyr::filter(!is.na(muni))
     ) |>
     sf::st_drop_geometry() |>
     dplyr::distinct()
@@ -876,29 +842,29 @@ load_places <- function(munis, crs) {
     dplyr::bind_rows(
       munis |>
         sf::st_drop_geometry() |>
-        dplyr::filter(!(muni_name %in% df$pl_name)) |>
+        dplyr::filter(!(muni %in% df$name)) |>
         dplyr::mutate(
-          pl_name = muni_name
+          name = muni
         )
     ) |>
     dplyr::mutate(
       tmp = dplyr::case_when(
-        stringr::str_detect(pl_name, "^(SOUTH|EAST|WEST|NORTH)\\w|PORT$") &
-          !stringr::str_detect(pl_name, " ") ~
+        stringr::str_detect(name, "^(SOUTH|EAST|WEST|NORTH)\\w|PORT$") &
+          !stringr::str_detect(name, " ") ~
           stringr::str_c(
-            stringr::str_sub(pl_name, start = 1, end = 2),
+            stringr::str_sub(name, start = 1, end = 2),
             " ",
-            stringr::str_sub(pl_name, start = 3)
+            stringr::str_sub(name, start = 3)
           ),
-        .default = pl_name
+        .default = name
       ),
-      pl_name_fuzzy = std_fuzzify_string(tmp)
+      name_fuzzy = std_fuzzify_string(tmp)
     ) |>
     dplyr::select(-tmp) |>
-    dplyr::filter(!(pl_name == "CAMBRIDGE" & muni_name == "WORCESTER")) |>
+    dplyr::filter(!(name == "CAMBRIDGE" & muni == "WORCESTER")) |>
     # Remove placenames that appear in multiple places.
     # These are not useful for deduplication.
-    dplyr::add_count(pl_name) |>
+    dplyr::add_count(name) |>
     dplyr::filter(n == 1) |>
     dplyr::select(-n)
 }
@@ -919,7 +885,7 @@ load_munis <- function(crs) {
   load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
     dplyr::select(
       muni_id = town_id, 
-      pl_name = town
+      muni = town
       ) |>
     dplyr::mutate(
       dplyr::across(
@@ -929,13 +895,13 @@ load_munis <- function(crs) {
       muni_id = std_pad_muni_ids(muni_id)
       ) |>
     dplyr::mutate(
-      pl_name = dplyr::case_when(
-        pl_name == "MANCHESTER" ~ "MANCHESTER-BY-THE-SEA",
-        .default = pl_name
+      muni = dplyr::case_when(
+        muni == "MANCHESTER" ~ "MANCHESTER-BY-THE-SEA",
+        .default = muni
       ),
-      pl_name = stringr::str_replace(pl_name, "BORO$", "BOROUGH")
+      muni = stringr::str_replace(muni, "BORO$", "BOROUGH")
     ) |>
-    std_flag_hns("pl_name")
+    std_flag_hns("muni")
 }
 
 load_zips <- function(munis, crs, threshold = 0.95) {
@@ -970,6 +936,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
       suppressMessages()
   }
   zips <- dplyr::bind_rows(all) |> 
+    sf::st_transform(crs) |>
     dplyr::group_by(zip) |>
     dplyr::mutate(
       state_unambig = dplyr::case_when(
@@ -984,8 +951,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     )
   
   zips_ma <- zips |>
-    dplyr::filter(ma) |>
-    sf::st_transform(crs)
+    dplyr::filter(ma)
   
   munis_clip <- munis |>
     sf::st_set_agr("constant") |>
@@ -1008,7 +974,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
       ) |>
     dplyr::select(
       zip, 
-      muni_unambig_from=pl_name
+      muni_unambig_from=muni
       )
   
   zips <- zips |>
@@ -1027,7 +993,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
       ) |>
     dplyr::select(
       zip, 
-      muni_unambig_to=pl_name
+      muni_unambig_to=muni
       )
   
   zips |>
@@ -1035,6 +1001,30 @@ load_zips <- function(munis, crs, threshold = 0.95) {
       ma_unambig_muni_from_zip, 
       by=dplyr::join_by(zip)
       )
+}
+
+# Derive Layers ====
+
+load_props_from_assess <- function(df) {
+  # WIP
+  
+  df |> 
+    dplyr::select(
+      prop_id, loc_id, fy, addr, muni, postal, 
+      state, country, luc, units, res, ls_date, ls_price, bld_area,
+      res_area, bldg_val, total_val
+    )
+}
+
+
+load_owners_from_assess <- function(df) {
+  # WIP
+  
+  df |>
+    dplyr::select(
+      prop_id, loc_id, fy, name = own_name, addr = own_addr, muni = own_city, 
+      state = own_state, postal = own_zip, country = own_co, res
+    )
 }
 
 # In-Progress ====
@@ -1045,14 +1035,14 @@ load_companies <- function(path, gdb_path, filename = "companies.csv") {
   #' Load OpenCorporates companies.
   #'
   #' @param path Name of directory containing OpenCorporates data.
-  #' @param gdp_path Path to collection of MassGIS Parcel GDBs.
+  #' @param gdb_path Path to collection of MassGIS Parcel GDBs.
   #' @param filename Name of file containing companies.
   #' 
   #' @return A data frame of companies.
   #' 
   #' @export
   
-  min_year <- load_select_vintage(gdb_path) |>
+  min_year <- load_vintage_select(gdb_path) |>
     dplyr::pull(cy) |>
     min()
   
@@ -1111,13 +1101,14 @@ load_officers <- function(path, companies, filename = "officers.csv") {
 
 # Omnibus Ingestor/Loader ====
 
-load_ingest_read <- function(
+load_ingest_read_all <- function(
     data_path,
     muni_ids,
     gdb_path,
     oc_path,
     crs,
-    refresh
+    refresh,
+    tables = NULL
     ) {
   #' Ingests/Read All Layers
   #' 
@@ -1126,7 +1117,7 @@ load_ingest_read <- function(
   #'
   #' @param data_path Data folder path.
   #' @param muni_ids Vector of municipality IDs.
-  #' @param gdp_path Collection of MassGIS Parcel GDBs path.
+  #' @param gdb_path Collection of MassGIS Parcel GDBs path.
   #' @param oc_path OpenCorporates data path.
   #' @param filename Name of file containing companies.
   #' @param crs Coordinate reference system for output.
@@ -1137,105 +1128,120 @@ load_ingest_read <- function(
   #' @export
   
   # Test Validity of Municipality IDs ====
-  muni_ids <- load_test_muni_subset(
+  muni_ids <- load_test_muni_ids(
     muni_ids=muni_ids,
     path=data_path
   )
   
   # Read Municipalities ====
-  MUNIS <<- load_ingest_read(
-    load_conn(),
-    "munis",
-    loader=load_munis(
-      crs=crs
-    ),
-    refresh=refresh
-  )
+  if (any(c("munis", "zips", "places") %in% tables) | is.null(tables)) {
+    MUNIS <<- load_ingest_read(
+      load_conn(),
+      "munis",
+      loader=load_munis(
+        crs=crs
+      ),
+      refresh=refresh
+    )
+  }
 
   # Read ZIPs ====
-  ZIPS <<- load_ingest_read(
-    load_conn(),
-    "zips",
-    load_zips(
-      munis=MUNIS,
-      crs=crs
-    ),
-    refresh=refresh
-  )
+  if ("zips" %in% tables | is.null(tables)) {
+    ZIPS <<- load_ingest_read(
+      load_conn(),
+      "zips",
+      load_zips(
+        munis=MUNIS,
+        crs=crs
+      ),
+      refresh=refresh
+    )
+  }
 
-  # Read Placenames ====
-  PLACES <<- load_ingest_read(
-    load_conn(),
-    "places",
-    load_places(
-      munis=MUNIS,
-      crs=crs
-    ),
-    refresh=refresh
-  )
+  # Read Places ====
+  if ("places" %in% tables | is.null(tables)) {
+    PLACES <<- load_ingest_read(
+      load_conn(),
+      "places",
+      load_places(
+        munis=MUNIS,
+        crs=crs
+      ),
+      refresh=refresh
+    )
+  }
 
   # Read Assessors Tables ====
-  ASSESS <<- load_ingest_read(
-    load_conn(),
-    "assess",
-    load_assess_all_vintages(
-      path=data_path,
-      gdb_path=file.path(data_path, gdb_path),
-      muni_ids=muni_ids,
-      munis=MUNIS,
-      quiet=TRUE
-    ),
-    refresh=refresh
-  )
+  if ("assess" %in% tables | is.null(tables)) {
+    ASSESS <<- load_ingest_read(
+      load_conn(),
+      "assess",
+      load_assess(
+        path=data_path,
+        gdb_path=file.path(data_path, gdb_path),
+        muni_ids=muni_ids,
+        quiet=TRUE
+      ),
+      refresh=refresh
+    )
+  }
 
   # Read Parcels ====
-  PARCELS <<- load_ingest_read(
-    load_conn(),
-    "parcels",
-    loader=load_parcels_all_vintages(
-      gdb_path=file.path(data_path, gdb_path),
-      muni_ids=muni_ids,
-      crs=crs,
-      quiet=TRUE
-    ),
-    refresh=refresh
-  )
+  if (any(c("parcels", "addresses") %in% tables) | is.null(tables)) {
+    PARCELS <<- load_ingest_read(
+      load_conn(),
+      "parcels",
+      loader=load_parcels(
+        gdb_path=file.path(data_path, gdb_path),
+        muni_ids=muni_ids,
+        crs=crs,
+        quiet=TRUE
+      ),
+      refresh=refresh
+    )
+  }
 
   # Read Master Address File ====
-  ADDRESSES <<- load_ingest_read(
-    load_conn(),
-    "addresses",
-    load_addresses(
-      muni_ids=muni_ids,
-      munis=MUNIS,
-      parcels=PARCELS,
-      crs=crs,
-      quiet=TRUE
-    ),
-    refresh=refresh
-  )
+  if ("addresses" %in% tables | is.null(tables)) {
+    ADDRESSES <<- load_ingest_read(
+      load_conn(),
+      "addresses",
+      load_addresses(
+        path=data_path,
+        muni_ids=muni_ids,
+        parcels=PARCELS,
+        crs=crs,
+        quiet=TRUE
+      ),
+      refresh=refresh
+    )
+  }
   
   # Read OpenCorpoates Companies ====
-  COMPANIES <<- load_ingest_read(
-    load_conn(),
-    "companies",
-    load_companies(
-      path=file.path(data_path, oc_path),
-      gdb_path=file.path(data_path, gdb_path)
-    ),
-    refresh=refresh
-  )
+  if (any(c("companies", "officers") %in% tables) | is.null(tables)) {
+    COMPANIES <<- load_ingest_read(
+      load_conn(),
+      "companies",
+      load_companies(
+        path=file.path(data_path, oc_path),
+        gdb_path=file.path(data_path, gdb_path)
+      ),
+      refresh=refresh
+    )
+  }
   
   # Read OpenCorporates Officers ====
-  OFFICERS <<- load_ingest_read(
-    load_conn(),
-    "officers",
-    load_officers(
-      path=file.path(data_path, oc_path),
-      companies=COMPANIES
-    ),
-    refresh=refresh
-  )
+  if ("officers" %in% tables | is.null(tables)) {
+    OFFICERS <<- load_ingest_read(
+      load_conn(),
+      "officers",
+      load_officers(
+        path=file.path(data_path, oc_path),
+        companies=COMPANIES
+      ),
+      refresh=refresh
+    )
+  }
 }
 
 # Needs rework ====
