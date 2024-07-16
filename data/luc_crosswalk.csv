@@ -515,20 +515,20 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 101A,101,Single Family,NA
 098,0xx,Multiple Uses,NA
 097,0xx,Multiple Uses,NA
-0961,0xx,Multiple Uses,NA
+0961,961,Multiple Uses,NA
 0960,960,"Chruch, Mosque, Synagogue, Temple, etc.",NA
-0956,0xx,Multiple Uses,NA
-0940,0xx,Multiple Uses,NA
+0956,956,Multiple Uses,NA
+0940,940,Multiple Uses,NA
 094,0xx,Multiple Uses,NA
-0938,0xx,Multiple Uses,NA
-0934,0xx,Multiple Uses,NA
-0931,0xx,Multiple Uses,NA
-0930,0xx,Multiple Uses,NA
+0938,938,Multiple Uses,NA
+0934,934,Multiple Uses,NA
+0931,931,Multiple Uses,NA
+0930,930,Multiple Uses,NA
 093,0xx,Multiple Uses,NA
-0920,0xx,Multiple Uses,NA
-0914,0xx,Multiple Uses,NA
-0910,0xx,Multiple Uses,NA
-091,0xx,Multiple Uses,NA
+0920,920,Multiple Uses,NA
+0914,914,Multiple Uses,NA
+0910,910,Multiple Uses,NA
+091,0xxR,Multiple Uses,NA
 0909,0xx,Multiple Uses,NA
 0905,0xx,Multiple Uses,NA
 0904,0xx,Multiple Uses,NA
@@ -546,18 +546,18 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 0830,0xx,Multiple Uses,NA
 083,0xx,Multiple Uses,NA
 0816,0xx,Multiple Uses,NA
-0814,0xx,Multiple Uses,NA
-0811,0xx,Multiple Uses,NA
-0810,0xx,Multiple Uses,NA
-081,0xx,Multiple Uses,NA
+0814,814,Multiple Uses,NA
+0811,811,Multiple Uses,NA
+0810,819,Multiple Uses,NA
+081,0xxR,Multiple Uses,NA
 080C,0xx,Multiple Uses,NA
-0808,0xx,Multiple Uses,NA
-0807,0xx,Multiple Uses,NA
-0806,0xx,Multiple Uses,NA
-0805,0xx,Multiple Uses,NA
-0803,0xx,Multiple Uses,NA
-0802,0xx,Multiple Uses,NA
-0801,0xx,Multiple Uses,NA
+0808,808,Multiple Uses,NA
+0807,807,Multiple Uses,NA
+0806,806,Multiple Uses,NA
+0805,805,Multiple Uses,NA
+0803,803,Multiple Uses,NA
+0802,802,Multiple Uses,NA
+0801,801,Multiple Uses,NA
 0800,0xx,Multiple Uses,NA
 078,0xx,Multiple Uses,NA
 0764,0xx,Multiple Uses,NA
@@ -572,18 +572,18 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 0730,0xx,Multiple Uses,NA
 073,0xx,Multiple Uses,NA
 0722,0xx,Multiple Uses,NA
-0720,0xx,Multiple Uses,NA
-0719,0xx,Multiple Uses,NA
-0718,0xx,Multiple Uses,NA
-0717,0xx,Multiple Uses,NA
-0716,0xx,Multiple Uses,NA
-0715,0xx,Multiple Uses,NA
-0714,0xx,Multiple Uses,NA
-0713,0xx,Multiple Uses,NA
-0712,0xx,Multiple Uses,NA
-0711,0xx,Multiple Uses,NA
-0710,0xx,Multiple Uses,NA
-071,0xx,Multiple Uses,NA
+0720,720,Multiple Uses,NA
+0719,719,Multiple Uses,NA
+0718,718,Multiple Uses,NA
+0717,717,Multiple Uses,NA
+0716,716,Multiple Uses,NA
+0715,715,Multiple Uses,NA
+0714,714,Multiple Uses,NA
+0713,713,Multiple Uses,NA
+0712,712,Multiple Uses,NA
+0711,711,Multiple Uses,NA
+0710,710,Multiple Uses,NA
+071,0xxR,Multiple Uses,NA
 068,0xx,Multiple Uses,NA
 0673,0xx,Multiple Uses,NA
 0670,0xx,Multiple Uses,NA
@@ -591,9 +591,9 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 0641,0xx,Multiple Uses,NA
 064,0xx,Multiple Uses,NA
 063,0xx,Multiple Uses,NA
-0610,0xx,Multiple Uses,NA
-061,0xx,Multiple Uses,NA
-0601,0xx,Multiple Uses,NA
+0610,0xxR,Multiple Uses,NA
+061,0xxR,Multiple Uses,NA
+0601,601,Multiple Uses,NA
 049C,0xx,Multiple Uses,NA
 0490,0xx,Multiple Uses,NA
 049,0xx,Multiple Uses,NA
@@ -606,43 +606,43 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 047,0xx,Multiple Uses,NA
 0460,0xx,Multiple Uses,NA
 046,0xx,Multiple Uses,NA
-0452,0xx,Multiple Uses,NA
-0450,0xx,Multiple Uses,NA
+0452,452,Multiple Uses,NA
+0450,450,Multiple Uses,NA
 0439,0xx,Multiple Uses,NA
-0431,0xx,Multiple Uses,NA
+0431,431,Multiple Uses,NA
 043,0xx,Multiple Uses,NA
-0424,0xx,Multiple Uses,NA
+0424,424,Multiple Uses,NA
 042,0xx,Multiple Uses,NA
-041R,0xx,Multiple Uses,NA
-041I,0xx,Multiple Uses,Unknown
-041E,0xx,Multiple Uses,NA
+041R,0xxR,Multiple Uses,NA
+041I,0xxR,Multiple Uses,Unknown
+041E,0xxR,Multiple Uses,NA
 0418,0xx,Multiple Uses,NA
 0417,0xx,Multiple Uses,NA
 0416,0xx,Multiple Uses,NA
-0413,0xx,Multiple Uses,NA
-0410,0xx,Multiple Uses,NA
-041,0xx,Multiple Uses,NA
+0413,413,Multiple Uses,NA
+0410,410,Multiple Uses,NA
+041,0xxR,Multiple Uses,NA
 040C,0xx,Multiple Uses,NA
-0402,0xx,Multiple Uses,NA
-0401,0xx,Multiple Uses,NA
-0400,0xx,Multiple Uses,NA
-0393,0xx,Multiple Uses,NA
-0392,0xx,Multiple Uses,NA
-0391,0xx,Multiple Uses,NA
-0390,0xx,Multiple Uses,NA
+0402,402,Multiple Uses,NA
+0401,401,Multiple Uses,NA
+0400,400,Multiple Uses,NA
+0393,393,Multiple Uses,NA
+0392,392,Multiple Uses,NA
+0391,391,Multiple Uses,NA
+0390,390,Multiple Uses,NA
 039,0xx,Multiple Uses,NA
 038V,0xx,Multiple Uses,NA
 038R,0xx,Multiple Uses,NA
 038I,0xx,Multiple Uses,NA
 038C,0xx,Multiple Uses,NA
-0388,0xx,Multiple Uses,NA
-0387,0xx,Multiple Uses,NA
-0386,0xx,Multiple Uses,NA
-0385,0xx,Multiple Uses,NA
-0384,0xx,Multiple Uses,NA
-0382,0xx,Multiple Uses,NA
-0381,0xx,Multiple Uses,NA
-0380,0xx,Multiple Uses,NA
+0388,399,Multiple Uses,NA
+0387,387,Multiple Uses,NA
+0386,386,Multiple Uses,NA
+0385,385,Multiple Uses,NA
+0384,384,Multiple Uses,NA
+0382,382,Multiple Uses,NA
+0381,381,Multiple Uses,NA
+0380,380,Multiple Uses,NA
 038,0xx,Multiple Uses,NA
 0377,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
 0376,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
@@ -651,156 +651,156 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 0371,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
 0370,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
 037,0xx,"Multiple Use, primarily commercial with part of the land designated under Chapter 61A use",NA
-0368,0xx,Multiple Uses,NA
-0367,0xx,Multiple Uses,NA
-0366,0xx,Multiple Uses,NA
-0362,0xx,Multiple Uses,NA
-0361,0xx,Multiple Uses,NA
-0360,0xx,Multiple Uses,NA
+0368,368,Multiple Uses,NA
+0367,367,Multiple Uses,NA
+0366,366,Multiple Uses,NA
+0362,362,Multiple Uses,NA
+0361,361,Multiple Uses,NA
+0360,360,Multiple Uses,NA
 036,0xx,Multiple Uses,NA
 035I,355,NA,FUNERAL HM  MDL-96
-0355,0xx,Multiple Uses,NA
-0353,0xx,Multiple Uses,NA
-0351,0xx,Multiple Uses,NA
-0350,0xx,Multiple Uses,NA
+0355,355,Multiple Uses,NA
+0353,353,Multiple Uses,NA
+0351,351,Multiple Uses,NA
+0350,350,Multiple Uses,NA
 034R,340,NA,OFFICE BLD  MDL-01
 034I,340,NA,OFFICE BLD  MDL-96
 034C,0xx,Multiple Uses,NA
 034B,342,NA,PROF BLDG M-01
-0347,0xx,Multiple Uses,NA
-0346,0xx,Multiple Uses,NA
-0343,0xx,Multiple Uses,NA
-0342,0xx,Multiple Uses,NA
-0341,0xx,Multiple Uses,NA
-0340,0xx,Multiple Uses,NA
+0347,347,Multiple Uses,NA
+0346,346,Multiple Uses,NA
+0343,343,Multiple Uses,NA
+0342,342,Multiple Uses,NA
+0341,341,Multiple Uses,NA
+0340,340,Multiple Uses,NA
 034,0xx,Multiple Uses,NA
 033R,0xx,Multiple Uses,NA
 033I,0xx,Multiple Uses,NA
-0338,0xx,Multiple Uses,NA
-0334,0xx,Multiple Uses,NA
-0332,0xx,Multiple Uses,NA
-0331,0xx,Multiple Uses,NA
-0330,0xx,Multiple Uses,NA
+0338,338,Multiple Uses,NA
+0334,334,Multiple Uses,NA
+0332,332,Multiple Uses,NA
+0331,331,Multiple Uses,NA
+0330,330,Multiple Uses,NA
 032R,322,NA,STORE/SHOP  MDL-01
 032L,326,NA,REST/CLUBS  MDL-96
 032I,0xx,Multiple Uses,STORE/SHOP  MDL-96
 032C,0xx,Multiple Uses,NA
-0327,0xx,Multiple Uses,NA
-0326,0xx,Multiple Uses,NA
-0325,0xx,Multiple Uses,NA
-0323,0xx,Multiple Uses,NA
-0322,0xx,Multiple Uses,NA
-0321,0xx,Multiple Uses,NA
-0320,0xx,Multiple Uses,NA
+0327,327,Multiple Uses,NA
+0326,326,Multiple Uses,NA
+0325,325,Multiple Uses,NA
+0323,323,Multiple Uses,NA
+0322,322,Multiple Uses,NA
+0321,321,Multiple Uses,NA
+0320,320,Multiple Uses,NA
 032,0xx,Multiple Uses,NA
-031X,0xx,"Multiple Use, primarily commercial",NA
-031V,0xx,"Multiple Use, primarily commercial",NA
-031R,0xx,"Multiple Use, primarily commercial",PRI COMM MDL-01
-031I,0xx,"Multiple Use, primarily commercial",NA
-031F,0xx,"Multiple Use, primarily commercial",NA
-031C,0xx,"Multiple Use, primarily commercial",NA
-031B,0xx,"Multiple Use, primarily commercial",NA
-0319,0xx,"Multiple Use, primarily commercial",NA
-0318,0xx,"Multiple Use, primarily commercial",NA
-0317,0xx,"Multiple Use, primarily commercial",NA
-0316,0xx,"Multiple Use, primarily commercial",NA
-0315,0xx,"Multiple Use, primarily commercial",NA
-0314,0xx,"Multiple Use, primarily commercial",NA
-0313,0xx,"Multiple Use, primarily commercial",NA
-0312,0xx,"Multiple Use, primarily commercial",NA
-0311,0xx,"Multiple Use, primarily commercial",NA
-0310,0xx,"Multiple Use, primarily commercial",NA
+031X,0xxR,"Multiple Use, primarily commercial",NA
+031V,0xxR,"Multiple Use, primarily commercial",NA
+031R,0xxR,"Multiple Use, primarily commercial",PRI COMM MDL-01
+031I,0xxR,"Multiple Use, primarily commercial",NA
+031F,0xxR,"Multiple Use, primarily commercial",NA
+031C,0xxR,"Multiple Use, primarily commercial",NA
+031B,0xxR,"Multiple Use, primarily commercial",NA
+0319,319,"Multiple Use, primarily commercial",NA
+0318,318,"Multiple Use, primarily commercial",NA
+0317,317,"Multiple Use, primarily commercial",NA
+0316,316,"Multiple Use, primarily commercial",NA
+0315,315,"Multiple Use, primarily commercial",NA
+0314,314,"Multiple Use, primarily commercial",NA
+0313,313,"Multiple Use, primarily commercial",NA
+0312,312,"Multiple Use, primarily commercial",NA
+0311,311,"Multiple Use, primarily commercial",NA
+0310,310,"Multiple Use, primarily commercial",NA
 031,0xx,"Multiple Use, primarily commercial",NA
-0306,0xx,Multiple Uses,NA
-0302,0xx,Multiple Uses,NA
-0301,0xx,Multiple Uses,NA
-0300,0xx,Multiple Uses,NA
-0230,0xx,Multiple Uses,NA
+0306,306,Multiple Uses,NA
+0302,302,Multiple Uses,NA
+0301,301,Multiple Uses,NA
+0300,300,Multiple Uses,NA
+0230,230,Multiple Uses,NA
 023,0xx,Multiple Uses,NA
-021,0xx,"Multiple Use, primarily open space",NA
-0197,0xx,Multiple Uses,NA
-0193,0xx,Multiple Uses,NA
-0190,0xx,Multiple Uses,NA
-019,0xx,Multiple Uses,NA
-018R,0xx,Multiple Uses,NA
-0187,0xx,Multiple Uses,NA
-0186,0xx,Multiple Uses,NA
-0183,0xx,Multiple Uses,NA
-0180,0xx,Multiple Uses,NA
-018,0xx,Multiple Uses,NA
-017V,0xx,Multiple Uses,NA
-017R,0xx,Multiple Uses,NA
-0178,0xx,Multiple Uses,NA
-0176,0xx,Multiple Uses,NA
-0174,0xx,Multiple Uses,NA
-0173,0xx,Multiple Uses,NA
-0170,0xx,Multiple Uses,NA
-017,0xx,Multiple Uses,NA
-016R,0xx,Multiple Uses,NA
-0168,0xx,Multiple Uses,NA
-0167,0xx,Multiple Uses,NA
-0164,0xx,Multiple Uses,NA
-0163,0xx,Multiple Uses,NA
-0160,0xx,Multiple Uses,NA
-016,0xx,Multiple Uses,NA
-014C,0xx,Multiple Uses,NA
-0147,0xx,Multiple Uses,NA
-0146,0xx,Multiple Uses,NA
-0143,0xx,Multiple Uses,NA
-0140,0xx,Multiple Uses,NA
-014,0xx,Multiple Uses,NA
-013V,0xx,"Multiple Use, primarily residential",NA
-013R,0xx,"Multiple Use, primarily residential",NA
-013M,0xx,"Multiple Use, primarily residential",NA
-013I,0xx,"Multiple Use, primarily residential",NA
-013C,0xx,"Multiple Use, primarily residential",NA
-0138,0xx,"Multiple Use, primarily residential",NA
-0137,0xx,"Multiple Use, primarily residential",NA
-0136,0xx,"Multiple Use, primarily residential",NA
-0135,0xx,"Multiple Use, primarily residential",NA
-0134,0xx,"Multiple Use, primarily residential",NA
-0133,0xx,"Multiple Use, primarily residential",NA
-0132,0xx,"Multiple Use, primarily residential",NA
-0131,0xx,"Multiple Use, primarily residential",NA
-0130,0xx,"Multiple Use, primarily residential",NA
-013,0xx,"Multiple Use, primarily residential",NA
-012O,0xx,Multiple Uses,NA
-012C,0xx,Multiple Uses,NA
-0123,0xx,Multiple Uses,NA
-0121,0xx,Multiple Uses,NA
-0120,0xx,Multiple Uses,NA
-012,0xx,Multiple Uses,NA
-011Z,0xx,Multiple Uses,NA
+021,0xxR,"Multiple Use, primarily open space",NA
+0197,0xxR,Multiple Uses,NA
+0193,0xxR,Multiple Uses,NA
+0190,0xxR,Multiple Uses,NA
+019,0xxR,Multiple Uses,NA
+018R,0xxR,Multiple Uses,NA
+0187,0xxR,Multiple Uses,NA
+0186,0xxR,Multiple Uses,NA
+0183,0xxR,Multiple Uses,NA
+0180,0xxR,Multiple Uses,NA
+018,0xxR,Multiple Uses,NA
+017V,0xxR,Multiple Uses,NA
+017R,0xxR,Multiple Uses,NA
+0178,0xxR,Multiple Uses,NA
+0176,0xxR,Multiple Uses,NA
+0174,0xxR,Multiple Uses,NA
+0173,0xxR,Multiple Uses,NA
+0170,0xxR,Multiple Uses,NA
+017,0xxR,Multiple Uses,NA
+016R,0xxR,Multiple Uses,NA
+0168,0xxR,Multiple Uses,NA
+0167,0xxR,Multiple Uses,NA
+0164,0xxR,Multiple Uses,NA
+0163,0xxR,Multiple Uses,NA
+0160,0xxR,Multiple Uses,NA
+016,0xxR,Multiple Uses,NA
+014C,0xxR,Multiple Uses,NA
+0147,0xxR,Multiple Uses,NA
+0146,0xxR,Multiple Uses,NA
+0143,0xxR,Multiple Uses,NA
+0140,140,Multiple Uses,NA
+014,0xxR,Multiple Uses,NA
+013V,0xxR,"Multiple Use, primarily residential",NA
+013R,0xxR,"Multiple Use, primarily residential",NA
+013M,0xxR,"Multiple Use, primarily residential",NA
+013I,0xxR,"Multiple Use, primarily residential",NA
+013C,0xxR,"Multiple Use, primarily residential",NA
+0138,0xxR,"Multiple Use, primarily residential",NA
+0137,0xxR,"Multiple Use, primarily residential",NA
+0136,0xxR,"Multiple Use, primarily residential",NA
+0135,0xxR,"Multiple Use, primarily residential",NA
+0134,0xxR,"Multiple Use, primarily residential",NA
+0133,0xxR,"Multiple Use, primarily residential",NA
+0132,131,"Multiple Use, primarily residential",NA
+0131,131,"Multiple Use, primarily residential",NA
+0130,130,"Multiple Use, primarily residential",NA
+013,0xxR,"Multiple Use, primarily residential",NA
+012O,0xxR,Multiple Uses,NA
+012C,0xxR,Multiple Uses,NA
+0123,123,Multiple Uses,NA
+0121,121,Multiple Uses,NA
+0120,0xxR,Multiple Uses,NA
+012,0xxR,Multiple Uses,NA
+011Z,0xxR,Multiple Uses,NA
 011J,112,NA,Apts Over 8 M-9
-011I,0xx,Multiple Uses,NA
+011I,0xxR,Multiple Uses,NA
 011C,111,NA,APT 4-UNIT  MDL-94
-0114,0xx,Multiple Uses,NA
-0113,0xx,Multiple Uses,NA
-0112,0xx,Multiple Uses,NA
-0111,0xx,Multiple Uses,NA
-0110,0xx,Multiple Uses,NA
-011,0xx,Multiple Uses,NA
-010Z,0xx,Multiple Uses,NA
-010V,0xx,Multiple Uses,NA
-010R,0xx,Multiple Uses,NA
+0114,114,Multiple Uses,NA
+0113,113,Multiple Uses,NA
+0112,112,Multiple Uses,NA
+0111,111,Multiple Uses,NA
+0110,0xxR,Multiple Uses,NA
+011,0xxR,Multiple Uses,NA
+010Z,0xxR,Multiple Uses,NA
+010V,0xxR,Multiple Uses,NA
+010R,0xxR,Multiple Uses,NA
 010L,104,NA,TWO FAMILY  MDL-96
 010K,0xx,Multiple Uses,NA
 010J,104,NA,TWO FAMILY  MDL-94
-010I,0xx,Multiple Uses,NA
-010F,0xx,Multiple Uses,NA
-010D,0xx,Multiple Uses,NA
+010I,0xxR,Multiple Uses,NA
+010F,0xxR,Multiple Uses,NA
+010D,0xxR,Multiple Uses,NA
 010C,104,NA,Two Family MDL
-0109,0xx,Multiple Uses,NA
-0108,0xx,Multiple Uses,NA
-0107,0xx,Multiple Uses,NA
-0106,0xx,Multiple Uses,NA
-0105,0xx,Multiple Uses,NA
-0104,0xx,Multiple Uses,NA
-0103,0xx,Multiple Uses,NA
-0102,0xx,Multiple Uses,NA
-0101,0xx,Multiple Uses,NA
-001,0xx,Multiple Uses,NA
-000,0xx,NA,NA
+0109,109,Multiple Uses,NA
+0108,108,Multiple Uses,NA
+0107,107,Multiple Uses,NA
+0106,106,Multiple Uses,NA
+0105,105,Multiple Uses,NA
+0104,104,Multiple Uses,NA
+0103,103,Multiple Uses,NA
+0102,102,Multiple Uses,NA
+0101,101,Multiple Uses,NA
+001,0xxR,Multiple Uses,NA
+000,999,NA,NA
 9999,999,NA,NA
 9980,998,NA,OWNER UNKN
 9972,997,Other,NA
@@ -1652,12 +1652,12 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 142,140,Child Care Facility,Day Care
 140,140,Child Care Facility,NA
 139,139,NA,Mixed Use
-138,0xx,Multiple Uses,"Residential, Commercial, Recreational"
+138,0xxR,Multiple Uses,"Residential, Commercial, Recreational"
 137,137,NA,"Has house, commercial retail store, and sits on Chapter Land"
 136,136,NA,NA
 135,135,NA,NA
 134,134,NA,"Mixed Use residential/commercial/industrial, primarily residential"
-133,0xx,"Multiple Use, primarily residential",Multiuse Residential-COM
+133,0xxR,"Multiple Use, primarily residential",Multiuse Residential-COM
 132,132,Undevelopable Land,NA
 131,131,Potentially Developable Land,Potentially Developable Residential Land
 130,130,Developable Land,NA
@@ -1702,17 +1702,17 @@ USE_CODE,LUC_Assign,L3_Description,USE_DESC
 37,37,NA,"Mixed Use (Primarily Commercial, some Agriculture)"
 36,36,NA,"Mixed Use (Primarily Commercial, some Forest)"
 34,34,NA,"Mixed Use (Primarily Commercial, some Industrial)"
-31,0xx,"Multiple Use, primarily commercial","Mixed Use (Primarily Commercial, some Residential)"
+31,0xxR,"Multiple Use, primarily commercial","Mixed Use (Primarily Commercial, some Residential)"
 27,0xx,Multiple Uses,NA
 26,0xx,Multiple Uses,NA
 25,0xx,Multiple Uses,NA
 23,23,NA,OS / Commercial
 18,18,NA,"Mixed Use (Primarily Residential, some Recreation)"
 17,17,NA,"Mixed Use (Primarily Residential, some Agriculture)"
-16,0xx,Multiple Uses,"Mixed Use (Primarily Residential, some Forest)"
+16,0xxR,Multiple Uses,"Mixed Use (Primarily Residential, some Forest)"
 14,14,NA,"Mixed Use (Primarily Residential, some Industrial)"
-13,0xx,"Multiple Use, primarily residential","Mixed Use (Primarily Residential, some Commercial)"
+13,0xxR,"Multiple Use, primarily residential","Mixed Use (Primarily Residential, some Commercial)"
 11,0,NA,Unknown
-10,0xx,Multiple Uses,NA
+10,0xxR,Multiple Uses,NA
 7,7,NA,Mixed Use
 0,0,NA,Unknown
