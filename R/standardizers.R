@@ -343,11 +343,12 @@ std_directions <- function(df, cols) {
   )
 }
 
-std_remove_street_types <- function(df, cols) {
+std_remove_street_types <- function(df, cols, fill = FALSE) {
   #' Standardize street types.
   #'
   #' @param df A dataframe.
   #' @param cols Column or columns to be processed.
+  #' @param fill Whether one should be used to fill the other.
   #' @returns A dataframe.
   #' @export
   street <-c(
@@ -359,13 +360,32 @@ std_remove_street_types <- function(df, cols) {
     std_collapse_regex()
   street <- stringr::str_c(" (", street, ")$", sep="")
   
-  df |>
+  df <- df |>
     dplyr::mutate(
       across(
         dplyr::all_of(cols), 
         ~ stringr::str_replace(.x, street, ""),
-        .names="{.col}_temp")
+        .names="{.col}_temp"
+      )
     )
+  if (length(cols) == 2 & fill) {
+    df <- df |>
+      dplyr::mutate(
+        first_longer = nchar(.data[[cols[1]]]) > nchar(.data[[cols[2]]]),
+        match = .data[[paste0(cols[1], "_temp")]] == .data[[paste0(cols[2], "_temp")]],
+        dplyr::across(
+          cols,
+          ~ dplyr::case_when(
+            !first_longer & match ~ .data[[cols[2]]],
+            first_longer & match ~ .data[[cols[1]]],
+            .default = .x,
+          )
+        )
+      ) |> 
+      dplyr::select(-c(first_longer, match))
+  }
+  df |>
+    dplyr::select(-paste0(cols, "_temp"))
 }
 
 std_street_types <- function(df, cols) {
@@ -385,30 +405,30 @@ std_street_types <- function(df, cols) {
     "(?<= 2) (?=ND )" = "",
     "(?<= 3) (?=RD )" = "",
     "(?<= [1-9]?[04-9]) (?=TH )" = "",
-    "(?<= )(ST|ST[RET]{3,5})(?=$| )" = "STREET",
-    "(?<= )STREE(?=$| )" = "STREET",
-    "(?<= )AVE?(?=$| )" = "AVENUE",
-    "(?<= )LA?N(?=$| )" = "LANE",
-    "(?<= )BLV?R?D?(?=$| )" = "BOULEVARD",
-    "(?<= )P(A?R?KWA?)?Y(?=$| )" = "PARKWAY",
-    "(?<= )EXT(?=$| )" = "EXTENSION",
-    "(?<= )PR?K(?=$| )" = "PARK",
-    "(?<= )DRV?(?=$| )" = "DRIVE",
-    "(?<= )RD(?=$| )" = "ROAD",
-    "(?<= )T[ER]+R+(CE)?(?=$| )" = "TERRACE",
-    "(?<= )TE(?=$| )" = "TERRACE",
-    "(?<= )PLC?E?(?=$| )" = "PLACE",
-    "(?<= )WY(?=$| )" = "WAY",
-    "(?<= )(CI?RC?)(?=$| )" = "CIRCLE",
-    "(?<= )A[L]+E?Y(?=$| )" = "ALLEY",
-    "(?<= )SQR?(?=$| )" = "SQUARE",
-    "(?<= )HG?WY?(?=$| )" = "HIGHWAY",
-    "(?<= )CNTR(?=$| )" = "CENTER",
-    "(?<= )FR?WY(?=$| )" = "FREEWAY",
-    "(?<= )CR?T(?=$| )" = "COURT",
-    "(?<= )PL?Z(?=$| )" = "PLAZA",
-    "(?<= )W[HR]+F(?=$| )" = "WHARF",
-    "(?<= )DEPT(?=$| )" = "DEPARTMENT",
+    "(?<= )(ST|ST[RET]{3,5})(?=$| |\\-)" = "STREET",
+    "(?<= )STREE(?=$| |\\-)" = "STREET",
+    "(?<= )AVE?(?=$| |\\-)" = "AVENUE",
+    "(?<= )LA?N(?=$| |\\-)" = "LANE",
+    "(?<= )BLV?R?D?(?=$| |\\-)" = "BOULEVARD",
+    "(?<= )P(A?R?KWA?)?Y(?=$| |\\-)" = "PARKWAY",
+    "(?<= )EXT(?=$| |\\-)" = "EXTENSION",
+    "(?<= )PR?K(?=$| |\\-)" = "PARK",
+    "(?<= )DRV?(?=$| |\\-)" = "DRIVE",
+    "(?<= )RD(?=$| |\\-)" = "ROAD",
+    "(?<= )T[ER]+R+(CE)?(?=$| |\\-)" = "TERRACE",
+    "(?<= )TE(?=$| |\\-)" = "TERRACE",
+    "(?<= )PLC?E?(?=$| |\\-)" = "PLACE",
+    "(?<= )WY(?=$| |\\-)" = "WAY",
+    "(?<= )(CI?RC?)(?=$| |\\-)" = "CIRCLE",
+    "(?<= )A[L]+E?Y(?=$| |\\-)" = "ALLEY",
+    "(?<= )SQR?(?=$| |\\-)" = "SQUARE",
+    "(?<= )HG?WY?(?=$| |\\-)" = "HIGHWAY",
+    "(?<= )CNTR(?=$| |\\-)" = "CENTER",
+    "(?<= )FR?WY(?=$| |\\-)" = "FREEWAY",
+    "(?<= )CR?T(?=$| |\\-)" = "COURT",
+    "(?<= )PL?Z(?=$| |\\-)" = "PLAZA",
+    "(?<= )W[HR]+F(?=$| |\\-)" = "WHARF",
+    "(?<= )DEPT(?=$| |\\-)" = "DEPARTMENT",
     "(?<= |^)P ?O( ?BO?X)?[ \\#\\-]*(?=[A-Z]{0,1}[0-9])" = "PO BOX ",
     "(?<= |^)(?<!PO )BO?X[ \\#\\-]+(?=[A-Z]{0,1}[0-9])" = "PO BOX "
   )
@@ -510,7 +530,7 @@ std_extract_zip <- function(df, col, postal_col) {
     std_replace_blank(col)
 }
 
-std_remove_countynames <- function(df, cols, places, munis, state_col, state_val="MA") {
+std_remove_counties <- function(df, cols, places, munis, state_col, state_val="MA") {
   counties <- tigris::counties(state=state_val, cb=TRUE, resolution="20m") |>
     dplyr::rename_with(stringr::str_to_lower) |>
     sf::st_drop_geometry() |>
@@ -519,7 +539,8 @@ std_remove_countynames <- function(df, cols, places, munis, state_col, state_val
     dplyr::filter(!(name %in% places$name)) |>
     dplyr::filter(!(name %in% munis$muni)) |>
     dplyr::pull(name) |>
-    std_collapse_regex()
+    std_collapse_regex() |>
+    suppressMessages()
   
   df |>
     dplyr::filter(.data[[state_col]] == state_val) |>
@@ -948,13 +969,106 @@ std_fill_units_flow <- function(df, parcels, ma_munis, crs=CRS) {
     dplyr::select(-c(condo, possible_ambiguous, distinct, units_valid))
 }
 
-std_simple_units <- function(df) {
-  "[A-Z]{1,2}-[0-9]+$"
-  
-  "[0-9]+-[0-9]+$"
+# Address Refinement/Completion ====
+std_leading_zero_vector <- function(x) {
+  stringr::str_remove_all(x, "(?<=^|\\-)0+(?=[1-9]|[A-Z]|0$)")
 }
 
-std_po_box <- function(df, cols) {
+std_addr2_floor <- function(df, cols) {
+  std_addr2_parser(df, cols, " [0-9]+[A-Z]{2} FLOOR[ |$]|[^| ]FLOOR [0-9]+")
+}
+
+std_addr2_range <- function(df, cols) {
+  std_addr2_parser(df, cols, " [0-9]+[A-Z]{0,2}?[\\- ][0-9]+[A-Z]{0,2}?$")
+}
+
+std_addr2_alpha_num <- function(df, cols) {
+  std_addr2_parser(df, cols, " [A-Z]{1,2}[\\-\\ ]?[0-9]+$")
+}
+
+std_addr2_num_alpha <- function(df, cols) {
+  std_addr2_parser(df, cols, " [0-9]+[\\-\\ ]?[A-Z]{1,2}$")
+}
+
+std_addr2_num <- function(df, cols) {
+  std_addr2_parser(df, cols, " [A-Z]{0,2}?[0-9]+[A-Z]{0,2}?$")
+}
+
+std_addr2_alpha <- function(df, cols) {
+  std_addr2_parser(df, cols, " [A-Z0-9]$")
+}
+
+std_addr2_parser <- function(df, cols, regex) {
+  if (!all(stringr::str_c(cols, "2", sep="") %in% names(df))) {
+    df <- df |> 
+      dplyr::mutate(
+        dplyr::across(
+          cols,
+          list(
+            "2" = ~ NA_character_
+          ),
+          .names = "{.col}{.fn}"
+        )
+      )
+  }
+  df |>
+    dplyr::mutate(
+      dplyr::across(
+        cols,
+        list(
+          temp = ~ stringr::str_extract(.x, regex)
+        ),
+        .names = "{.col}_{.fn}"
+      ),
+      dplyr::across(
+        cols,
+        ~ dplyr::case_when(
+          !is.na(get(paste0(dplyr::cur_column(), "_temp"))) ~ 
+            stringr::str_remove_all(
+              .x, 
+              get(paste0(dplyr::cur_column(), "_temp"))
+            ),
+          .default = .x
+        )
+      ),
+      dplyr::across(
+        stringr::str_c(cols, "_temp"),
+        ~ dplyr::case_when(
+          !is.na(.x) ~ stringr::str_replace_all(
+            std_leading_zero_vector(stringr::str_squish(.x)), 
+            " ", 
+            "-"
+          ),
+          .default = .x
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          "2" = ~ dplyr::case_when(
+            !is.na(get(paste0(dplyr::cur_column(), "2"))) & 
+              !is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
+            ~ stringr::str_c(
+              get(paste0(dplyr::cur_column(), "_temp")),
+              get(paste0(dplyr::cur_column(), "2")),
+              sep=" "
+            ),
+            is.na(get(paste0(dplyr::cur_column(), "2"))) & 
+              !is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
+            ~ get(paste0(dplyr::cur_column(), "_temp")),
+            !is.na(get(paste0(dplyr::cur_column(), "2"))) & 
+              is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
+            ~ get(paste0(dplyr::cur_column(), "2")),
+            .default = NA_character_
+          )
+        ),
+        .names = "{.col}{.fn}"
+      )
+    ) |>
+    dplyr::select(-stringr::str_c(cols, "_temp"))
+}
+
+std_addr2_po_pmb <- function(df, cols) {
   terms <- c(
     "(P ?[0O] ?)+B[0X]?X",
     "((P ?)?[0O])+ ?BOX",
@@ -980,25 +1094,30 @@ std_po_box <- function(df, cols) {
     dplyr::mutate(
       dplyr::across(
         cols,
-        ~ stringr::str_extract(., "(?<=PO BOX ?)[A-Z0-9\\-]+( [0-9]+)?"),
-        .names = "{.col}_po"
+        list(
+          po = ~ stringr::str_extract(., "(?<=PO BOX ?)[A-Z0-9\\-]+( [0-9]+)?"),
+          pmb = ~ stringr::str_extract(., "(?<= PMB ?)[A-Z0-9\\-]+( [0-9]+)?")
         ),
+        .names = "{.col}_{.fn}"
+      ),
       dplyr::across(
         cols,
-        ~ stringr::str_remove(., ",?PO BOX ?[A-Z0-9\\-]+( [0-9]+,?")
+        ~ stringr::str_remove_all(., ",?(PO BOX|PMB) ?[A-Z0-9\\-]+( [0-9]+)?")
       )
     ) |>
-    std_replace_blank(cols)
+    std_replace_blank(cols) |>
+    std_squish(cols)
 }
 
-std_handle_addr2_keys <- function(df, cols) {
+std_addr2_remove_keywords <- function(df, cols) {
   
   terms <- c(
     "UNITS?",
     "S(UI)?TE(S)?",
     "AP(AR)?T(MENT)?",
-    "R(OO)?M"
-    )
+    "R(OO)?M",
+    "PS( AREA)?"
+  )
   terms <- stringr::str_c("[\\,\\-\\ ]", terms, "[\\,\\-\\ ]") |>
     std_collapse_regex()
   df <- std_replace_generic(
@@ -1024,76 +1143,17 @@ std_handle_addr2_keys <- function(df, cols) {
     " "
   )
   
-  floor <- c(
-    "(?<= )FLR?(?= )"
-  )
-  
-  df <- std_replace_generic(
+  std_replace_generic(
     df, 
     cols,
-    floor, 
-    "FLOOR"
+    c(
+      "(?<= )FLR?(?= |$)" = "FLOOR",
+      "PENT(HOUSE)?( |$|\\-)" = "PH",
+      " A K A " = " ",
+      "[\\, ]+NO (?=[A-Z]{0,2}[0-9][1,8][A-Z]{0,2}$)" = " ",
+      "[\\, ]+NO (?=[A-Z]$)" = " "
+    )
   )
-}
-
-
-# Address Refinement/Completion ====
-std_multiline_address <- function(df, number = FALSE) {
-  if (number) {
-    regex <- "[-]+(([A-Z]?[0-9\\/ \\-]+[A-Z]?)|([A-Z]( [A-Z])?)|(U\\-)|U[A-Z])$"
-  } else {
-    terms <- c(
-      "UNITS?", 
-      "SUITES?", 
-      "STE[-]+", 
-      "AP(AR)?T(MENT)?", 
-      "ROOM", 
-      "OFFICE",
-      " RM[-]*[0-9]+", 
-      " PH[-]*[0-9]+", 
-      " U(PH)?([-]*[A-Z]?[0-9]+[A-Z]?)+", 
-      " (NO |NUM )",  
-      " PMB", 
-      "PENT([HOUSE]{4,6})?"
-    ) |>
-      stringr::str_c(collapse="|")
-    regex <- glue::glue("[- ]*({terms}).*$")
-  }
-  df |>
-    dplyr::mutate(
-      match = !po_box & stringr::str_detect(addr, regex) & is.na(addr2),
-      addr2 = dplyr::case_when(
-        match ~ stringr::str_extract(addr, regex),
-        .default = addr2
-      ),
-      addr = dplyr::case_when(
-        !is.na(addr2) ~ stringr::str_squish(stringr::str_remove(addr, stringr::str_c(addr2, "$", sep=""))),
-        .default = addr
-      ),
-      addr2 = stringr::str_squish(addr2)
-    ) |>
-    dplyr::select(-match)
-}
-
-std_flow_multiline_address <- function(df) {
-  df |>
-    dplyr::mutate(
-      po_box = stringr::str_detect(addr, "PO BOX"),
-      addr2 = NA_character_,
-      box = stringr::str_extract(addr, "PO BOX ([A-Z]?[0-9\\/\\-\\# ]+[A-Z]?$|[A-Z]?[0-9\\#]+[A-Z]?(?=[\\/\\- ]{1,3}))"),
-      addr = stringr::str_remove(addr, "PO BOX ([A-Z]?[0-9\\/\\-\\# ]+[A-Z]?$|[A-Z]?[0-9\\#]+[A-Z]?[\\/\\- ]{1,3})")
-    ) |>
-    dplyr::mutate(
-      floor = stringr::str_extract(addr, "[- ]?([0-9]FL[OR]{0,3}|[0-9]{1,3}(TH|ST|RD|ND) FL[OR]{0,3}|FL[OR]{0,3} [0-9]{1,3})"),
-      addr = dplyr::case_when(
-        !is.na(floor) ~ stringr::str_squish(stringr::str_remove(addr, floor)),
-        .default = addr
-      ),
-      floor = stringr::str_squish(floor)
-    ) |>
-    std_multiline_address(number = FALSE) |>
-    std_multiline_address(number = TRUE) |>
-    std_replace_blank("addr")
 }
 
 std_hyphenate_range <- function (df, cols) {
@@ -1133,67 +1193,98 @@ std_frac_to_dec <- function(df, cols) {
     )
 }
 
-std_address_range <- function(df) {
+std_address_to_range <- function(df, cols) {
   df |>
     dplyr::mutate(
-      # Extract address, accounting for possible presence of half-addresses.
-      addr_range = stringr::str_detect(
-        addr, 
-        "^[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?([ -]+[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)+ +(?=[A-Z0-9])"
-      ),
-      addr_num = stringr::str_extract(
-        addr, 
-        "^[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?([ -]+(([0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)*|[A-Z]))? +(?=[A-Z0-9])"
-      ),
-      # Extract address body.
-      addr_body = stringr::str_remove(
-        addr, 
-        addr_num
-      ),
-      addr_temp = stringr::str_replace_all(
-        addr_num, 
-        " 1 \\/ 2", "\\.5"
-      ),
-      addr_start = as.numeric(
-        stringr::str_extract(
-          addr_temp, 
-          "^[0-9\\.]+"
+      dplyr::across(
+        cols,
+        list(
+          range_ = ~ stringr::str_detect(.x, "^[0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9])?([ -]+[0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9])?)+ +(?=[A-Z0-9])"),
+          num_init_ = ~ stringr::str_extract(.x, "^[0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9])?([ -]+(([0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9])?)*|[A-Z]))? +(?=[A-Z0-9])")
         )
       ),
-      addr_end = dplyr::case_when(
-        addr_range ~ 
-          as.numeric(
+      dplyr::across(
+        cols,
+        list(
+          body = ~ stringr::str_remove(.x, get(paste0(dplyr::cur_column(), "_num_init_")))
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          start = ~ as.numeric(
             stringr::str_extract(
-              addr_temp, 
-              "(?<=[- ])[0-9\\.]+"
+              stringr::str_replace(
+                .x, 
+                " 1 \\/ 2", 
+                "\\.5"
+              ),
+              "^[0-9\\.]+")
             )
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          end_init_ = ~ dplyr::case_when(
+            get(paste0(dplyr::cur_column(), "_range_")) ~ as.numeric(
+                stringr::str_extract(
+                  stringr::str_replace(
+                    .x, 
+                    " 1 \\/ 2", 
+                    "\\.5"
+                  ),
+                  "(?<=[- ])[0-9\\.]+"
+                )
+              ),
+              .default = get(paste0(dplyr::cur_column(), "_start"))
+            )
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          end = ~ dplyr::case_when(
+            (get(paste0(dplyr::cur_column(), "_end_init_")) < get(paste0(dplyr::cur_column(), "_start"))) | is.na(get(paste0(dplyr::cur_column(), "_end_init_")))
+              ~ get(paste0(dplyr::cur_column(), "_start")),
+            .default = get(paste0(dplyr::cur_column(), "_end_init_"))
+          )
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          even = ~ dplyr::case_when(
+            floor(get(paste0(dplyr::cur_column(), "_start"))) %% 2 == 0 ~ TRUE,
+            floor(get(paste0(dplyr::cur_column(), "_end"))) %% 2 == 1 ~ FALSE,
+            .default = FALSE
+          )
+        )
+      ),
+      dplyr::across(
+        cols,
+        list(
+          num_ = ~ dplyr::case_when(
+            (get(paste0(dplyr::cur_column(), "_start")) == get(paste0(dplyr::cur_column(), "_end")))
+              & get(paste0(dplyr::cur_column(), "_range_"))
+              ~ stringr::str_c(get(paste0(dplyr::cur_column(), "_start"))),
+            (get(paste0(dplyr::cur_column(), "_start")) != get(paste0(dplyr::cur_column(), "_end")))
+              & get(paste0(dplyr::cur_column(), "_range_"))
+              ~ stringr::str_c(get(paste0(dplyr::cur_column(), "_start")), get(paste0(dplyr::cur_column(), "_end")), sep="-"),
+            .default = get(paste0(dplyr::cur_column(), "_num_init_"))
           ),
-        .default = addr_start
+          parsed_ = ~ !is.na(get(paste0(dplyr::cur_column(), "_start"))) & !is.na(get(paste0(dplyr::cur_column(), "_end"))) & !is.na(get(paste0(dplyr::cur_column(), "_body")))
+        )
       ),
-      addr_num = dplyr::case_when(
-        (addr_start == addr_end) & addr_range ~ 
-          stringr::str_extract(addr_num, "^[0-9]+[A-Z]{0,1}( ?1 / 2)?"),
-        .default = addr_num
-      ),
-      addr_end = dplyr::case_when(
-        (addr_end < addr_start) | is.na(addr_end) ~ addr_start,
-        .default = addr_end
-      ),
-      even = dplyr::case_when(
-        floor(addr_start) %% 2 == 0 ~ TRUE,
-        floor(addr_start) %% 2 == 1 ~ FALSE,
-        .default = NA
-      ),
-      parsed = !is.na(addr_start) & !is.na(addr_end) & !is.na(addr_body),
-      addr = dplyr::case_when(
-        parsed & (addr_start == addr_end) ~ stringr::str_c(addr_start, addr_body, sep = " "),
-        parsed ~ stringr::str_c(
-          stringr::str_c(addr_start, addr_end, sep = " - "),
-          addr_body, sep = " "),
-        .default = addr
+      dplyr::across(
+        cols,
+        ~ dplyr::case_when(
+          get(paste0(dplyr::cur_column(), "_parsed_")) ~ stringr::str_squish(stringr::str_c(get(paste0(dplyr::cur_column(), "_num_")), get(paste0(dplyr::cur_column(), "_body")), sep = " ")),
+          .default = .x
+        )
       )
     ) |>
-    dplyr::select(-c(parsed, addr_temp, addr_range))
+    dplyr::select(-dplyr::ends_with("_"))
 }
 
 std_fill_state_by_zip <- function(df, zips) {
@@ -1267,6 +1358,7 @@ std_fill_zip_by_muni <- function(df, zips) {
 }
 
 std_munis_by_places <- function(df, places, muni_col, state_col, state_val="MA") {
+  places <- dplyr::filter(places, muni != "BOLTON")
   # Direct matches to municipality names.
   df_ma <- df |>
     dplyr::filter(.data[[state_col]] == state_val) |>
@@ -1324,8 +1416,8 @@ std_munis_by_places <- function(df, places, muni_col, state_col, state_val="MA")
         dplyr::filter(match | is.na(.data[[muni_col]]))
     )
 
-  # # Replace/fill muni names by fuzzy matching on places using simplified 
-  # # municipality names.
+  # Replace/fill muni names by fuzzy matching on places using simplified
+  # municipality names.
   df_ma <- df_ma |>
     dplyr::filter(!match, !is.na(.data[[muni_col]])) |>
     dplyr::mutate(
@@ -1354,14 +1446,14 @@ std_munis_by_places <- function(df, places, muni_col, state_col, state_val="MA")
       df_ma |>
         dplyr::filter(match | is.na(.data[[muni_col]]))
     )
-  
+
   df_ma <- df_ma |>
     dplyr::filter(!match & !is.na(.data[[muni_col]])) |>
     fuzzyjoin::stringdist_left_join(
       places |>
         dplyr::select(name, replace = muni),
       by = dplyr::join_by(!!muni_col == name),
-      max_dist=2,
+      max_dist=1,
       method="dl",
       distance_col="dist"
     ) |>
@@ -1382,11 +1474,23 @@ std_munis_by_places <- function(df, places, muni_col, state_col, state_val="MA")
     )
 
   df_ma |>
+    dplyr::group_by(prop_id) |>
+    dplyr::mutate(
+      count = dplyr::n()
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      !!muni_col := dplyr::case_when(
+        match & count > 1 ~ NA_character_,
+        .default = .data[[muni_col]]
+      )
+    ) |>
     dplyr::bind_rows(
       df |>
-        dplyr::filter(.data[[state_col]] != state_val | is.na(state))
+        dplyr::filter(.data[[state_col]] != state_val | is.na(.data[[state_col]]))
     ) |>
-    dplyr::select(-match)
+    dplyr::select(-match) |>
+    dplyr::distinct()
 }
 
 std_address_fill_downup <- function(df) {
