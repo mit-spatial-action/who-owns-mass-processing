@@ -1,5 +1,6 @@
 source("R/utilities.R")
 source("R/standardizers.R")
+source("R/flows.R")
 
 # Load Helpers ====
 
@@ -398,8 +399,6 @@ load_parcels <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
   single_gdb <- load_gdb_is_file(gdb_path)
   
   if (single_gdb) {
-    # If single gdb passed... ====
-    
     q <- "SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM L3_TAXPAR_POLY"
     
     if (!is.null(muni_ids)) {
@@ -416,7 +415,6 @@ load_parcels <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
     
     sf::st_read(gdb_path, query = q, quiet = TRUE)
   } else {
-    # If folder of gdbs passed... ====
     vintages <- load_vintage_select(gdb_path, muni_ids)
     
     all <- list()
@@ -451,47 +449,9 @@ load_parcels <- function(gdb_path, crs, muni_ids=NULL, quiet=FALSE) {
     sf::st_transform(crs) |>
     # Cast from MULTISURFACE to MULTIPOLYGON.
     dplyr::mutate(
+      muni_id = std_pad_muni_ids(muni_id),
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
-}
-
-load_assess_preprocess <- function(df, path) {
-  simp_cols <- c(
-    "addr", "muni", "postal", "own_addr", "own_muni", 
-    "own_postal", "own_state", "own_country")
-  df |>
-    dplyr::rename_with(stringr::str_to_lower) |>
-    dplyr::filter(!is.na(loc_id)) |>
-    dplyr::mutate(
-      addr = dplyr::case_when(
-        is.na(addr) & 
-          !is.na(addr_num) & 
-          !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
-        .default = addr
-      )
-    ) |>
-    dplyr::select(-c(addr_num, full_str)) |>
-    # All parcels are in MA, in the US...
-    dplyr::mutate(
-      muni_id = std_pad_muni_ids(muni_id),
-      ls_date = lubridate::fast_strptime(ls_date, "%Y%m%d", lt=FALSE),
-      state = "MA", 
-      country = "US"
-    ) |>
-    dplyr::left_join(
-      load_muni_table(path),
-      by = dplyr::join_by(muni_id)
-    ) |>
-    tidyr::replace_na(list(units = 0)) |>
-    std_luc(path=path) |>
-    std_flag_residential("luc") |>
-    std_units_from_luc("luc", "muni_id") |>
-    std_uppercase(simp_cols) |>
-    std_replace_blank(simp_cols) |>
-    std_remove_special(simp_cols) |>
-    std_spacing_characters(simp_cols) |>
-    std_leading_zeros(simp_cols, rmsingle = FALSE) |>
-    std_squish(simp_cols)
 }
 
 load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
@@ -512,21 +472,21 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
   
   cols <- c(
     # Property metadata.
-    "PROP_ID", "LOC_ID", "FY", 
+    "PROP_ID AS SITE_ID", "LOC_ID AS SITE_LOC_ID", "FY AS SITE_FY", 
     # Parcel address.
-    "SITE_ADDR AS ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS MUNI_ID", 
-    "ZIP AS POSTAL", 
+    "SITE_ADDR", "ADDR_NUM", "FULL_STR", "TOWN_ID AS SITE_MUNI_ID", 
+    "ZIP AS SITE_POSTAL", 
     # Owner name and address.
     "OWNER1 AS OWN_NAME", "OWN_ADDR", "OWN_CITY AS OWN_MUNI", "OWN_STATE", 
     "OWN_ZIP AS OWN_POSTAL", "OWN_CO AS OWN_COUNTRY",
     # Last sale date and price.
-    "LS_DATE", "LS_PRICE",
+    "LS_DATE AS SITE_LS_DATE", "LS_PRICE AS SITE_LS_PRICE",
     # Necessary to estimate unit counts.
-    "BLD_AREA", "RES_AREA", "UNITS",
+    "BLD_AREA AS SITE_BLD_AREA", "RES_AREA AS SITE_RES_AREA", "UNITS AS SITE_UNITS",
     # Assessed values.
-    "BLDG_VAL", "LAND_VAL", "TOTAL_VAL",
+    "BLDG_VAL AS SITE_BLDG_VAL", "LAND_VAL AS SITE_LAND_VAL", "TOTAL_VAL AS SITE_TOT_VAL",
     # Land use code.
-    "USE_CODE"
+    "USE_CODE AS SITE_USE_CODE"
   )
   cols <- stringr::str_c(cols, collapse = ", ")
   
@@ -534,7 +494,6 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
   
   single_gdb <- load_gdb_is_file(gdb_path)
   
-  # If single gdb passed... ====
   if (single_gdb) {
     q <- stringr::str_c("SELECT", cols, "FROM L3_ASSESS", sep = " ")
     if (!is.null(muni_ids)) {
@@ -553,7 +512,6 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
         quiet = TRUE
       )
   } else {
-    # If folder of gdbs passed... ====
     util_log_message(glue::glue("Reading from collection of GDBs.")) 
     vintages <- load_vintage_select(gdb_path, muni_ids)
     
@@ -584,7 +542,7 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
   }
   
   df |>
-    load_assess_preprocess(path)
+    flow_assess_preprocess(path)
 }
 
 load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
@@ -924,52 +882,52 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     stop("Threshold must be between 0 and 1.")
   }
   
-  all <- list()
-  for (state in state.abb) {
-    all[[state]] <- tigris::zctas(
-        cb=FALSE, 
-        year=2010, 
-        state=state,
-        progress_bar=FALSE) |>
-      dplyr::mutate(state=state) |>
-      dplyr::select(zip=ZCTA5CE10, state) |>
-      suppressMessages()
-  }
-  zips <- dplyr::bind_rows(all) |> 
-    sf::st_transform(crs) |>
+  zips <- tigris::zctas(
+      cb=FALSE, 
+      progress_bar=FALSE
+      ) |>
+    dplyr::select(zip=ZCTA5CE20) |>
+    sf::st_transform(5070) |>
+    suppressMessages()
+  
+  states <- tigris::states() |>
+    dplyr::select(state = STUSPS) |> 
+    sf::st_transform(5070) |>
+    dplyr::filter(state %in% state.abb) |>
+    suppressMessages()
+  
+  int <- zips |>
+    sf::st_set_agr("constant") |>
+    sf::st_intersection(
+      sf::st_set_agr(states, "constant")
+    ) |> 
+    sf::st_drop_geometry() |>
+    dplyr::filter(!is.na(state)) |>
     dplyr::group_by(zip) |>
-    dplyr::mutate(
-      state_unambig = dplyr::case_when(
-        dplyr::n() == 1 ~ TRUE,
-        .default = FALSE
-      )
+    dplyr::summarize(
+      unambig_state = dplyr::case_when(
+        dplyr::n() == 1 ~ state,
+        .default = NA_character_
+      ),
     ) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      ma = state == "MA",
-      ma_unambig = ma & state_unambig
+    dplyr::ungroup()
+  
+  zips <- zips |>
+    dplyr::left_join(
+      int,
+      by = dplyr::join_by(zip)
     )
+  
   
   zips_ma <- zips |>
-    dplyr::filter(ma)
-  
-  munis_clip <- munis |>
-    sf::st_set_agr("constant") |>
-    sf::st_intersection(
-      sf::st_union(sf::st_set_agr(zips_ma, "constant"))
-    )
-  
-  zips_ma_clip <- zips_ma |>
-    sf::st_set_agr("constant") |>
-    sf::st_intersection(
-      sf::st_union(sf::st_set_agr(munis_clip, "constant"))
-    )
+    dplyr::filter(state == "MA") |>
+    sf::st_transform(crs)
 
   # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
   # where the vast majority of a zip is contained w/in a single muni.)
-  ma_unambig_zip_from_muni <- munis_clip |>
+  ma_unambig_zip_from_muni <- munis |>
     std_calculate_overlap(
-      zips_ma_clip, 
+      zips_ma, 
       threshold=threshold
       ) |>
     dplyr::select(
@@ -986,9 +944,9 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   # Identify cases where munis can be unambiguously assigned
   # from ZIPS (i.e., where the vast majority of a muni is contained w/in
   # a single zip).
-  ma_unambig_muni_from_zip <- zips_ma_clip |>
+  ma_unambig_muni_from_zip <- zips_ma |>
     std_calculate_overlap(
-      munis_clip,
+      munis,
       threshold=threshold
       ) |>
     dplyr::select(
@@ -1000,30 +958,33 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     dplyr::left_join(
       ma_unambig_muni_from_zip, 
       by=dplyr::join_by(zip)
-      )
+      ) |>
+    sf::st_transform(crs)
 }
 
 # Derive Layers ====
 
-load_props_from_assess <- function(df) {
+load_sites_from_assess <- function(df) {
   # WIP
   
   df |> 
     dplyr::select(
-      prop_id, loc_id, fy, addr, muni, postal, 
-      state, country, luc, units, res, ls_date, ls_price, bld_area,
-      res_area, bldg_val, total_val
-    )
+      dplyr::starts_with("site_")
+      ) |>
+    dplyr::rename_with(
+      ~ stringr::str_remove(.x, "site_")
+      )
 }
 
 
 load_owners_from_assess <- function(df) {
   # WIP
-  
-  df |>
+  df |> 
     dplyr::select(
-      prop_id, loc_id, fy, name = own_name, addr = own_addr, muni = own_city, 
-      state = own_state, postal = own_zip, country = own_co, res
+      c(site_id, dplyr::starts_with("own_"))
+    ) |>
+    dplyr::rename_with(
+      ~ stringr::str_remove(.x, "own_")
     )
 }
 
