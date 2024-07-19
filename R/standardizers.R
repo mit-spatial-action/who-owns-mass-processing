@@ -153,13 +153,13 @@ std_squish <- function(df, cols) {
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
-        ~ stringr::str_squish(.)
+        ~ dplyr::na_if(stringr::str_squish(.), "")
       )
     ) |>
     std_squish_special(cols)
 }
 
-std_remove_special <- function(df, cols) {
+std_remove_special <- function(df, cols, rm_commas=TRUE) {
   #' Removes all special characters from columns, except slash
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -168,29 +168,54 @@ std_remove_special <- function(df, cols) {
   #' @export
   
   # Remove (almost all) special characters.
-  std_replace_generic(
+  if (rm_commas) {
+    string <- "[^[:alnum:][:space:]\\-\\.\\&\\']"
+  } else {
+    string <- "[^[:alnum:][:space:]\\-\\.\\&\\'\\,]"
+  }
+  df <- std_replace_generic(
     df, 
     cols, 
-    pattern = "[^[:alnum:][:space:]\\-\\,\\.]|((?<![0-9]) ?\\. ?(?![0-9]))|((?<!1) ?\\/ ?(?!2))", 
+    pattern = string,
     replace = " "
-  ) |>
-    std_squish_special(cols)
-}
-
-std_remove_commas <- function(df, cols) {
-  #' Removes all special characters from columns, except slash
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @param cols Column or columns to be processed.
-  #' @returns A dataframe.
-  #' @export
+  ) |> 
+    std_replace_generic(
+      cols, 
+      pattern = " ?\\- ?",
+      replace = "-"
+    ) |> 
+    std_replace_generic(
+      cols, 
+      pattern = " ?\\' ?", 
+      replace = ""
+    ) |>
+    std_replace_generic(
+      cols, 
+      pattern = c(
+        "(?<=[0-9]) *\\. *(?=5)" = "\\.",
+        "(?<=[0-9]) *\\. *(?!5)" = "\\-",
+        "(?<![0-9]) *\\. *(?!5)" = " "
+        )
+    ) |>
+    std_replace_generic(
+      cols, 
+      pattern = c(
+        "(?<=[0-9]) [1] *(\\/ *)?[2](?= |$)" = ".5",
+        " *\\/ *" = " " 
+      )
+    )
   
-  std_replace_generic(
-    df, 
-    cols, 
-    pattern = "\\,", 
-    replace = " "
-  )
+  if (!rm_commas) {
+    df <- df |>
+      std_replace_generic(
+        cols, 
+        pattern = " ?, ?", 
+        replace = " , "
+      )
+  }
+  
+  df |>
+    std_squish(cols)
 }
 
 std_trailing_leading <- function(df, cols) {
@@ -257,9 +282,10 @@ std_replace_blank <- function(df, cols) {
     ",?([:alnum:])\\2*",
     "[\\_\\-\\;\\:\\, ]+", 
     "N(ONE)?", 
-    "N / A",
+    "N( /)? ?A",
     "UNKNOWN",
-    " *"
+    " *",
+    ""
     # "^[- ]*SAME( ADDRESS)?"
     # "ABOVE"
   ) |>
@@ -269,7 +295,16 @@ std_replace_blank <- function(df, cols) {
     cols, 
     pattern = blank,
     replace = NA_character_
-  )
+  ) |>
+    dplyr::mutate(
+      dplyr::across(
+        cols,
+        ~ dplyr::case_when(
+          stringr::str_detect(., "^SAME|NONE|UNKNOWN(?=\\s|\\,|$)") ~ NA_character_,
+          .default = .
+        )
+    )
+    )
 }
 
 std_replace_newline <- function(df, cols) {
@@ -326,7 +361,7 @@ std_directions <- function(df, cols) {
   directions <- c(
     # Directions
     "(?<=^| )N(?= |$)" = "NORTH",
-    "^NO(?= )" = "NORTH",
+    "(^NO(?= ))|((?<= )NO(?= [A-Z]{3,}))" = "NORTH",
     "(?<=^| )NW(?= |$)" = "NORTHWEST",
     "(?<=^| )NE(?= |$)" = "NORTHEAST",
     "^SO(?= )" = "SOUTH",
@@ -347,51 +382,6 @@ std_directions <- function(df, cols) {
     cols, 
     pattern = directions
   )
-}
-
-std_remove_street_types <- function(df, cols, fill = FALSE) {
-  #' Standardize street types.
-  #'
-  #' @param df A dataframe.
-  #' @param cols Column or columns to be processed.
-  #' @param fill Whether one should be used to fill the other.
-  #' @returns A dataframe.
-  #' @export
-  street <-c(
-    "STREET", "AVENUE", "LANE", "EXTENSION", "PARK", "DRIVE",
-    "ROAD", "BOULEVARD", "PARKWAY", "TERRACE", "PLACE", "WAY",
-    "CIRCLE", "ALLEY", "SQUARE", "HIGHWAY", "CENTER", "FREEWAY",
-    "COURT", "PLAZA", "WHARF"
-    ) |>
-    std_collapse_regex()
-  street <- stringr::str_c(" (", street, ")$", sep="")
-  
-  df <- df |>
-    dplyr::mutate(
-      across(
-        dplyr::all_of(cols), 
-        ~ stringr::str_replace(.x, street, ""),
-        .names="{.col}_temp"
-      )
-    )
-  if (length(cols) == 2 & fill) {
-    df <- df |>
-      dplyr::mutate(
-        first_longer = nchar(.data[[cols[1]]]) > nchar(.data[[cols[2]]]),
-        match = .data[[paste0(cols[1], "_temp")]] == .data[[paste0(cols[2], "_temp")]],
-        dplyr::across(
-          cols,
-          ~ dplyr::case_when(
-            !first_longer & match ~ .data[[cols[2]]],
-            first_longer & match ~ .data[[cols[1]]],
-            .default = .x,
-          )
-        )
-      ) |> 
-      dplyr::select(-c(first_longer, match))
-  }
-  df |>
-    dplyr::select(-paste0(cols, "_temp"))
 }
 
 std_street_types <- function(df, cols) {
@@ -426,16 +416,22 @@ std_street_types <- function(df, cols) {
     "(?<= )TE(?=$| |\\-)" = "TERRACE",
     "(?<= )PLC?E?(?=$| |\\-)" = "PLACE",
     "(?<= )WY(?=$| |\\-)" = "WAY",
-    "(?<= )(CI?RC?)(?=$| |\\-)" = "CIRCLE",
+    "(?<= )(CI?RC?|CI)(?=$| |\\-)" = "CIRCLE",
     "(?<= )A[L]+E?Y(?=$| |\\-)" = "ALLEY",
     "(?<= )SQR?(?=$| |\\-)" = "SQUARE",
     "(?<= )HG?WY?(?=$| |\\-)" = "HIGHWAY",
     "(?<= )CNTR(?=$| |\\-)" = "CENTER",
     "(?<= )FR?WY(?=$| |\\-)" = "FREEWAY",
+    "(?<= |^)MSGR(?=$| |\\-)" = "MONSIGNOR",
+    "(?<= )O ?BRI(?=[EA]N[$ \\-])" = "OBRI",
+    "(?<= )(MONSIGNOR)?( P ?J)? LYDON(?=$| |\\-)" = " MONSIGNOR PJ LYDON",
+    "(?<= )(MONSIGNOR)? OBRI[AE]N(?= HIGH[$ \\-])" = " MONSIGNOR OBRIEN",
     "(?<= )CR?T(?=$| |\\-)" = "COURT",
     "(?<= )PL?Z(?=$| |\\-)" = "PLAZA",
     "(?<= )W[HR]+F(?=$| |\\-)" = "WHARF",
     "(?<= )DEPT(?=$| |\\-)" = "DEPARTMENT",
+    "(?<= )P ?O SQUARE(?=$| |\\-)" = "POST OFFICE SQUARE",
+    "(?<= )PRUDENTIAL TOWER(?=$| |\\-)" = "",
     "(?<= |^)P ?O( ?BO?X)?[ \\#\\-]*(?=[A-Z]{0,1}[0-9])" = "PO BOX ",
     "(?<= |^)(?<!PO )BO?X[ \\#\\-]+(?=[A-Z]{0,1}[0-9])" = "PO BOX "
   )
@@ -491,26 +487,26 @@ std_small_ordinals <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   sm_num <- c(
-    "(?<=^| )FIRST(?= )" = "1ST",
-    "(?<=^| )SECOND(?= )" = "2ND",
-    "(?<=^| )THIRD(?= )" = "3RD",
-    "(?<=^| )FOURTH(?= )" = "4TH",
-    "(?<=^| )FIFTH(?= )" = "5TH",
-    "(?<=^| )SIXTH(?= )" = "6TH",
-    "(?<=^| )SEVENTH(?= )" = "7TH",
-    "(?<=^| )EIGHTH(?= )" = "8TH",
-    "(?<=^| )NINTH(?= )" = "9TH",
-    "(?<=^| )TENTH(?= )" = "10TH",
-    "(?<=^| )ELEVENTH(?= )" = "11TH",
-    "(?<=^| )TWELTH(?= )" = "12TH",
-    "(?<=^| )THIRTEENTH(?= )" = "13TH",
-    "(?<=^| )FOURTEENTH(?= )" = "14TH",
-    "(?<=^| )FIFTEENTH(?= )" = "15TH",
-    "(?<=^| )SIXTEENTH(?= )" = "16TH",
-    "(?<=^| )SEVENTEENTH(?= )" = "17TH",
-    "(?<=^| )EIGHTEENTH(?= )" = "18TH",
-    "(?<=^| )NINTEENTH(?= )" = "19TH",
-    "(?<=^| )TWENTIETH(?= )" = "20TH"
+    "(?<=^| )FIRST(?= |$)" = "1ST",
+    "(?<=^| )SECOND(?= |$)" = "2ND",
+    "(?<=^| )THIRD(?= |$)" = "3RD",
+    "(?<=^| )FOURTH(?= |$)" = "4TH",
+    "(?<=^| )FIFTH(?= |$)" = "5TH",
+    "(?<=^| )SIXTH(?= |$)" = "6TH",
+    "(?<=^| )SEVENTH(?= |$)" = "7TH",
+    "(?<=^| )EIGHTH(?= |$)" = "8TH",
+    "(?<=^| )NINTH(?= |$)" = "9TH",
+    "(?<=^| )TENTH(?= |$)" = "10TH",
+    "(?<=^| )ELEVENTH(?= |$)" = "11TH",
+    "(?<=^| )TWELTH(?= |$)" = "12TH",
+    "(?<=^| )THIRTEENTH(?= |$)" = "13TH",
+    "(?<=^| )FOURTEENTH(?= |$)" = "14TH",
+    "(?<=^| )FIFTEENTH(?= |$)" = "15TH",
+    "(?<=^| )SIXTEENTH(?= |$)" = "16TH",
+    "(?<=^| )SEVENTEENTH(?= |$)" = "17TH",
+    "(?<=^| )EIGHTEENTH(?= |$)" = "18TH",
+    "(?<=^| )NINTEENTH(?= |$)" = "19TH",
+    "(?<=^| )TWENTIETH(?= |$)" = "20TH"
   )
   std_replace_generic(
     df,
@@ -573,7 +569,7 @@ std_match_state_and_zips <- function(df, state_col, zip_col, zips, state_val = "
     )
 }
 
-std_muni_names <- function(df, cols, state_col, zip_col, zips, state_val="MA") {
+std_muni_names <- function(df, col, mass = FALSE) {
   #' Replace Boston neighborhoods with Boston
   #' @param df A dataframe.
   #' @param cols Columns to be processed.
@@ -581,42 +577,53 @@ std_muni_names <- function(df, cols, state_col, zip_col, zips, state_val="MA") {
   #' @returns A dataframe.
   #' @export
   #' 
-  muni_corrections <- c(
-    "BORO$" = "BOROUGH",
-    "^ACT$" = "ACTON",
-    "^GLOUSTER$" = "GLOUCESTER",
-    "^NEW TOWN$" = "NEWTON",
-    "^[A-Z]AMBRIDGE$" = "CAMBRIDGE",
-    "^NEWBURY PORT$" = "NEWBURYPORT",
-    "^DEVEN$" = "DEVENS",
-    "^PRIDE CROSSING$" = "PRIDES CROSSING",
-    "^MANCHESTER$" = "MANCHESTER-BY-THE-SEA",
-    "^MANC[A-Z \\/]+SEA$" = "MANCHESTER-BY-THE-SEA"
-  )
-  if (!is.null(state_val)) {
-    df <- df |>
-      std_match_state_and_zips(
-        state_col=state_col, 
-        zip_col = zip_col,
-        zips = ZIPS,
-        state_val = state_val
+  if (mass) {
+    muni_corrections <- c(
+      "BORO$" = "BOROUGH",
+      "^ACT$" = "ACTON",
+      "^GLOUSTER$" = "GLOUCESTER",
+      "^NEW TOWN$" = "NEWTON",
+      "^[A-Z]AMBRIDGE$" = "CAMBRIDGE",
+      "^NEWBURY PORT$" = "NEWBURYPORT",
+      " HLDS( |$)" = "HIGHLANDS",
+      "^DEVEN$" = "DEVENS",
+      "^PRIDE CROSSING$" = "PRIDES CROSSING",
+      "^MANCHESTER$" = "MANCHESTER-BY-THE-SEA",
+      "^MANC[A-Z \\/]+SEA$" = "MANCHESTER-BY-THE-SEA"
+    )
+    
+    df |>
+      std_replace_generic(
+        col, 
+        pattern = muni_corrections
+      )
+  } else {
+    nyc <- c(
+      "^QUEENS( |$)",
+      "^(BROOKLYN|BKLY?N)( |$)",
+      "^STATEN (ISL(AND)?)?( |$)",
+      "^NEW YORK$",
+      "^HARLEM$( |$)",
+      "^MANHATTAN( |$)",
+      "^(THE )?BRONX( |$)"
+    ) |>
+      std_collapse_regex()
+    
+    df |>
+      dplyr::mutate(
+        dplyr::across(
+          dplyr::all_of(col),
+          ~ dplyr::case_when(
+            stringr::str_detect(.x, nyc) ~ "NEW YORK CITY",
+            .x == "LA" ~ "LOS ANGELES",
+            .default = .x
+          )
         )
+      )
   }
-  state <- df |>
-    dplyr::filter(state_match)
-  
-  state |>
-    std_replace_generic(
-      cols, 
-      pattern = muni_corrections
-    ) |>
-    dplyr::bind_rows(
-      df |> dplyr::filter(!state_match)
-    ) |>
-    dplyr::select(-state_match)
 }
 
-std_zip_format <- function(df, col, zips, constraint = "") {
+std_zip_format <- function(df, col, state_col, zips, constraint = "") {
   #' Standardize and simplify (i.e., remove 4-digit suffix) US ZIP codes.
   #'
   #' @param df A dataframe.
@@ -625,50 +632,90 @@ std_zip_format <- function(df, col, zips, constraint = "") {
   #' @returns A dataframe.
   #' @export
   
+  zips <- zips |>
+    sf::st_drop_geometry()
+  
+  zips_unambig <- zips |>
+    dplyr::filter(!is.na(unambig_state)) |>
+    dplyr::distinct()
+  
   if (constraint == "ma") {
     zips <- zips |>
-      sf::st_drop_geometry() |>
       dplyr::filter(state == "MA")
-  }
+  } 
+  
+  zips <- zips |>
+    dplyr::pull(zip) |>
+    unique()
   
   df <- df |>
     dplyr::mutate(
       # Deal with suffixes.
-      !!col := stringr::str_replace(.data[[col]], "(?<=^[0-9O]{5})[ \\-\\/][0-9]{4}$", ''),
       # Replace  "O"s that should be 0s.
-      test_five = dplyr::case_when(
-        stringr::str_length(.data[[col]]) != 5 ~ TRUE,
-        .default = FALSE
+      temp = stringr::str_replace_all(
+        .data[[col]], 
+        c(
+          "(?<=^[0-9O]{5})[ \\-\\/][0-9]{4}$" = "",
+          "(^O|-)" = "0", 
+          "[A-Z]" = ""
+        )
       ),
+      five = stringr::str_length(temp) == 5,
+      in_zips = temp %in% zips,
+      # # In cases where only ZIP codes are expected, set any ill-formatted
+      # # codes to NA.
       !!col := dplyr::case_when(
-        test_five ~ stringr::str_replace(.data[[col]], "^O[0-9]", '0'),
-        .default = .data[[col]]
-      ),
-      test_correct = dplyr::case_when(
-        .data[[col]] %in% zips$zip & constraint %in% c("ma", "us", "usa") ~ TRUE,
-        .default = FALSE
-      ),
-      # In cases where only ZIP codes are expected, set any ill-formatted
-      # codes to NA.
-      !!col := dplyr::case_when(
-        !test_correct ~ NA_character_,
+        in_zips & five ~ temp,
+        five & constraint %in% c("MA", "USA") ~ NA_character_,
         .default = .data[[col]]
       )
-    ) |>
-    dplyr::select(-c(test_five, test_correct))
+    ) 
+
+  if (!missing(state_col)) {
+    df <- df |>
+      dplyr::filter(is.na(.data[[state_col]])) |>
+      dplyr::left_join(
+        zips_unambig |>
+          dplyr::select(zip, new_state = unambig_state),
+        by = dplyr::join_by(
+          !!col == zip
+        ),
+        na_matches="never"
+      ) |>
+      dplyr::mutate(
+        !!state_col := dplyr::case_when(
+          is.na(.data[[state_col]]) ~ new_state,
+          .default = .data[[state_col]]
+        )
+      ) |>
+      dplyr::select(-new_state) |>
+      dplyr::bind_rows(
+        df |>
+          dplyr::filter(!is.na(.data[[state_col]]))
+      )
+  }
+  
+  df |>
+    dplyr::select(-c(five, temp, in_zips))
 }
 
-std_massachusetts <- function(df, cols) {
+std_massachusetts <- function(df, cols, rm_ma = TRUE) {
   #' Replace variations of Massachusetts with MA
   #'
   #' @param df A dataframe.
   #' @param cols Column or columns in which to replace "MASS"
   #' @returns A dataframe.
   #' @export
+  if (rm_ma) {
+    string <- "(?<= |^)(MASS|MA)(?= |$)"
+  } else {
+    string <- "(?<= |^)MASS(?= |$)"
+  }
+  
   std_replace_generic(
     df,
     cols, 
-    pattern = "(?<= |^)(MASS|MA)(?= |$)",
+    pattern = string,
     replace = "MASSACHUSETTS"
   )
 }
@@ -924,35 +971,35 @@ std_leading_zero_vector <- function(x) {
 }
 
 std_addr2_floor <- function(df, cols) {
-  std_addr2_parser(df, cols, "([0-9]+ ?[A-Z]{2}|[0-9]+[A-Z]?|TOP|GROUND)[ \\-]FLOOR|FLOOR[ \\-][0-9]+")
+  std_addr2_parser(df, cols, "([0-9]+[A-Z]{2}|[0-9\\.]|TOP|GROUND)[ \\-]FLOOR|FLOOR[ \\-][0-9]+")
 }
 
 std_addr2_twr <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]TOWER[ \\-][0-9]+")
+  std_addr2_parser(df, cols, "[ \\-]TOWER[ \\-][0-9\\.]+")
 }
 
 std_addr2_bldg <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]BUILDING[ \\-][0-9]+")
-}
-
-std_addr2_range <- function(df, cols) {
-  std_addr2_parser(df, cols, " [0-9]+[A-Z]{0,2}?[\\- ][0-9]+[A-Z]{0,2}?$")
+  std_addr2_parser(df, cols, "[ \\-]BUILDING[ \\-][0-9\\.]+")
 }
 
 std_addr2_alpha_num <- function(df, cols) {
-  std_addr2_parser(df, cols, " [A-Z]{1,2}[\\- ]?[0-9]+$")
+  std_addr2_parser(df, cols, " [0-9]*[A-Z]{1,2}[\\- ][0-9\\.]+( ([0-9\\.]+|A-Z]))?$")
 }
 
 std_addr2_num_alpha <- function(df, cols) {
-  std_addr2_parser(df, cols, " [0-9]+[\\-\\/ ]?[A-Z]{1,2}$")
+  std_addr2_parser(df, cols, " [A-Z]{0,2}[0-9\\.]+[\\- ]?[A-Z]{1,2}( ([0-9\\.]+|A-Z]))?$")
 }
 
-std_addr2_num <- function(df, cols) {
-  std_addr2_parser(df, cols, " [A-Z]{0,2}?[0-9]+[A-Z]{0,2}?$")
+std_addr2_all_num <- function(df, cols) {
+  std_addr2_parser(df, cols, " ([0-9\\-\\. ]+)?[0-9]+$")
 }
 
 std_addr2_alpha <- function(df, cols) {
-  std_addr2_parser(df, cols, " [A-Z0-9]$")
+  std_addr2_parser(df, cols, "[ \\-]+[A-Z]$")
+}
+
+std_addr2_words <- function(df, cols) {
+  std_addr2_parser(df, cols, "[ \\-]+(BASEMENT|PH|REAR|FRONT)$")
 }
 
 std_addr2_parser <- function(df, cols, regex) {
@@ -981,9 +1028,9 @@ std_addr2_parser <- function(df, cols, regex) {
         cols,
         ~ dplyr::case_when(
           !is.na(get(paste0(dplyr::cur_column(), "_temp"))) ~ 
-            stringr::str_remove_all(
+            stringr::str_remove(
               .x, 
-              get(paste0(dplyr::cur_column(), "_temp"))
+              stringr::str_c(get(paste0(dplyr::cur_column(), "_temp")), ".*$")
             ),
           .default = .x
         )
@@ -991,11 +1038,7 @@ std_addr2_parser <- function(df, cols, regex) {
       dplyr::across(
         stringr::str_c(cols, "_temp"),
         ~ dplyr::case_when(
-          !is.na(.x) ~ stringr::str_replace_all(
-            std_leading_zero_vector(stringr::str_squish(.x)), 
-            " ", 
-            "-"
-          ),
+          !is.na(.x) ~ std_leading_zero_vector(stringr::str_squish(.x)),
           .default = .x
         )
       ),
@@ -1022,7 +1065,8 @@ std_addr2_parser <- function(df, cols, regex) {
         .names = "{.col}{.fn}"
       )
     ) |>
-    dplyr::select(-stringr::str_c(cols, "_temp"))
+    dplyr::select(-stringr::str_c(cols, "_temp")) |>
+    std_squish(stringr::str_c(cols, "2"))
 }
 
 std_addr2_po_pmb <- function(df, cols) {
@@ -1070,6 +1114,7 @@ std_addr2_remove_keywords <- function(df, cols) {
   
   terms <- c(
     "UNITS?",
+    "UN",
     "S(UI)?TE(S)?",
     "AP(AR)?T(MENT)?",
     "R(OO)?M",
@@ -1090,7 +1135,7 @@ std_addr2_remove_keywords <- function(df, cols) {
     "APARTMENT",
     "ROOM"
   )
-  terms <- stringr::str_c("[\\,\\-\\ ]?", terms, "([\\,\\-\\ ]|[A-Z]{1,2}|$)") |>
+  terms <- stringr::str_c("[\\,\\-\\ ]?", terms, "([\\,\\-\\ ]|[A-Z]{0,2})") |>
     std_collapse_regex()
   
   df <- std_replace_generic(
@@ -1105,15 +1150,36 @@ std_addr2_remove_keywords <- function(df, cols) {
     cols,
     c(
       "(?<=[ \\-\\,])FLR?(?= |$)" = "FLOOR",
+      "(?<=[ \\-\\,])BSMT(?= |$)" = "BASEMENT",
       "(?<=[ \\-\\,])BLDG(?= |$)" = "BUILDING",
       "(?<=[ \\-\\,])TWR(?= |$)" = "TOWER",
       "(?<=[A-Z]{4}[ \\-\\s])FLOOR$" = "",
       "PENT(HOUSE)?( |$|\\-)" = "PH",
       " A K A " = " ",
-      "[\\, ]+NO (?=[A-Z]{0,2}[0-9][1,8][A-Z]{0,2}$)" = " ",
-      "[\\, ]+NO (?=[A-Z]$)" = " "
+      "[\\, ]+NO[\\. ]+(?=[A-Z]{0,2}[0-9][1,8][A-Z]{0,2}$)" = " ",
+      "[\\, ]+NO[\\. ]+(?=[A-Z]$)" = " "
     )
   )
+}
+
+std_simp_street <- function(df, cols) {
+  street <-c(
+    "STREET", "AVENUE", "LANE", "EXTENSION", "PARK", "DRIVE",
+    "ROAD", "BOULEVARD", "PARKWAY", "TERRACE", "PLACE", "WAY",
+    "CIRCLE", "ALLEY", "SQUARE", "HIGHWAY", "CENTER", "FREEWAY",
+    "COURT", "PLAZA", "WHARF"
+  ) |>
+    std_collapse_regex()
+  street <- stringr::str_c(" (", street, ")$", sep="")
+  
+  df |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(cols), 
+        ~ stringr::str_replace(., street, ""),
+        .names="{.col}_simp"
+      )
+    )
 }
 
 std_hyphenate_range <- function (df, cols) {
@@ -1237,30 +1303,18 @@ std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
 
 std_munis_by_places <- function(df, 
                                 col, 
-                                id_col, 
                                 state_col, 
                                 postal_col, 
-                                zips, 
-                                places, 
-                                state_val="MA") {
+                                places) {
   
-  
-  if (!is.null(state_val)) {
-    df <- df |>
-      std_match_state_and_zips(
-        state_col=state_col, 
-        zip_col=postal_col,
-        zips=zips,
-        state_val = state_val
-      )
-  }
   
   places <- dplyr::filter(places, muni != "BOLTON")
+  
   # Direct matches to municipality names.
   state <- df |>
-    dplyr::filter(state_match) |>
     dplyr::mutate(
-      match = .data[[col]] %in% places$muni
+      match = .data[[col]] %in% places$muni,
+      temp_id = dplyr::row_number()
     )
   
   # Replace neighborhood/sub-municipality names
@@ -1269,15 +1323,15 @@ std_munis_by_places <- function(df,
     dplyr::filter(!match & !is.na(.data[[col]])) |>
     dplyr::left_join(
       places |>
-        dplyr::select(name, replace = muni),
-      by = dplyr::join_by(!!col == name),
+        dplyr::select(pl_name = name, replace = muni),
+      by = dplyr::join_by(!!col == pl_name),
       na_matches = "never"
     ) |>
     dplyr::mutate(
       match = !is.na(replace),
-      !!col := dplyr::case_when(
+      new_town = dplyr::case_when(
         match ~ replace,
-        .default = .data[[col]]
+        .default = NA_character_
       )
     ) |>
     dplyr::select(-c(replace)) |>
@@ -1287,106 +1341,72 @@ std_munis_by_places <- function(df,
     )
   
   # Replace/fill muni names by fuzzy matching on places.
-  state <- state |>
-    dplyr::filter(!match & !is.na(.data[[col]])) |>
-    fuzzyjoin::regex_left_join(
-      places |>
-        dplyr::select(name_fuzzy, replace = muni),
-      by = dplyr::join_by(!!col == name_fuzzy)
-    ) |>
-    dplyr::mutate(
-      dist = stringdist::stringdist(.data[[col]], replace)
-    ) |>
-    dplyr::group_by(dplyr::across(-c(dist, replace, name_fuzzy))) |>
-    dplyr::slice_min(dist, n=1) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      match = !is.na(replace),
-      !!col := dplyr::case_when(
-        match ~ replace,
-        .default = .data[[col]]
-      )
-    ) |>
-    dplyr::select(-c(dist, replace, name_fuzzy)) |>
-    dplyr::bind_rows(
-      state |>
-        dplyr::filter(match | is.na(.data[[col]]))
-    )
-
-  # Replace/fill muni names by fuzzy matching on places using simplified
-  # municipality names.
-  state <- state |>
-    dplyr::filter(!match, !is.na(.data[[col]])) |>
-    dplyr::mutate(
-      simp = stringr::str_remove(.data[[col]], "^(SOUTH(WEST|EAST)?|NORTH(WEST|EAST)?|EAST|WEST) ")
-    ) |>
-    fuzzyjoin::regex_left_join(
-      places |>
-        dplyr::select(name_fuzzy, replace = muni),
-      by = dplyr::join_by(simp == name_fuzzy)
-    ) |>
-    dplyr::mutate(
-      dist = stringdist::stringdist(simp, replace)
-    ) |>
-    dplyr::group_by(dplyr::across(-c(dist, replace, name_fuzzy))) |>
-    dplyr::slice_min(dist, n=1) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      match = !is.na(replace),
-      !!col := dplyr::case_when(
-        match ~ replace,
-        .default =.data[[col]]
-      )
-    ) |>
-    dplyr::select(-c(dist, replace, name_fuzzy, simp)) |>
-    dplyr::bind_rows(
-      state |>
-        dplyr::filter(match | is.na(.data[[col]]))
-    )
+  # state <- state |>
+  #   dplyr::filter(!match & !is.na(.data[[col]])) |>
+  #   fuzzyjoin::regex_left_join(
+  #     places |>
+  #       dplyr::select(name_fuzzy, replace = muni),
+  #     by = dplyr::join_by(!!col == name_fuzzy)
+  #   ) |>
+  #   dplyr::mutate(
+  #     dist = stringdist::stringdist(.data[[col]], replace)
+  #   ) |>
+  #   dplyr::group_by(dplyr::across(-c(dist, replace, name_fuzzy))) |>
+  #   dplyr::slice_min(dist, n=1) |>
+  #   dplyr::ungroup() |>
+  #   dplyr::mutate(
+  #     match = !is.na(replace),
+  #     !!col := dplyr::case_when(
+  #       match ~ replace,
+  #       .default = .data[[col]]
+  #     )
+  #   ) |>
+  #   dplyr::select(-c(dist, replace, name_fuzzy)) |>
+  #   dplyr::bind_rows(
+  #     state |>
+  #       dplyr::filter(match | is.na(.data[[col]]))
+  #   )
 
   state <- state |>
     dplyr::filter(!match & !is.na(.data[[col]])) |>
     fuzzyjoin::stringdist_left_join(
       places |>
-        dplyr::select(name, replace = muni),
-      by = dplyr::join_by(!!col == name),
-      max_dist=1,
+        dplyr::select(pl_name = name, replace = muni),
+      by = dplyr::join_by(!!col == pl_name),
+      max_dist=2,
       method="dl",
       distance_col="dist"
     ) |>
-    dplyr::group_by(dplyr::across(-c(dist, replace, name))) |>
+    dplyr::group_by(dplyr::across(-c(dist, replace, pl_name))) |>
     dplyr::slice_min(dist, n=1) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       match = !is.na(replace),
-      !!col := dplyr::case_when(
+      new_town = dplyr::case_when(
         match ~ replace,
-        .default = .data[[col]]
+        .default = new_town
       )
     ) |>
-    dplyr::select(-c(replace, name, dist)) |>
+    dplyr::select(-c(replace, pl_name, dist)) |>
     dplyr::bind_rows(
       state |>
         dplyr::filter(match | is.na(.data[[col]]))
     )
 
   state |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(id_col))) |>
+    dplyr::group_by(temp_id) |>
     dplyr::mutate(
       count = dplyr::n()
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       !!col := dplyr::case_when(
-        match & count > 1 ~ NA_character_,
+        match & count > 1 ~ .data[[col]],
+        match & count == 1 ~ new_town,
         .default = .data[[col]]
       )
     ) |>
-    dplyr::bind_rows(
-      df |>
-        dplyr::filter(!state_match)
-    ) |>
-    dplyr::select(-c(match, state_match, count)) |>
+    dplyr::select(-c(match, new_town, count, temp_id)) |>
     dplyr::distinct()
 }
 
@@ -1773,7 +1793,9 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips
   
   df <- df |> 
     dplyr::left_join(
-      sf::st_point_on_surface(parcels), 
+      parcels |>
+        sf::st_set_agr("constant") |>
+        sf::st_point_on_surface(), 
       by=dplyr::join_by(
         !!site_loc_id == loc_id,
         !!site_muni_id == muni_id
@@ -1855,24 +1877,6 @@ std_remove_middle_initial <- function(df, cols) {
 
 
 # Workflows ====
-
-std_flow_strings <- function(df, cols) {
-  #' Generic string standardization workflow.
-  #'
-  #' @param cols Columns to be processed.
-  #' @returns A dataframe.
-  #' @export
-  df |>
-    std_uppercase(cols) |>
-    std_replace_blank(cols) |>
-    std_spacing_characters(cols) |>
-    std_remove_special(cols) |>
-    std_small_numbers(cols) |>
-    std_trailing_leading(cols) |>
-    std_leading_zeros(cols, rmsingle = FALSE) |>
-    std_squish(cols)
-}
-
 
 # std_link_owner_parcel <- function(owner, parcel) {
 #   owner <- owner |>

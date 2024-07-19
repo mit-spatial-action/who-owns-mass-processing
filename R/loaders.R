@@ -538,10 +538,10 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
         quiet = TRUE
       )
     }
-    df <- dplyr::bind_rows(all)
   }
   
-  df |>
+  dplyr::bind_rows(all) |>
+    dplyr::rename_with(stringr::str_to_lower) |>
     flow_assess_preprocess(path)
 }
 
@@ -566,11 +566,10 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
       dplyr::pull(muni_id)
   }
   
-  url_base <- "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/mad/town_exports/addr_pts/"
-  
   util_log_message(glue::glue("Loading addresses."))
   
   all <- list()
+  nb <- list()
   bos_id = "035"
   for (id in muni_ids) {
     if (id == bos_id) {
@@ -581,70 +580,11 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
       }
       # Boston handler---MassGIS does not maintain the Boston Address list.
       all[[id]] <- load_from_arc("b6bffcace320448d96bb84eabb8a075f_0", crs) |>
-        dplyr::filter(!is.na(street_body) & !is.na(street_full_suffix)) |>
-        dplyr::mutate(
-          muni = "BOSTON",
-          muni_id = bos_id,
-          is_range = as.logical(is_range),
-          addr_body = stringr::str_to_upper(stringr::str_c(street_body, street_full_suffix, sep = " ")),
-          state = "MA",
-        ) |>
-        dplyr::select(
-          addr_body,
-          state,
-          muni,
-          postal = zip_code,
-          addr_num = street_number,
-          addr_start = range_from,
-          addr_end = range_to,
-          is_range
-        ) |>
-        dplyr::mutate(
-          dplyr::across(
-            c(addr_body, postal),
-            ~ dplyr::case_when(
-              . == "" ~ NA_character_,
-              .default = .
-            )
-          ),
-          dplyr::across(
-            c(addr_num, addr_start, addr_end),
-            ~ stringr::str_replace_all(
-              .,
-              " 1 ?\\/ ?2", "\\.5"
-            )
-          ),
-          dplyr::across(
-            c(addr_start, addr_end),
-            ~ as.numeric(stringr::str_remove_all(., "[A-Z]"))
-          ),
-          range_fix = !is_range & stringr::str_detect(addr_num, "[0-9\\.]+[A-Z]{0,1} ?- ?[0-9\\.]+[A-Z]{0,1}"),
-          addr_start_temp = dplyr::case_when(
-            range_fix ~ abs(as.numeric(stringr::str_remove_all(stringr::str_extract(addr_num, "^[0-9\\.]+"), "[A-Z]")))
-          ),
-          addr_end_temp = dplyr::case_when(
-            range_fix ~ abs(as.numeric(stringr::str_remove_all(stringr::str_extract(addr_num, "(?<=[- ]{1,2})[0-9\\.]+[A-Z]{0,1}(?= ?$)"), "[A-Z]")))
-          ),
-          viable_range = addr_start_temp <= addr_end_temp,
-          addr_start = dplyr::case_when(
-            viable_range ~ addr_start_temp,
-            .default = addr_start
-          ),
-          addr_end = dplyr::case_when(
-            viable_range ~ addr_end_temp,
-            .default = addr_end
-          ),
-          dplyr::across(
-            c(addr_start, addr_end),
-            ~ dplyr::case_when(
-              is.na(addr_start) & !is_range ~ abs(as.numeric(stringr::str_remove_all(addr_num, "[A-Z]"))),
-              .default = .
-            )
+        flow_boston_address_preprocess(
+          c("body", "muni", "state", "postal", "addr2", "num")
           )
-        ) |>
-        dplyr::filter(!is.na(addr_start) & !is.na(addr_end)) |>
-        dplyr::select(-c(is_range, viable_range, range_fix, addr_start_temp, addr_end_temp))
     } else {
+      url_base <- "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/mad/town_exports/addr_pts/"
       filename <- glue::glue("AddressPts_M{id}")
       url <- glue::glue("{url_base}{filename}.zip")
       if (!quiet) {
@@ -652,56 +592,30 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
           glue::glue("Downloading {filename} from {url}...")
         )
       }
-      all[[id]] <- load_shp_from_remote_zip(
-        url,
-        shpfile = glue::glue("{filename}.shp"),
-        crs = crs
-      ) |>
-        dplyr::filter(!is.na(streetname)) |>
-        dplyr::mutate(
-          state = "MA",
-          num1 = dplyr::case_when(
-            num1_sfx == "1/2" ~ num1 + 0.5,
-            .default = num1
-          ),
-          num2 = dplyr::case_when(
-            num1_sfx == "1/2" ~ num2 + 0.5,
-            .default = num2
-          ),
-          addrtwn_id = std_pad_muni_ids(addrtwn_id)
-        ) |>
-        dplyr::left_join(
-          munis,
-          dplyr::join_by(addrtwn_id == muni_id)
-        ) |>
-        dplyr::select(
-          addr_num,
-          addr_body = streetname,
-          state,
-          muni,
-          postal = zipcode,
-          addr_start = num1,
-          addr_end = num2,
-          muni_id = addrtwn_id
-        ) |>
-        dplyr::mutate(
-          addr_end = dplyr::case_when(
-            addr_end == 0 ~ addr_start,
-            addr_end <= addr_start ~ addr_start,
-            .default = addr_end
-          )
+      nb[[id]] <- load_shp_from_remote_zip(
+          url,
+          shpfile = glue::glue("{filename}.shp"),
+          crs = crs
         )
     }
   }
   
+  all[['nb']] <- dplyr::bind_rows(nb) |>
+    flow_nb_address_preprocess(
+      c("body", "muni", "state", "postal", "addr2"),
+      munis=munis
+    )
+  
   df <- dplyr::bind_rows(all) |>
-    std_flow_strings("addr_body") |>
-    std_street_types("addr_body") |>
-    std_directions("addr_body") |>
+    flow_address_text(c("body")) |>
     dplyr::mutate(
-      addr_num = dplyr::case_when(
-        addr_start != addr_end ~ stringr::str_c(addr_start, addr_end, sep = " - "),
-        .default = addr_num
+      addr = dplyr::case_when(
+        end > start ~ stringr::str_c(start, "-", end, " ", body, sep=""),
+        .default = stringr::str_c(start, body, sep=" "),
+      ),
+      even = dplyr::case_when(
+        floor(start) %% 2 == 0 ~ TRUE,
+        .default = FALSE
       )
     ) |>
     tibble::rowid_to_column("id")
@@ -721,25 +635,18 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
   
   df |>
     sf::st_drop_geometry() |>
-    dplyr::group_by(addr_body, state, muni, postal, loc_id) |>
+    dplyr::group_by(body, state, muni, even, postal, loc_id) |>
     dplyr::summarize(
-      addr_start = min(addr_start),
-      addr_end = max(addr_end),
+      start = min(start),
+      end = max(end),
       addr_count = dplyr::n()
     ) |>
     dplyr::ungroup() |>
     dplyr::left_join(
-      df |> 
-        dplyr::select(-c(addr_start, addr_end, id)),
+      df |>
+        dplyr::select(body, state, muni, even, postal, loc_id),
       multiple = "first",
-      by = dplyr::join_by(addr_body, state, muni, postal, loc_id)
-    ) |>
-    dplyr::mutate(
-      even = dplyr::case_when(
-        floor(addr_start) %% 2 == 0 ~ TRUE,
-        floor(addr_start) %% 2 == 1 ~ FALSE,
-        .default = NA
-      )
+      by = dplyr::join_by(body, state, even, muni, postal, loc_id)
     ) |>
     sf::st_set_geometry("geometry") |>
     tibble::rowid_to_column("id")
@@ -964,27 +871,29 @@ load_zips <- function(munis, crs, threshold = 0.95) {
 
 # Derive Layers ====
 
-load_sites_from_assess <- function(df) {
+load_sites_from_assess <- function(df, site_prefix) {
   # WIP
   
   df |> 
     dplyr::select(
-      dplyr::starts_with("site_")
+      dplyr::starts_with(site_prefix)
       ) |>
     dplyr::rename_with(
-      ~ stringr::str_remove(.x, "site_")
+      ~ stringr::str_remove(.x, stringr::str_c(site_prefix, "_"))
       )
 }
 
 
-load_owners_from_assess <- function(df) {
+load_owners_from_assess <- function(df, site_prefix, own_prefix) {
   # WIP
+  res_col <- stringr::str_c(site_prefix, "res", sep="_")
   df |> 
+    dplyr::filter(.data[[res_col]]) |>
     dplyr::select(
-      c(site_id, dplyr::starts_with("own_"))
+      c(site_id, dplyr::starts_with(own_prefix))
     ) |>
     dplyr::rename_with(
-      ~ stringr::str_remove(.x, "own_")
+      ~ stringr::str_remove(.x, stringr::str_c(own_prefix, "_"))
     )
 }
 
