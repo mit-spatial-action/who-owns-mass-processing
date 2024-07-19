@@ -8,7 +8,8 @@ SEARCH <- tibble::lst(
     "REALTY", "DEVELOPMENT", "EQUITIES", "HOLDING", "INSTITUTE", 
     "DIOCESE", "PARISH", "CITY", "HOUSING", "AUTHORITY", "SERVICES", 
     "LEGAL", "SERVICES", "LLP", "UNIVERSITY", "COLLEGE", "ASSOCIATION",
-    "CONDOMINIUM", "HEALTH", "HOSPITAL", "SYSTEM"
+    "CONDOMINIUM", "HEALTH", "HOSPITAL", "SYSTEM", "ACCOUNTS?", "PAYABLE",
+    "ASSOCIATES", "ATTORNEY", "AT LAW", "DEPARTMENT", "REGISTERED", "AGENTS"
   ),
   trust = "(?= \\bTRUST(EES?)?)",
   trustees = "\\bTRUST(EES?)( OF)?\\b",
@@ -1069,7 +1070,10 @@ std_addr2_parser <- function(df, cols, regex) {
     std_squish(stringr::str_c(cols, "2"))
 }
 
-std_addr2_po_pmb <- function(df, cols) {
+std_addr2_po_pmb <- function(df, cols, prefixes) {
+  if (missing(prefixes)) {
+    prefixes <- cols
+  }
   terms <- c(
     "(P ?[0O] ?)+B[0X]?X",
     "((P ?)?[0O])+ ?BOX",
@@ -1104,6 +1108,13 @@ std_addr2_po_pmb <- function(df, cols) {
       dplyr::across(
         cols,
         ~ stringr::str_remove_all(., ",?(PO BOX|PMB) ?[A-Z0-9\\-]+( [0-9]+)?")
+      )
+    ) |>
+    dplyr::rename_with(
+      ~ stringr::str_replace(
+        .x, 
+        stringr::str_c("(?<=(", stringr::str_c(prefixes, collapse="|"), "))[a-z\\_]+(?=_(", stringr::str_c(c("po", "pmb"), collapse="|"), ")$)"),
+        ""
       )
     ) |>
     std_replace_blank(cols) |>
@@ -1462,6 +1473,47 @@ std_select_address <- function(df,
 
 # DBA/CO etc. Handling ====
 
+std_multiname <- function(df, col) {
+  df <- df |>
+    dplyr::mutate(
+      name_and = dplyr::case_when(
+        stringr::str_detect(.data[[col]], " AND ") ~ TRUE,
+        .default = FALSE
+      )
+    )
+  
+  df |>
+    dplyr::filter(
+      name_and & !trust & !inst
+    ) |>
+    std_separate_and_label(
+      col = col,
+      target_col = col,
+      regex = " AND "
+    ) |>
+    std_replace_blank(col) |>
+    dplyr::mutate(
+      last = stringr::str_extract(.data[[col]], "^[A-Z]{2,}(?= [A-Z]{2,20} [A-Z]$)")
+    ) |>
+    dplyr::group_by(site_id) |>
+    tidyr::fill(last, .direction="updown") |>
+    dplyr::ungroup() |>
+    std_remove_middle_initial(col, restrictive = FALSE) |>
+    dplyr::mutate(
+      !!col := dplyr::case_when(
+        stringr::str_count(.data[[col]], "([A-Z]{2,}\\s)") == 0 & !is.na(last) ~ stringr::str_c(.data[[col]], last, sep=" "),
+        .default = .data[[col]]
+      )
+    ) |>
+    dplyr::filter(stringr::str_count(.data[[col]], "([A-Z]{2,}\\s)") == 1) |>
+    dplyr::select(-last) |>
+    dplyr::bind_rows(
+    df |>
+      dplyr::filter(!name_and | trust | inst)
+    ) |>
+    dplyr::select(-name_and)
+}
+
 std_remove_estate <- function(df, col, estate_name = "estate") {
   #' Standardize names by removing estate indicators.
   #'
@@ -1485,11 +1537,12 @@ std_remove_estate <- function(df, col, estate_name = "estate") {
 std_separate_and_label <- function(df, 
                                    col, 
                                    regex, 
-                                   label,
+                                   label = "",
                                    base_label = "owner",
                                    target_col = "name",
                                    clear_cols = c()) {
   regex <- stringr::regex(regex)
+  
   df_base <- df |>
     dplyr::mutate(
       flag = stringr::str_detect(.data[[col]], regex),
@@ -1514,9 +1567,10 @@ std_separate_and_label <- function(df,
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
-      type_label = dplyr::case_when(
+      type = dplyr::case_when(
+        own_position > 1 | own_position == count & nchar(label) == 0 ~ type,
         own_position > 1 | own_position == count ~ label,
-        .default = type_label
+        .default = type
       )
     )
   
@@ -1528,7 +1582,7 @@ std_separate_and_label <- function(df,
         names_to = "column"
       ) |>
       dplyr::mutate(
-        type_label = dplyr::case_when(
+        type = dplyr::case_when(
           column == target_col ~ base_label,
           column == col ~ label
         ),
@@ -1542,8 +1596,8 @@ std_separate_and_label <- function(df,
       dplyr::across(
         dplyr::any_of(clear_cols),
         ~ dplyr::case_when(
-          type_label == base_label ~
-            NA_character_,
+          type == base_label ~
+            NA,
           .default = .
         )
       )
@@ -1615,20 +1669,18 @@ std_flag_inst <- function(df, col) {
   #' @param col The column to be flagged.
   #' @returns A dataframe with added columns 'trust_{col}' and 'trustee_{col}'.
   #' @export
-  flag <- stringr::str_c("inst", col, sep = "_")
   df |>
     dplyr::mutate(
-      !!flag := stringr::str_detect(
+      inst := dplyr::case_when(
+        stringr::str_detect(
         .data[[col]],
         stringr::str_c(
           "\\b(",
           stringr::str_c(SEARCH$inst, collapse = "|"),
           ")\\b",
           sep = "")
-      ),
-      !!flag := tidyr::replace_na(
-        .data[[flag]],
-        FALSE
+        ) ~ TRUE,
+        .default = FALSE
       )
     )
 }
@@ -1641,38 +1693,15 @@ std_flag_trust <- function(df, col) {
   #' @returns A dataframe with added columns 'trust_{col}' and 'trustee_{col}'.
   #' @export
   
-  trust_flag <- stringr::str_c("trust", col, sep ="_")
-  trustee_flag <- stringr::str_c("trustee", col, sep ="_")
-  
   df |>
     dplyr::mutate(
-      !!col := dplyr::case_when(
-        stringr::str_detect(.data[[col]], "(^TRUST\\b ?)|(TRUST (?=AND ))") ~ 
-          stringr::str_c(
-            stringr::str_remove(.data[[col]], "(^TRUST\\b ?)|(TRUST (?=AND ))"),
-            "TRUST",
-            sep = " "
-          ),
-        .default = .data[[col]]
+      trust = dplyr::case_when(
+        stringr::str_detect(.data[[col]], "TRUST") ~ TRUE,
+        .default = FALSE
       ),
-      !!trust_flag := stringr::str_detect(
-        .data[[col]], 
-        SEARCH$trust_regex
-      ) | stringr::str_detect(
-        .data[[col]], 
-        SEARCH$trust_definite_regex
-      ),
-      !!trust_flag := tidyr::replace_na(
-        .data[[trust_flag]],
-        FALSE
-      ),
-      !!trustee_flag := stringr::str_detect(
-        .data[[col]], 
-        SEARCH$trustee
-      ),
-      !!trustee_flag := tidyr::replace_na(
-        .data[[trustee_flag]],
-        FALSE
+      trustees = dplyr::case_when(
+        stringr::str_detect(.data[[col]], "TRUSTEES") ~ TRUE,
+        .default = FALSE
       )
     )
 }
@@ -1859,18 +1888,23 @@ std_calculate_overlap <- function(x, y, threshold = 0) {
 
 # Name Handlers ====
 
-std_remove_middle_initial <- function(df, cols) {
+std_remove_middle_initial <- function(df, cols, restrictive=TRUE) {
   #' Replace middle initial when formatted like "ERIC R HUNTLEY"
   #' 
   #' @param df A dataframe.
   #' @param cols Column or columns to be processed.
   #' @returns A dataframe.
   #' @export
+  if (restrictive) {
+    string <- "(?<=[A-Z] )[A-Z] (?=[A-Z])"
+  } else {
+    string <- "(?<= |^)[A-Z](?= |$)"
+  }
   df |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::where(is.character) & tidyselect::all_of(cols),
-        ~ stringr::str_replace(., "(?<=[A-Z] )[A-Z] (?=[A-Z])", "")
+        ~ stringr::str_squish(stringr::str_replace_all(., string, ""))
       )
     )
 }

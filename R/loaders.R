@@ -884,7 +884,7 @@ load_sites_from_assess <- function(df, site_prefix) {
 }
 
 
-load_owners_from_assess <- function(df, site_prefix, own_prefix) {
+load_owners_from_assess <- function(df, site_prefix, own_prefix, base_label="owner") {
   # WIP
   res_col <- stringr::str_c(site_prefix, "res", sep="_")
   df |> 
@@ -894,6 +894,9 @@ load_owners_from_assess <- function(df, site_prefix, own_prefix) {
     ) |>
     dplyr::rename_with(
       ~ stringr::str_remove(.x, stringr::str_c(own_prefix, "_"))
+    ) |>
+    dplyr::mutate(
+      type = base_label
     )
 }
 

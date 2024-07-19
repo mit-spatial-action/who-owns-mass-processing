@@ -215,10 +215,13 @@ flow_address_text <- function(df, cols, rm_ma = TRUE) {
     std_squish(cols)
 }
 
-flow_addr2 <- function(df, cols, po_pmb = FALSE) {
+flow_addr2 <- function(df, cols, prefixes, po_pmb = FALSE) {
+  if (missing(prefixes)) {
+    prefixes = cols
+  }
   if (po_pmb) {
     df <- df |> 
-      std_addr2_po_pmb(cols)
+      std_addr2_po_pmb(cols, prefixes)
   }
   df |>
     std_addr2_remove_keywords(cols) |>
@@ -481,6 +484,29 @@ flow_address_omni <- function(df, col, postal_col, muni_col, state_col, zips, pl
     )
 }
 
+flow_name_omni <- function(df, col, address_col) {
+  df |>
+    flow_assess_co_dba_attn(
+      address_col,
+      target=col
+    ) |>
+    std_trailing_leading(c(col)) |>
+    std_remove_titles(c(col)) |>
+    std_street_types(c(col)) |>
+    std_massachusetts(c(col)) |>
+    std_inst_types(c(col)) |> 
+    std_flag_inst(c(col)) |>
+    std_flag_trust(c(col)) |>
+    dplyr::mutate(
+      !!col := dplyr::case_when(
+        trustees ~ stringr::str_remove(.data[[col]], "[\\-\\s]TRUSTEES"),
+        .default = .data[[col]]
+      )
+    ) |>
+    # Depends on previous execution of inst/trust flagging.
+    std_multiname(col)
+}
+
 # Assessors-Specific Workflows ====
 
 flow_assess_address_text <- function(df, site_prefix, own_prefix) {
@@ -524,7 +550,11 @@ flow_assess_addr2 <- function(df, site_prefix, own_prefix) {
   
   df |>
     dplyr::filter(is.na(get(cols$own$loc_id))) |>
-    flow_addr2(c(cols$site$addr, cols$own$addr), po_pmb = TRUE) |>
+    flow_addr2(
+      c(cols$site$addr, cols$own$addr), 
+      prefixes=c(site_prefix, own_prefix), 
+      po_pmb = TRUE
+      ) |>
     flow_match_simp_street(c(cols$site$addr, cols$own$addr)) |>
     dplyr::mutate(
       !!cols$own$loc_id := dplyr::case_when(
@@ -624,5 +654,78 @@ flow_assess_muni <- function(df, own_prefix, places, zips) {
       postal_col = cols$own$postal,
       places=places,
       zips=zips
+    )
+}
+
+flow_assess_luc_units <- function(df, site_prefix, path = DATA_PATH) {
+  cols <- flow_assess_cols(df, site_prefix = site_prefix)
+  cols <- flow_add_to_col_list(cols,  site_prefix, c("luc", "res"))
+  
+  df |>
+    std_luc(path, cols$site$muni_id, cols$site$use_code, cols$site$luc) |>
+    std_flag_residential(cols$site$luc, cols$site$muni_id, cols$site$res) |>
+    std_units_from_luc(cols$site$luc, cols$site$muni_id, cols$site$units)
+}
+
+flow_assess_co_dba_attn <- function(df, col, target, base_label = "owner") {
+  clear_cols <- c(
+    col, "muni", "state", 
+    "postal", "country", "po", 
+    "pmb", "addr2", "body", "start", "end", "even"
+  )
+  df |>
+    std_separate_and_label(
+      col = col,
+      target_col = target,
+      regex = "(^C ?O )|((?!= )C O (?=[A-Z]+))",
+      label = "co",
+      base_label = base_label,
+      clear_cols = clear_cols
+    ) |>
+    std_separate_and_label(
+      col = col,
+      target_col = target,
+      regex = "(^(ATTN|A T T N) )|((?!= )(ATTN|A T T N) (?=[A-Z]+))",
+      label = "attn",
+      base_label = base_label,
+      clear_cols = clear_cols
+    ) |>
+    std_separate_and_label(
+      col = col,
+      target_col = target,
+      regex = "(^(DBA|D B A) )|((?!= )(DBA|D B A) (?=[A-Z]+))",
+      label = "dba",
+      base_label = base_label
+    )
+}
+
+flow_assess_omni <- function(df, site_prefix, own_prefix, zips, parcels, places) {
+  util_log_message("Processing assessors table.")
+  df |>
+    flow_assess_address_text(
+      site_prefix = site_prefix,
+      own_prefix = own_prefix
+    ) |>
+    flow_assess_addr2(
+      site_prefix = site_prefix,
+      own_prefix = own_prefix
+    ) |>
+    flow_assess_address_to_range(
+      site_prefix = site_prefix,
+      own_prefix = own_prefix
+    ) |>
+    flow_assess_postal(
+      site_prefix=site_prefix,
+      own_prefix=own_prefix,
+      zips=zips,
+      parcels=parcels
+    ) |> 
+    flow_assess_muni(
+      own_prefix=own_prefix,
+      places=places,
+      zips=zips
+    ) |>
+    flow_assess_luc_units(
+      site_prefix=site_prefix
     )
 }
