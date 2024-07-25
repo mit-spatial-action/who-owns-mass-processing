@@ -2,23 +2,30 @@ SEARCH <- tibble::lst(
   estate = c(
     "ESTATE OF", "(A )?LIFE ESTATE", "FOR LIFE", "LE"
   ),
+  street_types = c(
+    "STREET", "AVENUE", "LANE", "EXTENSION", "PARK", "DRIVE",
+    "ROAD", "BOULEVARD", "PARKWAY", "TERRACE", "PLACE", "WAY",
+    "CIRCLE", "ALLEY", "SQUARE", "HIGHWAY", "CENTER", "FREEWAY",
+    "COURT", "PLAZA", "WHARF", "SQUARE"
+  ),
   inst = c(
     "CORPORATION", " INC( |$)", "LLC", "LTD", "COMPANY",
     "LP", "PROPERT(IES|Y)", "GROUP", "MANAGEMENT", "PARTNERS", 
     "REALTY", "DEVELOPMENT", "EQUITIES", "HOLDING", "INSTITUTE", 
-    "DIOCESE", "PARISH", "CITY", "HOUSING", "AUTHORITY", "SERVICES", 
+    "DIOCESE", "PARISH", "CITY", "HOUSING", "AUTHORITY", "SERVICE(S|R)?", 
     "LEGAL", "SERVICES", "LLP", "UNIVERSITY", "COLLEGE", "ASSOCIATION",
     "CONDOMINIUM", "HEALTH", "HOSPITAL", "SYSTEM", "ACCOUNTS?", "PAYABLE",
-    "ASSOCIATES", "ATTORNEY", "AT LAW", "DEPARTMENT", "REGISTERED", "AGENTS"
+    "ASSOCIATES", "ATTORNEY", "AT LAW", "DEPARTMENT", "REGISTERED", "AGENTS",
+    "MORTGAGE", "COMMUNITY", "BANK", "LOANS?"
   ),
   trust = "(?= \\bTRUST(EES?)?)",
   trustees = "\\bTRUST(EES?)( OF)?\\b",
   trust_definite = c(
-    "(IR)?REVOCABLE", "NOMINEE", "INCOME ONLY", "UNDER DECLARATION OF"
+    "(IR)?REVOCABLE", "NOMINEE", "INCOME ONLY", "FOR LIFE", "UNDER DECLARATION OF", "LIVING", "FAMILY"
   ),
   trust_types = c(
     trust_definite,
-    "LIVING", "REALTY", "REAL ESTATE", 
+    "REALTY", "REAL ESTATE", 
     "FAMI(LY)?( SEC[URITY]{0,5})?", "JOINT",
     "PERSONAL", "(19|20)[0-9]{2}", "HOUSE", 
     "WEALTH", "HOLDINGS", "INVESTMENT", "GIFT",
@@ -39,7 +46,7 @@ SEARCH <- tibble::lst(
     sep = ""),
   titles = c(
     # Professional titles
-    "ESQ(UIRE)?", "MD", "JD", "PHD", "PC",
+    "ESQ(UIRE)?", "MD", "JD", "PHD", "PC", "MR", "MS", "MRS",
     # Generations and numbers
     "JR", "SR", "I+", "I*[VX]I*",
     "(AND )?ET( - | )?ALL?"
@@ -195,7 +202,8 @@ std_remove_special <- function(df, cols, rm_commas=TRUE) {
       pattern = c(
         "(?<=[0-9]) *\\. *(?=5)" = "\\.",
         "(?<=[0-9]) *\\. *(?!5)" = "\\-",
-        "(?<![0-9]) *\\. *(?!5)" = " "
+        "(?<![0-9]) *\\. *(?!5)" = " ",
+        "(\\b[0-9]+O\\b)|(\\b[0-9]+O\\b)|(\\b[0-9]+O[0-9]+\\b)" = "0"
         )
     ) |>
     std_replace_generic(
@@ -326,6 +334,24 @@ std_replace_newline <- function(df, cols) {
   )
 }
 
+std_fix_concatenated_ranges <- function(df, cols) {
+  #' Fix e.g., 234234A TEST ST
+  #'
+  #' @param df A dataframe containing only string datatypes.
+  #' @returns A dataframe.
+  #' @export
+  std_replace_generic(
+    df,
+    cols, 
+    pattern = c(
+      "^([0-9]{3,4})[A-Z]?(?=(\\1){1})" = "",
+      "(?<=^([0-9]{2,3})[0-9][A-Z]?)(?=(\\1){1}[0-9])" = "-"
+      )
+  )
+}
+
+
+
 std_spacing_characters <- function(df, cols) {
   #' Standardizes slashes to have a space on either side and
   #' replaces all instances of an ampersand with the word "AND"
@@ -397,13 +423,13 @@ std_street_types <- function(df, cols) {
     # (Prevents errors like 3 RD > 3 ROAD after type std.)
     # So many saint addresses... thus the below comment-out.
     # "(?<= 1) (?=ST( |$))" = "",
-    "(?<=[02-9]) ST (?=[A-Z]{4,15})" = " SAINT ",
+    "(?<=[02-9] )ST(?= [A-Z]{3})" = "SAINT",
+    "^ST(?= [A-Z]{3})" = "SAINT",
     "(?<= 1) (?=ST )" = "",
     "(?<= 2) (?=ND )" = "",
     "(?<= 3) (?=RD )" = "",
     "(?<= [1-9]?[04-9]) (?=TH )" = "",
-    "(?<= )(ST|ST[RET]{3,5})(?=$| |\\-)" = "STREET",
-    "(?<= )STREE(?=$| |\\-)" = "STREET",
+    "(?<= )(ST|ST[RET]{3,5}|STREE)(?=$| |\\-)" = "STREET",
     "(?<= )AVE?(?=$| |\\-)" = "AVENUE",
     "(?<= )LA?N(?=$| |\\-)" = "LANE",
     "(?<= )BLV?R?D?(?=$| |\\-)" = "BOULEVARD",
@@ -413,6 +439,7 @@ std_street_types <- function(df, cols) {
     "(?<= )PR?K(?=$| |\\-)" = "PARK",
     "(?<= )DRV?(?=$| |\\-)" = "DRIVE",
     "(?<= )RD(?=$| |\\-)" = "ROAD",
+    "(?<= )RO(?=$| |\\-)" = "ROW",
     "(?<= )T[ER]+R+(CE)?(?=$| |\\-)" = "TERRACE",
     "(?<= )TE(?=$| |\\-)" = "TERRACE",
     "(?<= )PLC?E?(?=$| |\\-)" = "PLACE",
@@ -427,14 +454,15 @@ std_street_types <- function(df, cols) {
     "(?<= )O ?BRI(?=[EA]N[$ \\-])" = "OBRI",
     "(?<= )(MONSIGNOR)?( P ?J)? LYDON(?=$| |\\-)" = " MONSIGNOR PJ LYDON",
     "(?<= )(MONSIGNOR)? OBRI[AE]N(?= HIGH[$ \\-])" = " MONSIGNOR OBRIEN",
+    "(?<= )WM F MCCLELLAN(?=$| |\\-)" = "WILLIAM F MCCLELLAN",
     "(?<= )CR?T(?=$| |\\-)" = "COURT",
     "(?<= )PL?Z(?=$| |\\-)" = "PLAZA",
     "(?<= )W[HR]+F(?=$| |\\-)" = "WHARF",
     "(?<= )DEPT(?=$| |\\-)" = "DEPARTMENT",
     "(?<= )P ?O SQUARE(?=$| |\\-)" = "POST OFFICE SQUARE",
     "(?<= )PRUDENTIAL TOWER(?=$| |\\-)" = "",
-    "(?<= |^)P ?O( ?BO?X)?[ \\#\\-]*(?=[A-Z]{0,1}[0-9])" = "PO BOX ",
-    "(?<= |^)(?<!PO )BO?X[ \\#\\-]+(?=[A-Z]{0,1}[0-9])" = "PO BOX "
+    "(?<= |^)P ?O( ?BO?X)?[ \\-]*(?=[A-Z]{0,1}[0-9])" = "PO BOX ",
+    "(?<= |^)(?<!PO )BO?X[ \\-](?=[A-Z]{0,1}[0-9])" = "PO BOX "
   )
   std_replace_generic(
     df,
@@ -442,6 +470,7 @@ std_street_types <- function(df, cols) {
     pattern = street
   )
 }
+
 
 std_small_numbers <- function(df, cols) {
   #' Standardize small leading numbers.
@@ -451,33 +480,28 @@ std_small_numbers <- function(df, cols) {
   #' @returns A dataframe.
   #' @export
   sm_num <- c(
-    "(?<=^)ZERO(?= |$)" = "0",
-    "(?<=^)ONE(?= |$)" = "1",
-    "(?<=^)TWO(?= |$)" = "2",
-    "(?<=^)THREE(?= |$)" = "3",
-    "(?<=^)FOUR(?= |$)" = "4",
-    "(?<=^)FIVE(?= |$)" = "5",
-    "(?<=^)SIX(?= |$)" = "6",
-    "(?<=^)SEVEN(?= |$)" = "7",
-    "(?<=^)EIGHT(?= |$)" = "8",
-    "(?<=^)NINE(?= |$)" = "9",
-    "(?<=^)TEN(?= |$)" = "10",
-    "(?<=^)ELEVEN(?= |$)" = "11",
-    "(?<=^)TWELVE(?= |$)" = "12",
-    "(?<=^)THIRTEEN(?= |$)" = "13",
-    "(?<=^)FOURTEEN(?= |$)" = "14",
-    "(?<=^)FIFTEEN(?= |$)" = "15",
-    "(?<=^)SIXTEEN(?= |$)" = "16",
-    "(?<=^)SEVENTEEN(?= |$)" = "17",
-    "(?<=^)EIGHTEEN(?= |$)" = "18",
-    "(?<=^)NINETEEN(?= |$)" = "19",
-    "(?<=^)TWENTY(?= |$)" = "20"
+    "^ZERO(?= )" = "0",
+    "(^ONE(?= ))|((?<= )I(?= |$))" = "1",
+    "(^ONE(?= ))|((?<= )II(?= |$))" = "2",
+    "(^THREE(?= ))|((?<= )III(?= |$))" = "3",
+    "(^FOUR(?= ))|((?<= )IV(?= |$))" = "4",
+    "(^FIVE(?= ))|((?<= )V(?= |$))" = "5",
+    "(^SIX(?= ))|((?<= )VI(?= |$))" = "6",
+    "(^SEVEN(?= ))|((?<= )VII(?= |$))" = "7",
+    "(^EIGHT(?= ))|((?<= )VIII(?= |$))" = "8",
+    "(^NINE(?= ))|((?<= )IX(?= |$))" = "9",
+    "(^TEN(?= ))|((?<= )X(?= |$))" = "10",
+    "(^TWENTY(?= ))|((?<= )XX(?= |$))" = "20"
   )
   std_replace_generic(
     df,
     cols, 
     pattern = sm_num
-  )
+  ) |>
+    std_replace_generic(
+      cols, 
+      pattern = c("^([1-9]) (?=[0-9]{2,4}[-\\ ])" = "\\1")
+    )
 }
 
 std_small_ordinals <- function(df, cols) {
@@ -519,15 +543,15 @@ std_small_ordinals <- function(df, cols) {
 std_extract_zip <- function(df, col, postal_col) {
   df <- df |>
     dplyr::mutate(
-      temp = stringr::str_extract(.data[[col]], "[0-9]{5}([ \\-]*[0-9]{4})?"),
+      temp = stringr::str_extract(.data[[col]], "[0-9]{5}([ \\-]*[0-9]{4})?(?=[A-Z\\s]*$)"),
       !!postal_col := dplyr::case_when(
         !is.na(temp) & 
           (is.na(.data[[postal_col]]) | 
-             !stringr::str_detect(.data[[postal_col]], "[0-9]{5}([ \\-]*[0-9]{4})?") ) ~ temp,
+             !stringr::str_detect(.data[[postal_col]], "[0-9]{5}([ \\-]*[0-9]{4})?[A-Z\\s]*$") ) ~ temp,
         .default = .data[[postal_col]]
       ),
       !!col := stringr::str_squish(
-        stringr::str_remove(.data[[col]], "[0-9]{5}([ \\-]*[0-9]{4})?")
+        stringr::str_remove(.data[[col]], paste0(temp, ""))
       ),
     ) |>
     dplyr::select(-temp) |>
@@ -624,7 +648,7 @@ std_muni_names <- function(df, col, mass = FALSE) {
   }
 }
 
-std_zip_format <- function(df, col, state_col, zips, constraint = "") {
+std_zip_format <- function(df, col, state_col, zips, state_constraint = "") {
   #' Standardize and simplify (i.e., remove 4-digit suffix) US ZIP codes.
   #'
   #' @param df A dataframe.
@@ -640,10 +664,12 @@ std_zip_format <- function(df, col, state_col, zips, constraint = "") {
     dplyr::filter(!is.na(unambig_state)) |>
     dplyr::distinct()
   
-  if (constraint == "ma") {
+  if (state_constraint != "") {
     zips <- zips |>
-      dplyr::filter(state == "MA")
-  } 
+      dplyr::filter(state == state_constraint)
+  } else {
+    state_constraint <- c(state.abb, "DC")
+  }
   
   zips <- zips |>
     dplyr::pull(zip) |>
@@ -661,43 +687,40 @@ std_zip_format <- function(df, col, state_col, zips, constraint = "") {
           "[A-Z]" = ""
         )
       ),
-      five = stringr::str_length(temp) == 5,
       in_zips = temp %in% zips,
-      # # In cases where only ZIP codes are expected, set any ill-formatted
-      # # codes to NA.
+      # In cases where only ZIP codes are expected, set any ill-formatted
+      # codes to NA.
       !!col := dplyr::case_when(
-        in_zips & five ~ temp,
-        five & constraint %in% c("MA", "USA") ~ NA_character_,
+        in_zips & .data[[state_col]] %in% state_constraint ~ temp,
+        !in_zips & .data[[state_col]] %in% state_constraint ~ NA_character_,
         .default = .data[[col]]
       )
-    ) 
-
-  if (!missing(state_col)) {
-    df <- df |>
-      dplyr::filter(is.na(.data[[state_col]])) |>
-      dplyr::left_join(
-        zips_unambig |>
-          dplyr::select(zip, new_state = unambig_state),
-        by = dplyr::join_by(
-          !!col == zip
-        ),
-        na_matches="never"
-      ) |>
-      dplyr::mutate(
-        !!state_col := dplyr::case_when(
-          is.na(.data[[state_col]]) ~ new_state,
-          .default = .data[[state_col]]
-        )
-      ) |>
-      dplyr::select(-new_state) |>
-      dplyr::bind_rows(
-        df |>
-          dplyr::filter(!is.na(.data[[state_col]]))
+    )
+  
+  df <- df |>
+    dplyr::filter(is.na(.data[[state_col]])) |>
+    dplyr::left_join(
+      zips_unambig |>
+        dplyr::select(zip, new_state = unambig_state),
+      by = dplyr::join_by(
+        !!col == zip
+      ),
+      na_matches="never"
+    ) |>
+    dplyr::mutate(
+      !!state_col := dplyr::case_when(
+        is.na(.data[[state_col]]) ~ new_state,
+        .default = .data[[state_col]]
       )
-  }
+    ) |>
+    dplyr::select(-new_state) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!is.na(.data[[state_col]]))
+    )
   
   df |>
-    dplyr::select(-c(five, temp, in_zips))
+    dplyr::select(-c(temp, in_zips))
 }
 
 std_massachusetts <- function(df, cols, rm_ma = TRUE) {
@@ -790,6 +813,16 @@ std_luc <- function(
     )
 }
 
+std_mass_corp <- function(df, col) {
+  df |> 
+    dplyr::mutate(
+      !!col := stringr::str_remove_all(
+        .data[[col]],
+        "(?<= (CO|INC|CORP|LLC|L?LPS?|LTD)) (A )?(MASS|MASSACHUSETTS)( (CO|INC|CORP|LLC|L?LPS?|LTD))?$"
+      )
+    )
+}
+
 std_inst_types <- function(df, cols) {
   #' Standardize institution types and keywords.
   #'
@@ -845,10 +878,17 @@ std_inst_types <- function(df, cols) {
     "AUTH[ORITY]{0,6}" = "AUTHORITY",
     "(ASSN?|ASSOC)" = "ASSOCATION",
     "DEPT" = "DEPARTMENT",
-    "(TRUST|TRU?ST|TR|TRT|TRUS|TRU|TRYST|T[RUS]{3}T)( (OF )?[0-9]{4})?" = "TRUST",
-    "(CO( - )?)?(TRS|TRU?ST[ES]{1,4}|TRSTS|T[RUSTEE]{6}S|TS$)" = "TRUSTEES"
+    "((G?ST|[0-9]{0,4}) )?(TRUST|TRU?ST|TR|TRT|TRUS|TRU|TRYST|T[RUS]{3}T)( (OF )?[0-9]{4})?" = "TRUST",
+    "(C ?O-?)?(TRS|TRU?ST[ES]{1,4}|TRSTS|T[RUSTEE]{6}S|TS|BE)" = "TRUSTEES",
+    "([A-Z]+)TRUST" = "\\1 TRUST",
+    "([A-Z]+)TRUSTEES" = "\\1 TRUSTEES",
+    "([A-Z]+)LLC" = "\\1 LLC",
+    "LLC( A)? MASSACHUSETTS LLC" = "LLC",
+    "LLP( A)? MASSACHUSETTS (LLP|LPS)" = "LLP",
+    "(?:(INC|COMPANY)( A)?) MASSACHUSETTS CORPORATION" = "",
+    "([A-Z]+)LLP" = "\\1 LLP"
   )
-  names(inst_regex) <- stringr::str_c("\\b", names(inst_regex), "\\b")
+  names(inst_regex) <- stringr::str_c("(?<=^|\\b)", names(inst_regex), "(?=\\b|$)")
   std_replace_generic(
     df,
     cols, 
@@ -908,7 +948,7 @@ std_units_from_luc <- function(df, col, muni_id_col, units_col) {
     )
 }
 
-std_test_given_units <- function(df, col, luc_col, muni_id_col) {
+std_flag_unit_validity <- function(df, col, luc_col, muni_id_col) {
   df |>
     dplyr::mutate(
       units_valid = dplyr::case_when(
@@ -939,80 +979,167 @@ std_test_given_units <- function(df, col, luc_col, muni_id_col) {
     )
 }
 
-std_estimate_units <- function(df) {
+std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, est_size=900) {
   df |>
     dplyr::mutate(
-      units = dplyr::case_when(
+      boston = .data[[muni_id_col]] != '035',
+      units_by_area = ceiling(res_area / est_size),
+      !!col := dplyr::case_when(
         # 4-8 Unit
         # ===
-        luc == '111' & dplyr::between(addr_count, 4, 8) ~
-          addr_count,
-        luc == '111' & (!dplyr::between(addr_count, 4, 8) | is.na(addr_count)) ~
-          4,
+        !boston & .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 8) ~
+          .data[[count_col]],
+        !boston & .data[[luc_col]] == '111' & (!dplyr::between(.data[[count_col]], 4, 8) | is.na(.data[[count_col]])) ~
+          units_by_area,
+        boston & .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 6) ~
+          .data[[count_col]],
+        boston & .data[[luc_col]] == '111' & (!dplyr::between(.data[[count_col]], 4, 6) | is.na(.data[[count_col]])) ~
+          units_by_area,
         # 112: >8 Unit
         # ===
-        luc == '112' & addr_count > 8 ~
-          addr_count,
-        luc == '112' & (addr_count <= 8 | is.na(addr_count)) ~
-          9,
+        !boston & .data[[luc_col]] == '112' & .data[[count_col]] > 8 ~
+          .data[[count_col]],
+        !boston & .data[[luc_col]] == '112' & (.data[[count_col]] <= 8 | is.na(.data[[count_col]])) ~
+          units_by_area,
+        boston & .data[[luc_col]] == '112' & dplyr::between(.data[[count_col]], 7, 30) ~
+          .data[[count_col]],
+        boston & .data[[luc_col]] == '112' & (!dplyr::between(.data[[count_col]], 7, 30) | is.na(.data[[count_col]])) ~
+          units_by_area,
+        boston & .data[[luc_col]] == '113' & dplyr::between(.data[[count_col]], 31, 99) ~
+          .data[[count_col]],
+        boston & .data[[luc_col]] == '113' & (!dplyr::between(.data[[count_col]], 31, 99) | is.na(.data[[count_col]])) ~
+          units_by_area,
+        boston & .data[[luc_col]] == '114' & .data[[count_col]] >= 100 ~
+          .data[[count_col]],
+        boston & .data[[luc_col]] == '114' & (.data[[count_col]] < 100 | is.na(.data[[count_col]])) ~
+          .data[[count_col]],
         # 109: Multi House, 0xx: Multi-Use, 103: Mobile Home
         # ===
-        luc %in% c('109', '0xx', '103', '970', '908', '959') & units == 0 ~
-          addr_count,
-        luc %in% c('109', '0xx', '103', '970', '908', '959') & units != 0 & units > addr_count ~
-          units,
-        .default = units
+        .data[[luc_col]] %in% c('109', '0xx', '103', '114', '970', '908', '959') & .data[[col]] == 0  & !is.na(.data[[count_col]]) ~
+          .data[[count_col]],
+        .default = .data[[col]]
       )
-    )
+    ) |>
+    dplyr::select(-c(boston, units_by_area))
 }
 
 # Address Refinement/Completion ====
+
+std_extract_address_vector <- function(vector, start = FALSE) {
+  string <- stringr::str_c(
+    "(ZERO|ONE|TWO|THREE|FOUR|FIVE|([0-9]+[A-Z]{0,1}([ -][0-9]+[A-Z]{0,1})?)) (([A-Z]{2,}|[0-9]+(TH|ST|RD|ND))\\s){1,3}",
+    "((",
+    stringr::str_c(SEARCH$street_types, collapse="|"),
+    ")( |$))+"
+  )
+  if (start) {
+    string <- stringr::str_c("^", string, "(?=[ -]|$)")
+  } else {
+    string <- stringr::str_c("(?<=^|[ -])", string, "$")
+  }
+  stringr::str_extract(
+    vector, 
+    string
+  )
+}
+
+std_extract_address <- function(df, col, target_col) {
+  new_col <- paste0(col, "_addr")
+  df |>
+    dplyr::mutate(
+      !!new_col := std_extract_address_vector(.data[[col]]),
+      !!target_col := dplyr::case_when(
+        !is.na(.data[[new_col]]) ~ .data[[new_col]],
+        .default = .data[[target_col]]
+      ),
+      !!col := dplyr::case_when(
+        .data[[new_col]] == .data[[col]] ~ NA_character_,
+        !is.na(.data[[new_col]]) ~ stringr::str_remove(.data[[col]], paste0(.data[[new_col]], "$")),
+        .default = .data[[col]]
+      )
+    ) |>
+    dplyr::select(-dplyr::all_of(new_col))
+}
+
+std_assemble_addr <- function(df, range = TRUE) {
+  if (range) {
+    df |>
+      dplyr::mutate(
+        addr = dplyr::case_when(
+          !is.na(body) & start == end ~ stringr::str_c(start, " ", body),
+          !is.na(body) & start < end ~ stringr::str_c(start, "-", end, " ", body),
+          is.na(body) & !is.na(po) ~ stringr::str_c("PO BOX ", po),
+          is.na(body) & is.na(po) & !is.na(pmb) ~ stringr::str_c("PMB ", pmb),
+          .default = NA_character_
+        )
+      )
+  } else {
+    df |>
+      dplyr::mutate(
+        addr = dplyr::case_when(
+          (!is.na(addr) | addr == "") & !is.na(po) ~ stringr::str_c("PO BOX ", po),
+          (!is.na(addr) | addr == "") & is.na(po) & !is.na(pmb) ~ stringr::str_c("PMB ", pmb),
+          .default = addr
+        )
+      )
+  }
+}
+
 std_leading_zero_vector <- function(x) {
   stringr::str_remove_all(x, "(?<=^|\\-)0+(?=[1-9]|[A-Z]|0$)")
 }
 
 std_addr2_floor <- function(df, cols) {
-  std_addr2_parser(df, cols, "([0-9]+[A-Z]{2}|[0-9\\.]|TOP|GROUND)[ \\-]FLOOR|FLOOR[ \\-][0-9]+")
+  std_addr2_parser(df, cols, "[ \\-]([0-9]+[A-Z]{2}|[0-9\\.]|TOP|GROUND)[ \\-]FLOOR|FLOOR[ \\-][0-9]+[ \\-]?", from_end=FALSE)
 }
 
 std_addr2_twr <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]TOWER[ \\-][0-9\\.]+")
+  std_addr2_parser(df, cols, "[ \\-]TOWER[ \\-][0-9\\.]+[ \\-]?", from_end=FALSE)
 }
 
 std_addr2_bldg <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]BUILDING[ \\-][0-9\\.]+")
+  std_addr2_parser(df, cols, "[ \\-]BUILDING[ \\-][0-9\\.]+[ \\-]?", from_end=FALSE)
+}
+
+std_addr2_and <- function(df, cols) {
+  std_addr2_parser(df, cols,"[\\- ][0-9\\.]+[A-Z]? AND [0-9\\.]+[A-Z]?$")
 }
 
 std_addr2_alpha_num <- function(df, cols) {
-  std_addr2_parser(df, cols, " [0-9]*[A-Z]{1,2}[\\- ][0-9\\.]+( ([0-9\\.]+|A-Z]))?$")
+  std_addr2_parser(df, cols, "[\\- ][0-9]*[A-Z]{1,2}[\\- ]?[0-9\\.]+([\\- ]?([0-9\\.]|[A-Z]))?$")
 }
 
 std_addr2_num_alpha <- function(df, cols) {
-  std_addr2_parser(df, cols, " [A-Z]{0,2}[0-9\\.]+[\\- ]?[A-Z]{1,2}( ([0-9\\.]+|A-Z]))?$")
+  std_addr2_parser(df, cols, "[\\- ][A-Z]{0,2}[0-9\\.]+[\\- ]?([A-Z]{1,2}|PH|ABC)(([\\- ]?[0-9\\.]|[\\- ][A-Z]))?$")
 }
 
 std_addr2_all_num <- function(df, cols) {
-  std_addr2_parser(df, cols, " ([0-9\\-\\. ]+)?[0-9]+$")
+  std_addr2_parser(df, cols, "[\\- ]([0-9\\-\\. ]+)?[0-9]+$")
 }
 
 std_addr2_alpha <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]+[A-Z]$")
+  std_addr2_parser(df, cols, "[ \\-]((PH)?[A-Z])$")
 }
 
 std_addr2_words <- function(df, cols) {
-  std_addr2_parser(df, cols, "[ \\-]+(BASEMENT|PH|REAR|FRONT)$")
+  std_addr2_parser(df, cols, "[ \\-](BASEMENT|PH|REAR|FRONT)$")
 }
 
-std_addr2_parser <- function(df, cols, regex) {
-  if (!all(stringr::str_c(cols, "2", sep="") %in% names(df))) {
+std_addr2_parser <- function(df, cols, regex, from_end = TRUE) {
+  if(from_end) {
+    end_string <- "[ \\-]?$"
+  } else {
+    end_string <- ""
+  }
+  if (!all(stringr::str_c(cols, "addr2", sep="_") %in% names(df))) {
     df <- df |> 
       dplyr::mutate(
         dplyr::across(
           cols,
           list(
-            "2" = ~ NA_character_
+            addr2 = ~ NA_character_
           ),
-          .names = "{.col}{.fn}"
+          .names = "{.col}_{.fn}"
         )
       )
   }
@@ -1031,7 +1158,7 @@ std_addr2_parser <- function(df, cols, regex) {
           !is.na(get(paste0(dplyr::cur_column(), "_temp"))) ~ 
             stringr::str_remove(
               .x, 
-              stringr::str_c(get(paste0(dplyr::cur_column(), "_temp")), ".*$")
+              stringr::str_c(get(paste0(dplyr::cur_column(), "_temp")), end_string)
             ),
           .default = .x
         )
@@ -1044,36 +1171,30 @@ std_addr2_parser <- function(df, cols, regex) {
         )
       ),
       dplyr::across(
-        cols,
-        list(
-          "2" = ~ dplyr::case_when(
-            !is.na(get(paste0(dplyr::cur_column(), "2"))) & 
-              !is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
-            ~ stringr::str_c(
-              get(paste0(dplyr::cur_column(), "_temp")),
-              get(paste0(dplyr::cur_column(), "2")),
-              sep=" "
-            ),
-            is.na(get(paste0(dplyr::cur_column(), "2"))) & 
-              !is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
-            ~ get(paste0(dplyr::cur_column(), "_temp")),
-            !is.na(get(paste0(dplyr::cur_column(), "2"))) & 
-              is.na(get(paste0(dplyr::cur_column(), "_temp"))) 
-            ~ get(paste0(dplyr::cur_column(), "2")),
-            .default = NA_character_
-          )
-        ),
-        .names = "{.col}{.fn}"
+        stringr::str_c(cols, "_addr2"),
+        ~ dplyr::case_when(
+          !is.na(.x) & 
+            !is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
+          ~ stringr::str_c(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp")),
+            .x,
+            sep=" "
+          ),
+          is.na(.x) & 
+            !is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
+          ~ get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp")),
+          !is.na(.x) & 
+            is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
+          ~ .x,
+          .default = NA_character_
+        )
       )
-    ) |>
+    )  |>
+    std_squish(stringr::str_c(cols, "_addr2")) |>
     dplyr::select(-stringr::str_c(cols, "_temp")) |>
-    std_squish(stringr::str_c(cols, "2"))
+    std_replace_blank(cols)
 }
 
-std_addr2_po_pmb <- function(df, cols, prefixes) {
-  if (missing(prefixes)) {
-    prefixes <- cols
-  }
+std_addr2_po_pmb <- function(df, cols) {
   terms <- c(
     "(P ?[0O] ?)+B[0X]?X",
     "((P ?)?[0O])+ ?BOX",
@@ -1110,18 +1231,16 @@ std_addr2_po_pmb <- function(df, cols, prefixes) {
         ~ stringr::str_remove_all(., ",?(PO BOX|PMB) ?[A-Z0-9\\-]+( [0-9]+)?")
       )
     ) |>
-    dplyr::rename_with(
-      ~ stringr::str_replace(
-        .x, 
-        stringr::str_c("(?<=(", stringr::str_c(prefixes, collapse="|"), "))[a-z\\_]+(?=_(", stringr::str_c(c("po", "pmb"), collapse="|"), ")$)"),
-        ""
-      )
-    ) |>
     std_replace_blank(cols) |>
     std_squish(cols)
 }
 
-std_addr2_remove_keywords <- function(df, cols) {
+std_addr2_remove_keywords <- function(df, cols, start = FALSE) {
+  if (start) {
+    start_string <- "^ ?"
+  } else {
+    start_string <- "[\\,\\-\\ ]" 
+  }
   
   terms <- c(
     "UNITS?",
@@ -1131,7 +1250,7 @@ std_addr2_remove_keywords <- function(df, cols) {
     "R(OO)?M",
     "PS( AREA)?"
   )
-  terms <- stringr::str_c("[\\,\\-\\ ]", terms, "[\\,\\-\\ 0-9]") |>
+  terms <- stringr::str_c(start_string, terms, "[\\,\\-\\ 0-9]") |>
     std_collapse_regex()
   df <- std_replace_generic(
     df, 
@@ -1174,12 +1293,7 @@ std_addr2_remove_keywords <- function(df, cols) {
 }
 
 std_simp_street <- function(df, cols) {
-  street <-c(
-    "STREET", "AVENUE", "LANE", "EXTENSION", "PARK", "DRIVE",
-    "ROAD", "BOULEVARD", "PARKWAY", "TERRACE", "PLACE", "WAY",
-    "CIRCLE", "ALLEY", "SQUARE", "HIGHWAY", "CENTER", "FREEWAY",
-    "COURT", "PLAZA", "WHARF"
-  ) |>
+  street <- SEARCH$street_types |>
     std_collapse_regex()
   street <- stringr::str_c(" (", street, ")$", sep="")
   
@@ -1334,8 +1448,8 @@ std_munis_by_places <- function(df,
     dplyr::filter(!match & !is.na(.data[[col]])) |>
     dplyr::left_join(
       places |>
-        dplyr::select(pl_name = name, replace = muni),
-      by = dplyr::join_by(!!col == pl_name),
+        dplyr::select(pl_name = name, zip, replace = muni),
+      by = dplyr::join_by(!!col == pl_name, !!postal_col == zip),
       na_matches = "never"
     ) |>
     dplyr::mutate(
@@ -1351,32 +1465,31 @@ std_munis_by_places <- function(df,
         dplyr::filter(match | is.na(.data[[col]]))
     )
   
-  # Replace/fill muni names by fuzzy matching on places.
-  # state <- state |>
-  #   dplyr::filter(!match & !is.na(.data[[col]])) |>
-  #   fuzzyjoin::regex_left_join(
-  #     places |>
-  #       dplyr::select(name_fuzzy, replace = muni),
-  #     by = dplyr::join_by(!!col == name_fuzzy)
-  #   ) |>
-  #   dplyr::mutate(
-  #     dist = stringdist::stringdist(.data[[col]], replace)
-  #   ) |>
-  #   dplyr::group_by(dplyr::across(-c(dist, replace, name_fuzzy))) |>
-  #   dplyr::slice_min(dist, n=1) |>
-  #   dplyr::ungroup() |>
-  #   dplyr::mutate(
-  #     match = !is.na(replace),
-  #     !!col := dplyr::case_when(
-  #       match ~ replace,
-  #       .default = .data[[col]]
-  #     )
-  #   ) |>
-  #   dplyr::select(-c(dist, replace, name_fuzzy)) |>
-  #   dplyr::bind_rows(
-  #     state |>
-  #       dplyr::filter(match | is.na(.data[[col]]))
-  #   )
+  places <- places |>
+    dplyr::group_by(name) |>
+    dplyr::filter(dplyr::n() == 1) |>
+    dplyr::ungroup()
+  
+  state <- state |>
+    dplyr::filter(!match & !is.na(.data[[col]])) |>
+    dplyr::left_join(
+      places |>
+        dplyr::select(pl_name = name, zip, replace = muni),
+      by = dplyr::join_by(!!col == pl_name, !!postal_col == zip),
+      na_matches = "never"
+    ) |>
+    dplyr::mutate(
+      match = !is.na(replace),
+      new_town = dplyr::case_when(
+        match ~ replace,
+        .default = NA_character_
+      )
+    ) |>
+    dplyr::select(-c(replace)) |>
+    dplyr::bind_rows(
+      state |>
+        dplyr::filter(match | is.na(.data[[col]]))
+    )
 
   state <- state |>
     dplyr::filter(!match & !is.na(.data[[col]])) |>
@@ -1480,7 +1593,8 @@ std_multiname <- function(df, col) {
         stringr::str_detect(.data[[col]], " AND ") ~ TRUE,
         .default = FALSE
       )
-    )
+    ) |>
+    tibble::rowid_to_column("temp_id")
   
   df |>
     dplyr::filter(
@@ -1495,7 +1609,7 @@ std_multiname <- function(df, col) {
     dplyr::mutate(
       last = stringr::str_extract(.data[[col]], "^[A-Z]{2,}(?= [A-Z]{2,20} [A-Z]$)")
     ) |>
-    dplyr::group_by(site_id) |>
+    dplyr::group_by(temp_id) |>
     tidyr::fill(last, .direction="updown") |>
     dplyr::ungroup() |>
     std_remove_middle_initial(col, restrictive = FALSE) |>
@@ -1505,13 +1619,14 @@ std_multiname <- function(df, col) {
         .default = .data[[col]]
       )
     ) |>
-    dplyr::filter(stringr::str_count(.data[[col]], "([A-Z]{2,}\\s)") == 1) |>
+    dplyr::filter(
+      stringr::str_count(.data[[col]], "([A-Z]{2,}\\s)") > 0) |>
     dplyr::select(-last) |>
     dplyr::bind_rows(
     df |>
       dplyr::filter(!name_and | trust | inst)
     ) |>
-    dplyr::select(-name_and)
+    dplyr::select(-c(name_and, temp_id))
 }
 
 std_remove_estate <- function(df, col, estate_name = "estate") {
@@ -1538,99 +1653,68 @@ std_separate_and_label <- function(df,
                                    col, 
                                    regex, 
                                    label = "",
-                                   base_label = "owner",
                                    target_col = "name",
                                    clear_cols = c()) {
-  regex <- stringr::regex(regex)
-  
-  df_base <- df |>
+  regex = stringr::regex(regex)
+  df <- df |>
     dplyr::mutate(
-      flag = stringr::str_detect(.data[[col]], regex),
       flag = dplyr::case_when(
-        is.na(flag) ~ FALSE,
-        .default = flag
+        stringr::str_detect(.data[[col]], regex) ~ TRUE,
+        .default = FALSE
       )
     )
-  df <- df_base |>
+  match <- df |>
     dplyr::filter(flag) |>
     tidyr::separate_longer_delim(
       tidyselect::all_of(col),
       regex
-    ) |> 
-    dplyr::filter(
-      nzchar(.data[[col]])
+    ) |>
+    dplyr::mutate(
+      !!col := dplyr::na_if(.data[[col]], "")
     ) |>
     dplyr::group_by(dplyr::across(-dplyr::all_of(col))) |>
     dplyr::mutate(
-      own_position = dplyr::row_number(),
+      row = dplyr::row_number(),
       count = dplyr::n()
     ) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       type = dplyr::case_when(
-        own_position > 1 | own_position == count & nchar(label) == 0 ~ type,
-        own_position > 1 | own_position == count ~ label,
+        nchar(label) == 0 ~ type,
+        row > 1 | row == count ~ label,
         .default = type
       )
     )
-  
+
   if(target_col != col) {
-    df <- df |>
-      dplyr::filter(flag) |>
-      tidyr::pivot_longer(
-        cols = all_of(c(target_col, col)),
-        names_to = "column"
-      ) |>
+    match <- match |>
       dplyr::mutate(
-        type = dplyr::case_when(
-          column == target_col ~ base_label,
-          column == col ~ label
+        !!target_col := dplyr::case_when(
+          type == label ~ .data[[col]],
+          .default = name
         ),
-        !!col := NA_character_
-      ) |>
-      dplyr::rename(!!target_col := value) |>
-      dplyr::select(-column)
+        addr = dplyr::case_when(
+          type == label ~ NA_character_,
+          .default = .data[[col]]
+        )
+      )
   }
-  df |> 
+  match |> 
     dplyr::mutate(
       dplyr::across(
         dplyr::any_of(clear_cols),
         ~ dplyr::case_when(
-          type == base_label ~
+          type != label ~
             NA,
           .default = .
         )
       )
     ) |>
     dplyr::bind_rows(
-      df_base |>
+      df |>
         dplyr::filter(!flag)
     ) |>
-    dplyr::select(-c(own_position, count, flag))
-}
-
-
-std_co_dba_attn <- function(df, col = "name", target_col = "name") {
-  df |>
-    std_separate_and_label(
-      col = col,
-      target_col = target_col,
-      regex = "( ?C / [O0]| C[O0] - (?!TR|OP))",
-      label = "co",
-      clear_cols = c("addr", "muni", "state", "postal", "country")
-    ) |>
-    std_separate_and_label(
-      col = col,
-      target_col = target_col,
-      regex = "(^| )(D(( \\/ )| )?B(( \\/ )| )?A)($| )",
-      label = "dba"
-    ) |>
-    std_separate_and_label(
-      col = col,
-      target_col = target_col,
-      regex = "(^| )ATTN($| )|(^ATT )",
-      label = "attn"
-    )
+    dplyr::select(-c(row, count, flag))
 }
 
 
@@ -1646,20 +1730,24 @@ std_flag_hns <- function(df, col) {
     )
 }
 
-std_flag_condos <- function(df, luc_col, id_col) {
+std_flag_condos <- function(df, luc_col, id_cols) {
   df |>
+    dplyr::mutate(
+      condo_unit = .data[[luc_col]] == '102'
+    ) |>
     dplyr::group_by(
       dplyr::across(
-        dplyr::all_of(id_col)
+        dplyr::all_of(id_cols)
         )
       ) |>
     dplyr::mutate(
       condo = dplyr::case_when(
-        any(.data[[luc_col]] ==) ~ TRUE,
+        sum(condo_unit) != 0 ~ TRUE,
         .default = FALSE
       )
     ) |>
-    dplyr::ungroup()
+    dplyr::ungroup() |>
+    dplyr::select(-condo_unit)
 }
 
 std_flag_inst <- function(df, col) {
@@ -1696,11 +1784,21 @@ std_flag_trust <- function(df, col) {
   df |>
     dplyr::mutate(
       trust = dplyr::case_when(
-        stringr::str_detect(.data[[col]], "TRUST") ~ TRUE,
+        stringr::str_detect(.data[[col]], "TRUST(?!EES)") ~ TRUE,
+        stringr::str_detect(.data[[col]], "^TRUSTEES OF ")
+          & !stringr::str_detect(.data[[col]], "UNIVERSITY|COLLEGE|INSTITUTE") ~ TRUE,
+        stringr::str_detect(.data[[col]], 
+          stringr::str_c(
+            "\\b(",
+            stringr::str_c(SEARCH$trust_definite, collapse = "|"),
+            ")\\b",
+            sep = "")
+        ) ~ TRUE,
         .default = FALSE
       ),
       trustees = dplyr::case_when(
-        stringr::str_detect(.data[[col]], "TRUSTEES") ~ TRUE,
+        stringr::str_detect(.data[[col]], "TRUSTEES") 
+        & !stringr::str_detect(.data[[col]], "UNIVERSITY|COLLEGE|INSTITUTE") & !trust ~ TRUE,
         .default = FALSE
       )
     )
@@ -1818,7 +1916,8 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips
   ma_zips <- zips |>
     dplyr::filter(state == "MA") |>
     dplyr::group_by(zip) |>
-    dplyr::filter(dplyr::row_number() == 1)
+    dplyr::filter(dplyr::row_number() == 1) |>
+    dplyr::ungroup()
   
   df <- df |> 
     dplyr::left_join(
@@ -1888,6 +1987,25 @@ std_calculate_overlap <- function(x, y, threshold = 0) {
 
 # Name Handlers ====
 
+std_alphabetize_name <- function(df, col) {
+  new_col <- stringr::str_c(col, "_alpha")
+  df |>
+    dplyr::mutate(
+      !!new_col := .data[[col]]
+    ) |>
+    tibble::rowid_to_column("row_id") |>
+    tidyr::separate_longer_delim(
+      .data[[new_col]],
+      delim = " "
+    ) |>
+    dplyr::group_by(row_id) |>
+    dplyr::arrange(.data[[new_col]], .by_group = TRUE) |>
+    dplyr::mutate(!!new_col := paste(.data[[new_col]], collapse = " ")) |>
+    dplyr::slice(1) |>
+    dplyr::ungroup() |>
+    dplyr::select(-row_id)
+}
+
 std_remove_middle_initial <- function(df, cols, restrictive=TRUE) {
   #' Replace middle initial when formatted like "ERIC R HUNTLEY"
   #' 
@@ -1907,6 +2025,45 @@ std_remove_middle_initial <- function(df, cols, restrictive=TRUE) {
         ~ stringr::str_squish(stringr::str_replace_all(., string, ""))
       )
     )
+}
+
+std_match_address_to_address <- function(a1, a2, fill_cols, ...) {
+  a1 |>
+    dplyr::left_join(
+      a2 |>
+        dplyr::mutate(
+          dplyr::across(
+            dplyr::all_of(fill_cols),
+            list(
+              replace = ~ .
+            )
+          )
+        ) |> 
+        dplyr::select(
+          c(
+            dplyr::all_of(stringr::str_c(fill_cols, "_replace")),
+            start_y = start,
+            end_y = end,
+            ...
+          )
+        ),
+      by = dplyr::join_by(
+        ...,
+        dplyr::within(start, end, start_y, end_y)
+      ),
+      na_matches = "never",
+      multiple = "first"
+    ) |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(fill_cols),
+        ~ dplyr::case_when(
+          !is.na(get(paste0(dplyr::cur_column(), "_replace"))) ~ get(paste0(dplyr::cur_column(), "_replace")),
+          .default = .x
+        )
+      )
+    ) |>
+    dplyr::select(-dplyr::all_of(stringr::str_c(fill_cols, "_replace")), -c(start_y, end_y))
 }
 
 

@@ -1,4 +1,7 @@
 source("R/loaders.R")
+source('R/standardizers.R')
+source('R/deduplicaters.R')
+source("R/flows.R")
 source("config.R")
 
 run <- function() {
@@ -15,9 +18,19 @@ run <- function() {
     refresh = REFRESH,
     crs = CRS,
     gdb_path = GDB_PATH,
-    oc_path = OC_PATH,
-    tables = c("assess")
+    oc_path = OC_PATH
   )
+  
+  # Process Assessors Table ====
+  flow_process_all(
+    assess = ASSESS,
+    addresses = ADDRESSES,
+    zips=ZIPS,
+    parcels=PARCELS,
+    places=PLACES
+  )
+  
+  flow_dedupe_all()
   
   # Close log ====
   logr::log_close()

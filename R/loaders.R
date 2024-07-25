@@ -311,7 +311,7 @@ load_postgis_read <- function(conn, table_name) {
   geo_tables <- DBI::dbFetch(q) |> 
     dplyr::pull(f_table_name)
   
-  if (layer_name %in% geo_tables) {
+  if (table_name %in% geo_tables) {
     sf::st_read(
       dsn = conn,
       layer = table_name,
@@ -607,7 +607,7 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
     )
   
   df <- dplyr::bind_rows(all) |>
-    flow_address_text(c("body")) |>
+    flow_address_text(c("body"), numbers=FALSE) |>
     dplyr::mutate(
       addr = dplyr::case_when(
         end > start ~ stringr::str_c(start, "-", end, " ", body, sep=""),
@@ -649,10 +649,31 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
       by = dplyr::join_by(body, state, even, muni, postal, loc_id)
     ) |>
     sf::st_set_geometry("geometry") |>
-    tibble::rowid_to_column("id")
+    tibble::rowid_to_column("id") |>
+    dplyr::group_by(body, start, end, muni, even) |>
+    dplyr::mutate(
+      unique_in_muni = dplyr::n() == 1
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::group_by(body, start, end, postal, even) |>
+    dplyr::mutate(
+      unique_in_postal = dplyr::n() == 1
+    ) |>
+    dplyr::ungroup() |>
+    std_simp_street("body") |>
+    dplyr::group_by(body_simp, start, end, muni, even) |>
+    dplyr::mutate(
+      unique_in_muni_simp = dplyr::n() == 1
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::group_by(body_simp, start, end, postal, even) |>
+    dplyr::mutate(
+      unique_in_postal_simp = dplyr::n() == 1
+    ) |>
+    dplyr::ungroup()
 }
 
-load_places <- function(munis, crs) {
+load_places <- function(munis, zips, crs) {
   #' Load Massachusetts Geographic Place Names
   #' 
   #' Downloads Geographic Place Names from MassGIS Servers and performs some basic
@@ -669,6 +690,13 @@ load_places <- function(munis, crs) {
   #' @export
   
   munis <- dplyr::select(munis, muni)
+  
+  ma_zips <- zips |>
+    dplyr::filter(state == "MA") |>
+    dplyr::group_by(zip) |>
+    dplyr::filter(dplyr::row_number() == 1) |>
+    dplyr::ungroup() |>
+    dplyr::select(zip)
   
   df <- load_shp_from_remote_zip(
       "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/geonames_shp.zip",
@@ -688,6 +716,9 @@ load_places <- function(munis, crs) {
     ) |>
     sf::st_join(
       munis, join = sf::st_intersects
+    ) |>
+    sf::st_join(
+      ma_zips, join = sf::st_intersects
     )
   
   df <- df |>
@@ -699,11 +730,22 @@ load_places <- function(munis, crs) {
     dplyr::bind_rows(
       df |>
         dplyr::filter(!is.na(muni))
+    ) 
+  
+  df <- df |>
+    dplyr::filter(is.na(zip)) |>
+    dplyr::select(-zip) |>
+    sf::st_join(
+      ma_zips, join = sf::st_nearest_feature
     ) |>
-    sf::st_drop_geometry() |>
-    dplyr::distinct()
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!is.na(zip))
+    )
   
   df |>
+    sf::st_drop_geometry() |>
+    dplyr::distinct() |>
     dplyr::bind_rows(
       munis |>
         sf::st_drop_geometry() |>
@@ -725,13 +767,7 @@ load_places <- function(munis, crs) {
       ),
       name_fuzzy = std_fuzzify_string(tmp)
     ) |>
-    dplyr::select(-tmp) |>
-    dplyr::filter(!(name == "CAMBRIDGE" & muni == "WORCESTER")) |>
-    # Remove placenames that appear in multiple places.
-    # These are not useful for deduplication.
-    dplyr::add_count(name) |>
-    dplyr::filter(n == 1) |>
-    dplyr::select(-n)
+    dplyr::select(-tmp)
 }
 
 load_munis <- function(crs) {
@@ -871,7 +907,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
 
 # Derive Layers ====
 
-load_sites_from_assess <- function(df, site_prefix) {
+load_sites_from_assess <- function(df, site_prefix, addresses) {
   # WIP
   
   df |> 
@@ -880,23 +916,35 @@ load_sites_from_assess <- function(df, site_prefix) {
       ) |>
     dplyr::rename_with(
       ~ stringr::str_remove(.x, stringr::str_c(site_prefix, "_"))
-      )
+      ) |>
+    dplyr::select(-c(country))
 }
 
 
-load_owners_from_assess <- function(df, site_prefix, own_prefix, base_label="owner") {
+load_owners_from_assess <- function(df, site_prefix, own_prefix, sites) {
   # WIP
   res_col <- stringr::str_c(site_prefix, "res", sep="_")
-  df |> 
+  df <- df |> 
     dplyr::filter(.data[[res_col]]) |>
     dplyr::select(
-      c(site_id, dplyr::starts_with(own_prefix))
+      c(site_id, dplyr::starts_with(own_prefix), dplyr::all_of(res_col))
     ) |>
     dplyr::rename_with(
       ~ stringr::str_remove(.x, stringr::str_c(own_prefix, "_"))
     ) |>
-    dplyr::mutate(
-      type = base_label
+    dplyr::select(-c(country))
+  
+  df |>
+    dplyr::filter(!is.na(loc_id)) |>
+    dplyr::select(site_id, loc_id, site_res, name) |>
+    dplyr::left_join(
+      sites |>
+        dplyr::select(id, addr, start, end, body, even, muni, postal, state),
+      by = dplyr::join_by(site_id == id)
+    ) |>
+    dplyr::bind_rows(
+      df |> 
+        dplyr::filter(is.na(loc_id))
     )
 }
 
@@ -1038,6 +1086,7 @@ load_ingest_read_all <- function(
       "places",
       load_places(
         munis=MUNIS,
+        zips=ZIPS,
         crs=crs
       ),
       refresh=refresh

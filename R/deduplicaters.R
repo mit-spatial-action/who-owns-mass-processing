@@ -1,5 +1,63 @@
-source("R/loaders.R")
-source("R/run_utils.R")
+source("R/utilities.R")
+
+dedupe_unique_addresses <- function(df, sites, addresses) {
+  df <- df |>
+    dplyr::select(id, addr, start, end, body, even, muni, postal, state, loc_id)  |>
+    flow_address_to_address_seq(sites, addresses) |>
+    dplyr::filter(!is.na(addr)) |>
+    dplyr::group_by(addr, start, end, body, even, muni, postal, loc_id) |>
+    tidyr::fill(state, .direction = "updown") |>
+    dplyr::mutate(
+      addr_id = stringr::str_c("address-", dplyr::cur_group_id())
+    ) |>
+    dplyr::ungroup()
+  
+  list(
+    through_table = df |> dplyr::select(id, addr_id) |> dplyr::distinct(),
+    addresses = df |> dplyr::select(-id) |> dplyr::rename(id = addr_id) |> dplyr::distinct()
+  )
+}
+
+dedupe_address_to_id <- function(df, df2) {
+  df |>
+    dplyr::select(-dplyr::any_of(c("addr", "start", "end", "body", "even", "muni", "postal", "state", "loc_id"))) |>
+    dplyr::left_join(
+      df2,
+      dplyr::join_by(id == id)
+    )
+}
+
+dedupe_cosine_bounded <- function(df, id, field1, field2, thresh) {
+  df <- df |>
+    dplyr::filter(!is.na(.data[[field1]]) & !is.na(.data[[field2]])) |>
+    dedupe_naive(field1) |>
+    dedupe_cosine(field1, thresh=thresh) |>
+    dplyr::mutate(
+      group_cosine = dplyr::case_when(
+        !is.na(group_cosine) ~ group_cosine,
+        .default = group_naive
+      )
+    ) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(field2)), group_cosine) |>
+    dplyr::mutate(
+      cosine_bounded = stringr::str_c("cosine-bounded-", dplyr::cur_group_id())
+    ) |>
+    dplyr::ungroup()
+  
+  df |>
+    dplyr::left_join(
+      df |>
+        dplyr::select(cosine_bounded, group_naive) |>
+        dplyr::distinct() |>
+        dedupe_community(
+          "grouped",
+          name="cosine_bounded",
+          membership="group_id"
+        ),
+      dplyr::join_by(cosine_bounded)
+    ) |>
+    dplyr::select(-c(cosine_bounded, group_cosine, group_naive))
+}
 
 flag_lawyers <- function(df, cols) {
   #' Flags likely law offices and lawyers.
@@ -23,7 +81,7 @@ flag_lawyers <- function(df, cols) {
     )
 }
 
-dedupe_naive <- function(df, str_field) {
+dedupe_naive <- function(df, str_field, prefix="naive") {
   #' Naive deduplication function, based on duplicate names and addresses.
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -35,14 +93,9 @@ dedupe_naive <- function(df, str_field) {
       dplyr::across({{ str_field }})
       ) |>
     dplyr::mutate(
-      group_naive = stringr::str_c("naive", dplyr::cur_group_id(), sep = "_")
+      group_naive = stringr::str_c(prefix, "-", dplyr::cur_group_id())
       ) |>
-    dplyr::ungroup() |>
-    dplyr::group_by(
-      dplyr::across({{ str_field }}), group_naive) |>
-    dplyr::summarize()
-  df |>
-    dplyr::left_join(distinct, by = str_field)
+    dplyr::ungroup()
 }
 
 dedupe_community <- function(df, prefix, name, membership, nodes = NULL) {
@@ -77,7 +130,7 @@ dedupe_community <- function(df, prefix, name, membership, nodes = NULL) {
     dplyr::mutate(
       # Prepend a prefix onto the group id to ensure
       # uniqueness from other deduplication groups.
-      !!membership := stringr::str_c(prefix, get(membership), sep = "_")
+      !!membership := stringr::str_c(prefix, "-", get(membership))
     )
 }
 
@@ -104,8 +157,9 @@ dedupe_text_mode <- function(df, group_col, cols) {
 
 dedupe_cosine <- function(df,
                           str_field,
-                          group = "group_cosine",
-                          thresh = 0.75) {
+                          thresh,
+                          group = "group_cosine"
+                          ) {
   #' Cosine similarity-based deduplication.
   #'
   #' @param df A dataframe containing only string datatypes.
@@ -152,7 +206,15 @@ dedupe_cosine <- function(df,
           membership = group
         ),
       by = str_field
-    )
+    ) |>
+    dplyr::arrange( .data[[group]] ) 
+  # |>
+  #   dplyr::mutate(
+  #     !!group := dplyr::case_when(
+  #       is.na(.data[[group]]) ~ max(.data[[group]], na.rm = TRUE) + (dplyr::row_number() - sum(!is.na(.data[[group]]))),
+  #       .default = .data[[group]]
+  #     )
+  #   )
 }
 
 dedupe_fill_group <- function(df, group, fill_col) {
@@ -170,45 +232,6 @@ dedupe_fill_group <- function(df, group, fill_col) {
     tidyr::fill({{ fill_col }}, .direction = "updown") |>
     dplyr::ungroup()
 }
-
-process_owners <- function(df) {
-  df |>
-    # Concatenate name_address
-    dplyr::mutate(
-      name_address = dplyr::case_when(
-        !is.na(owner1) & is.na(own_addr) ~ owner1,
-        is.na(owner1) & !is.na(own_addr) ~ own_addr,
-        is.na(owner1) & is.na(own_addr) ~ NA_character_,
-        TRUE ~ stringr::str_c(owner1, own_addr, sep = " ")
-      )
-    ) |>
-    dplyr::select(-c(site_addr, ooc)) |>
-    # Naive deduplication on prepared, concatenated name and address.
-    dedupe_naive(str_field = "name_address") |>
-    # Cosine-similarity-based deduplication.
-    dedupe_cosine(
-      str_field = "name_address",
-      group = "group_cosine",
-      thresh = 0.75
-    ) |>
-    dplyr::mutate(
-      group = dplyr::case_when(
-        !is.na(group_cosine) ~ group_cosine,
-        TRUE ~ group_naive
-      )
-    ) |>
-    dplyr::select(-c(group_cosine, group_naive))
-}
-
-# process_corps <- function(df){
-#   df |>
-#     std_flow_strings(c("entityname", "agentname", "agentaddr1", "agentaddr2")) |>
-#     std_zip(c("agentpostalcode")) |> 
-#     std_flow_addresses(c("agentaddr1", "agentaddr2")) |>
-#     std_flow_cities(c("agentcity")) |>
-#     std_flow_names(c("entityname", "agentname", "agentaddr1", "agentaddr2")) |>
-#     tidyr::drop_na("entityname")
-# }
 
 #' process_deduplication <- function(town_ids = NA, return_results = TRUE) {
 #'   #' Run complete owner deduplication process.

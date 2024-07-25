@@ -1,5 +1,5 @@
 # If true, load.R will re-ingest data from sources.
-REFRESH <- TRUE
+REFRESH <- FALSE
 
 # If not NULL, will run script on a subset of municipalities.
 # Can be provided as numeric or character vector.

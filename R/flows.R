@@ -1,3 +1,6 @@
+source('R/standardizers.R')
+source('R/deduplicaters.R')
+
 # Helpers ====
 
 flow_add_to_col_list <- function(col_list, prefixes, new_cols) {
@@ -68,6 +71,7 @@ flow_boston_address_preprocess <- function(df, cols, bos_id='035') {
       body,
       state,
       muni,
+      muni_id,
       postal = zip_code,
       num = street_number,
       start = range_from,
@@ -203,73 +207,98 @@ flow_officers_preprocess <- function(df) {
 
 # Addresses ====
 
-flow_address_text <- function(df, cols, rm_ma = TRUE) {
-  df |>
+flow_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {
+  df <- df |>
     std_street_types(cols) |>
     std_directions(cols) |>
     std_frac_to_dec(cols) |>
     std_small_ordinals(cols) |>
-    std_leading_zeros(cols, rmsingle = TRUE) |>
+    std_leading_zeros(cols, rmsingle = TRUE)
+  
+  if (numbers) {
+    df <- df |>
+      std_small_numbers(cols)
+  }
+  df |>
+    std_fix_concatenated_ranges(cols) |>
     std_hyphenate_range(cols) |>
     std_massachusetts(cols, rm_ma = rm_ma) |>
     std_squish(cols)
 }
 
-flow_addr2 <- function(df, cols, prefixes, po_pmb = FALSE) {
-  if (missing(prefixes)) {
-    prefixes = cols
-  }
+std_col_prefixes <- function (df, prefixes=c(), parsed_cols=c()) {
+  if (length(prefixes) != 0) {
+    prefixes <- stringr::str_c(
+      "(?<=(", 
+      stringr::str_c(prefixes, collapse="|"), 
+      ")_)"
+    )
+  } 
+  
+  df |>
+    dplyr::rename_with(
+      ~ stringr::str_replace(
+        .x,
+        stringr::str_c(
+          prefixes,
+          "[a-z\\_]+(?=(", 
+          stringr::str_c(parsed_cols, collapse="|"), 
+          ")$)"
+        ),
+        ""
+      )
+    )
+}
+
+flow_addr2 <- function(df, cols, prefixes=c(), po_pmb = FALSE) {
+  
   if (po_pmb) {
     df <- df |> 
-      std_addr2_po_pmb(cols, prefixes)
+      std_addr2_po_pmb(cols)
   }
+  
   df |>
     std_addr2_remove_keywords(cols) |>
     std_addr2_floor(cols) |>
     std_addr2_twr(cols) |>
     std_addr2_bldg(cols) |>
+    std_addr2_and(cols) |>
     std_addr2_alpha_num(cols) |>
-    std_addr2_num_alpha(cols) |> 
-    std_addr2_all_num(cols) |> 
+    std_addr2_num_alpha(cols) |>
+    std_addr2_all_num(cols) |>
     std_addr2_alpha(cols) |>
     std_addr2_words(cols) |>
-    std_squish(cols)
+    std_squish(cols) |>
+    std_col_prefixes(prefixes, parsed_cols=c("po", "pmb", "addr2"))
 }
 
-flow_address_to_range <- function(df, cols, prefixes) {
-  
-  if (missing(prefixes)) {
-    prefixes <- cols
-  }
-  
-  parsed_cols <- c("start", "end", "body", "even")
+flow_address_to_range <- function(df, cols, prefixes=c()) {
   
   df <- df |>
     dplyr::mutate(
       dplyr::across(
         cols,
         list(
-          range_ = ~ stringr::str_detect(.x, "^[0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9]|[A-Z]{1,2})?([ -]+[0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)+ +(?=[A-Z0-9])"),
-          num_init_ = ~ stringr::str_extract(.x, "^[0-9]+[A-Z]{0,2} *((1 \\/ 2)|\\.[0-9]|[A-Z]{1,2})?([ -]+(([0-9]+[A-Z]{0,1} *((1 \\/ 2)|\\.[0-9])?)*|[A-Z]))? +(?=[A-Z0-9])")
+          num_ = ~ stringr::str_extract(.x, "^[0-9\\.]+[A-Z]{0,2}([ \\-][0-9\\.]+[A-Z]{0,1})*(?= ([0-9]{1,3}(ST|ND|RD|TH)|[A-Z]))")
         )
       ),
       dplyr::across(
         cols,
         list(
-          body = ~ stringr::str_remove(.x, get(paste0(dplyr::cur_column(), "_num_init_")))
+          body = ~ dplyr::case_when(
+            !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~
+              stringr::str_squish(stringr::str_remove(.x, get(paste0(dplyr::cur_column(), "_num_")))),
+            .default = NA_character_
+          )
         )
       ),
       dplyr::across(
         cols,
         list(
-          start = ~ as.numeric(
-            stringr::str_extract(
-              stringr::str_replace(
-                .x, 
-                " 1 \\/ 2", 
-                "\\.5"
-              ),
-              "^[0-9\\.]+")
+          start = ~ dplyr::case_when(
+            !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~ 
+              as.numeric(stringr::str_extract(get(paste0(dplyr::cur_column(), "_num_")), "^[0-9\\.]+")),
+            .default = NA
           )
         )
       ),
@@ -277,17 +306,13 @@ flow_address_to_range <- function(df, cols, prefixes) {
         cols,
         list(
           end_init_ = ~ dplyr::case_when(
-            get(paste0(dplyr::cur_column(), "_range_")) ~ as.numeric(
+            !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~ as.numeric(
               stringr::str_extract(
-                stringr::str_replace(
-                  .x, 
-                  " 1 \\/ 2", 
-                  "\\.5"
-                ),
-                "(?<=[- ])[0-9\\.]+"
-              )
+                get(paste0(dplyr::cur_column(), "_num_")), 
+                "[0-9\\.]+(?=[A-Z]?$)"
+                )
             ),
-            .default = get(paste0(dplyr::cur_column(), "_start"))
+            .default = NA
           )
         )
       ),
@@ -295,9 +320,9 @@ flow_address_to_range <- function(df, cols, prefixes) {
         cols,
         list(
           end = ~ dplyr::case_when(
-            (get(paste0(dplyr::cur_column(), "_end_init_")) < get(paste0(dplyr::cur_column(), "_start"))) | is.na(get(paste0(dplyr::cur_column(), "_end_init_")))
-            ~ get(paste0(dplyr::cur_column(), "_start")),
-            .default = get(paste0(dplyr::cur_column(), "_end_init_"))
+            (get(paste0(dplyr::cur_column(), "_end_init_")) > get(paste0(dplyr::cur_column(), "_start"))) | is.na(get(paste0(dplyr::cur_column(), "_end_init_")))
+            ~ get(paste0(dplyr::cur_column(), "_end_init_")),
+            .default = get(paste0(dplyr::cur_column(), "_start"))
           )
         )
       ),
@@ -310,37 +335,10 @@ flow_address_to_range <- function(df, cols, prefixes) {
             .default = FALSE
           )
         )
-      ),
-      dplyr::across(
-        cols,
-        list(
-          num_ = ~ dplyr::case_when(
-            (get(paste0(dplyr::cur_column(), "_start")) == get(paste0(dplyr::cur_column(), "_end")))
-            & get(paste0(dplyr::cur_column(), "_range_"))
-            ~ stringr::str_c(get(paste0(dplyr::cur_column(), "_start"))),
-            (get(paste0(dplyr::cur_column(), "_start")) != get(paste0(dplyr::cur_column(), "_end")))
-            & get(paste0(dplyr::cur_column(), "_range_"))
-            ~ stringr::str_c(get(paste0(dplyr::cur_column(), "_start")), get(paste0(dplyr::cur_column(), "_end")), sep="-"),
-            .default = get(paste0(dplyr::cur_column(), "_num_init_"))
-          )
-        )
-      ),
-      dplyr::across(
-        cols,
-        ~ dplyr::case_when(
-          !is.na(get(paste0(dplyr::cur_column(), "_num_"))) & !is.na(get(paste0(dplyr::cur_column(), "_body"))) ~ stringr::str_squish(stringr::str_c(get(paste0(dplyr::cur_column(), "_num_")), get(paste0(dplyr::cur_column(), "_body")), sep = " ")),
-          .default = .x
-        )
       )
     ) |>
     dplyr::select(-dplyr::ends_with("_")) |>
-    dplyr::rename_with(
-      ~ stringr::str_replace(
-        .x, 
-        stringr::str_c("(?<=(", stringr::str_c(prefixes, collapse="|"), "))[a-z\\_]+(?=_(", stringr::str_c(parsed_cols, collapse="|"), ")$)"),
-        ""
-      )
-    )
+    std_col_prefixes(prefixes=prefixes, parsed_cols=c("start", "end", "body", "even"))
 }
 
 flow_match_simp_street <- function(df, cols) {
@@ -373,52 +371,49 @@ flow_match_simp_street <- function(df, cols) {
     dplyr::select(-paste0(cols, "_simp"))
 }
 
-flow_postal <- function(df, col, state_col, zips, state_val = "MA") {
-  if(missing(state_col)) {
+flow_postal <- function(df, col, state_col, zips, state_constraint = "") {
+  if (state_constraint != "") {
     df <- df |>
-      std_zip_format(
-        col,
-        zips=zips
-        )
-  } else {
-    df |>
-      dplyr::filter(.data[[state_col]] == state_val) |>
+      dplyr::filter(.data[[state_col]] == state_constraint) |>
       std_zip_format(
         col, 
         state_col=state_col,
         zips=zips, 
-        constraint="MA"
-        ) |>
+        state_constraint=state_constraint
+      ) |>
       dplyr::bind_rows(
         df |>
-          dplyr::filter(.data[[state_col]] != state_val | is.na(.data[[state_col]])) |>
+          dplyr::filter(.data[[state_col]] != state_constraint | is.na(.data[[state_col]])) |>
           std_zip_format(
             col,
             state_col=state_col,
             zips=zips
-            )
+          )
+      )
+  } else {
+    df <- df |>
+      std_zip_format(
+        col,
+        state_col=state_col,
+        zips=zips
       )
   }
+  df
 }
 
 flow_muni <- function(df,
                       col, 
                       state_col,
                       postal_col,
-                      zips,
                       places,
                       state_val = "MA") {
-  state_zips <- zips |>
-    dplyr::filter(unambig_state == state_val) |> 
-    dplyr::pull(zip) |>
-    unique()
   
   df <- df |>
     std_directions(col) |>
     dplyr::mutate(
       !!col := stringr::str_remove(
         .data[[col]], 
-        stringr::str_c("(^| )", state_val, "$")
+        stringr::str_c(" ", state_val, "$")
       ),
       temp_postal := stringr::str_extract(
         .data[[col]], 
@@ -435,7 +430,7 @@ flow_muni <- function(df,
     dplyr::select(-temp_postal) |>
     std_replace_blank(col)
   
-  df <- df |>
+  df |>
     dplyr::filter(state_unmatched) |>
     std_remove_counties(
       col,
@@ -463,48 +458,270 @@ flow_muni <- function(df,
     dplyr::select(-state_unmatched)
 }
 
+flow_name <- function(df, col, address_col, type="") {
+  df <- df |>
+    std_trailing_leading(c(col)) |>
+    std_street_types(c(col)) |>
+    std_mass_corp(c(col)) |>
+    std_inst_types(c(col)) |>
+    std_small_numbers(c(col))
+  
+  if (type == "mixed") {
+    df <- df |> 
+      std_flag_inst(c(col)) |>
+      std_flag_trust(c(col)) |>
+      dplyr::mutate(
+        !!col := dplyr::case_when(
+          trustees ~ stringr::str_remove(.data[[col]], "[\\-\\s](TRUSTEES|FOR LIFE)$"),
+          trust ~ stringr::str_remove(.data[[col]], "^TRUSTEES (OF )?"),
+          trust | trustees ~ stringr::str_remove(.data[[col]], "(?<=TRUST )TRUSTEES ?"),
+          .default = .data[[col]]
+        )
+      )
+  } else if (type == "inst") {
+    df <- df |>
+      dplyr::mutate(
+        inst = TRUE,
+        trust = FALSE,
+        trustees = FALSE
+      )
+  } else if (type == "ind") {
+    df <- df |>
+      dplyr::mutate(
+        inst = FALSE,
+        trust = FALSE,
+        trustees = FALSE
+      )
+  }
+  
+  inds <- df |>
+    dplyr::filter(!inst & !trust) |>
+    std_remove_titles(c(col)) |>
+    std_multiname(col) |>
+    std_remove_middle_initial(col, restrictive = FALSE)
+  
+  
+  df |>
+    dplyr::filter(inst | trust) |>
+    std_massachusetts(c(col)) |>
+    dplyr::bind_rows(inds) |>
+    std_replace_blank(c(col)) |>
+    std_squish(c(col))
+}
 
-flow_address_omni <- function(df, col, postal_col, muni_col, state_col, zips, places, po_pmb = FALSE, state_val = "MA") {
+flow_address_to_address_seq <- function(a1, sites, addresses) {
+  if ("sf" %in% class(sites)) {
+    sites <- sites |>
+      sf::st_drop_geometry()
+  }
+  
+  if ("sf" %in% class(addresses)) {
+    addresses <- addresses |>
+      sf::st_drop_geometry()
+  }
+  
+  if (!("loc_id" %in% names(a1))) {
+    a1 <- a1 |>
+      dplyr::mutate(
+        loc_id = NA_character_
+      )
+  }
+  
+  a1 |>
+    std_match_address_to_address(
+      sites,
+      fill_col="loc_id",
+      body, muni, postal
+    )  |>
+    std_match_address_to_address(
+      addresses,
+      fill_col="loc_id",
+      body, muni, postal
+    )  |>
+    std_match_address_to_address(
+      addresses,
+      fill_col="loc_id",
+      body, muni, postal
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_muni),
+      fill_col=c("loc_id", "postal"),
+      body, muni
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_postal),
+      fill_col=c("loc_id", "muni"),
+      body, postal
+    ) |>
+    std_simp_street("body") |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_muni_simp),
+      fill_col=c("loc_id", "postal", "body"),
+      body_simp, muni
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_postal_simp),
+      fill_col=c("loc_id", "postal", "body"),
+      body_simp, postal
+    ) |>
+    dplyr::select(-body_simp)
+}
+
+
+flow_owners_omni <- function(df, name_col, address_col, addresses, type_name = "owners") {
+  
+  df <- df |>
+    dplyr::mutate(
+      type = type_name
+    ) |>
+    flow_assess_co_dba_attn(
+      address_col,
+      target=name_col
+    ) |>
+    flow_name(
+      col=name_col,
+      address_col=address_col,
+      type="mixed"
+    ) |>
+    std_assemble_addr() |>
+    dplyr::select(-c(addr2, po, pmb)) |>
+    dplyr::mutate(
+      id = stringr::str_c(type_name, "-", dplyr::row_number())
+    )
+}
+
+flow_address_omni <- function(df, col, postal_col, muni_col, state_col, zips, places, po_pmb = FALSE, state_constraint = "") {
   df |>
     flow_address_text(col) |>
-    flow_addr2(col, po_pmb) |>
+    flow_addr2(
+      col, 
+      po_pmb=po_pmb
+    ) |>
     flow_address_to_range(col) |>
     flow_postal(
       postal_col, 
       state_col=state_col, 
       zips, 
-      state_val
+      state_constraint
     ) |>
     flow_muni(
       muni_col, 
       state_col=state_col, 
-      postal_col=postal_col, 
-      zips=zips, 
+      postal_col=postal_col,
       places=places
     )
 }
 
-flow_name_omni <- function(df, col, address_col) {
+# OpenCorporates ====
+
+flow_oc_fix_officer_addresses <- function(df) {
+  parsed_or_none <- df |>
+    dplyr::filter(is.na(addr) | !is.na(str)) |>
+    dplyr::select(-addr) |>
+    dplyr::rename(addr = str)
+  
   df |>
-    flow_assess_co_dba_attn(
-      address_col,
-      target=col
-    ) |>
-    std_trailing_leading(c(col)) |>
-    std_remove_titles(c(col)) |>
-    std_street_types(c(col)) |>
-    std_massachusetts(c(col)) |>
-    std_inst_types(c(col)) |> 
-    std_flag_inst(c(col)) |>
-    std_flag_trust(c(col)) |>
+    dplyr::filter(!is.na(addr) & is.na(str)) |>
+    std_extract_zip("addr", "postal") |>
+    std_street_types("addr") |>
     dplyr::mutate(
-      !!col := dplyr::case_when(
-        trustees ~ stringr::str_remove(.data[[col]], "[\\-\\s]TRUSTEES"),
-        .default = .data[[col]]
+      addr = stringr::str_replace(addr, " [A-Z]{3}$", ""),
+      addr = stringr::str_replace(addr, "(?<= [A-Z]{2}) [A-Z]{2}$", ""),
+      state = stringr::str_extract(addr, "(?<= |^)[A-Z]{2}$"),
+      addr = stringr::str_replace(addr, paste0("[ \\-]", state, "$"), ""),
+      new_addr = std_extract_address_vector(addr, start = TRUE),
+      addr = stringr::str_replace(addr, paste0("(?<= |^)", new_addr, "([ -]|$)"), ""),
+      muni = stringr::str_extract(addr, "(?<= |^)[A-Z\\s]+$"),
+      addr = stringr::str_replace(addr, paste0("(?<= |^)", muni, "([ -]|$)"), ""),
+      addr = dplyr::case_when(
+        !is.na(addr) & !is.na(new_addr) ~ stringr::str_c(new_addr, addr, sep=" "),
+        !is.na(addr) | addr == "" ~ new_addr,
+        .default = new_addr
       )
     ) |>
-    # Depends on previous execution of inst/trust flagging.
-    std_multiname(col)
+    dplyr::select(-c(new_addr, str)) |>
+    dplyr::bind_rows(parsed_or_none)
+}
+
+flow_oc_generic <- function(df, zips, places, type) {
+  
+  df <- df |>
+    dplyr::mutate(
+      type = type
+    ) |>
+    flow_assess_co_dba_attn(
+      "addr",
+      "name"
+    )
+  
+  df <- df |>
+    dplyr::filter(type == "co")  |>
+    flow_address_text("name") |>
+    flow_addr2("name", po_pmb=TRUE) |>
+    std_extract_address(
+      col="name",
+      target_col="addr"
+    ) |>
+    std_assemble_addr(range = FALSE) |>
+    dplyr::select(-c(pmb, po, addr2)) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(type != "co")
+    ) |>
+    dplyr::filter(!is.na(addr)) |>
+    flow_address_omni(
+      "addr",
+      postal_col="postal",
+      muni_col="muni",
+      state_col="state",
+      zips=zips,
+      places=places,
+      po_pmb=TRUE,
+      state_constraint = ""
+    ) |>
+    std_assemble_addr() |>
+    dplyr::select(-c(pmb, po, addr2)) |>
+    flow_name(
+      "name",
+      address_col="addr",
+      type="mixed"
+    )
+}
+
+flow_oc_officers_omni <- function(df, zips, places, type_name="officer") {
+  df <- df |>
+    flow_generic_preprocess(
+      c("addr", "name", "position", "str", "muni", "state", "postal", "country")
+    ) |>
+    flow_oc_fix_officer_addresses() |>
+    flow_oc_generic(zips=zips, places=places, type=type_name)
+  
+  df |>
+    dplyr::filter(!inst & !trust) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(inst | trust)
+    ) |>
+    dplyr::mutate(
+      id = stringr::str_c(type_name, "-", dplyr::row_number())
+    )
+}
+
+flow_oc_companies_omni <- function(df, zips, places, type_name="company") {
+  df <- df |>
+    flow_generic_preprocess(
+      c("name", "addr", "company_type", "muni", "state", "postal", "country"),
+      id_cols = c("id")
+    )
+  
+  df |>
+    dplyr::rename(
+      company_id = id
+    ) |>
+    flow_oc_generic(zips=zips, places=places, type=type_name) |>
+    dplyr::mutate(
+      id = stringr::str_c(type_name, "-", dplyr::row_number())
+    )
 }
 
 # Assessors-Specific Workflows ====
@@ -546,13 +763,17 @@ flow_assess_addr2 <- function(df, site_prefix, own_prefix) {
   
   matched <- df |>
     dplyr::filter(!is.na(get(cols$own$loc_id))) |>
-    flow_addr2(cols$site$addr, po_pmb = FALSE)
+    flow_addr2(
+      cols$site$addr, 
+      po_pmb = FALSE, 
+      prefixes=c(site_prefix)
+      )
   
   df |>
     dplyr::filter(is.na(get(cols$own$loc_id))) |>
     flow_addr2(
-      c(cols$site$addr, cols$own$addr), 
-      prefixes=c(site_prefix, own_prefix), 
+      c(cols$site$addr, cols$own$addr),
+      prefixes=c(site_prefix, own_prefix),
       po_pmb = TRUE
       ) |>
     flow_match_simp_street(c(cols$site$addr, cols$own$addr)) |>
@@ -593,7 +814,7 @@ flow_assess_address_to_range <- function(df, site_prefix, own_prefix) {
     dplyr::bind_rows(matched)
 }
 
-flow_assess_postal <- function(df, site_prefix, own_prefix, zips, parcels) {
+flow_assess_postal <- function(df, site_prefix, own_prefix, zips, parcels, state_constraint = "MA") {
   
   cols <- flow_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
   
@@ -601,13 +822,14 @@ flow_assess_postal <- function(df, site_prefix, own_prefix, zips, parcels) {
     flow_postal(
       cols$site$postal,
       state_col=cols$site$state, 
-      zips=zips
+      zips=zips,
+      state_constraint=state_constraint
       )
   
   df <- df |>
     dplyr::mutate(
       !!cols$own$state := dplyr::case_when(
-        !is.na(get(cols$own$loc_id)) ~ "MA",
+        !is.na(get(cols$own$loc_id)) ~ state_constraint,
         .default = get(cols$own$state)
       )
     ) |>
@@ -652,8 +874,7 @@ flow_assess_muni <- function(df, own_prefix, places, zips) {
       col = cols$own$muni,
       state_col = cols$own$state,
       postal_col = cols$own$postal,
-      places=places,
-      zips=zips
+      places=places
     )
 }
 
@@ -667,39 +888,88 @@ flow_assess_luc_units <- function(df, site_prefix, path = DATA_PATH) {
     std_units_from_luc(cols$site$luc, cols$site$muni_id, cols$site$units)
 }
 
-flow_assess_co_dba_attn <- function(df, col, target, base_label = "owner") {
-  clear_cols <- c(
-    col, "muni", "state", 
-    "postal", "country", "po", 
-    "pmb", "addr2", "body", "start", "end", "even"
-  )
+flow_fill_units <- function(df, addresses) {
+  # Identify unit counts for unambiguous cases where there is one property
+  # on a parcel and that property is single-, two-, or three-family.
+  
+  df <- df |>
+    std_flag_condos(
+      "luc", 
+      c("loc_id", "body")
+    ) 
+  
+  df <- df |>
+    dplyr::filter(condo) |>
+    dplyr::mutate(
+      units = dplyr::case_when(
+        luc %in% c('908', '970', '0xxR') ~ 1,
+        .default = units
+      )
+    ) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!condo)
+    ) |>
+    dplyr::mutate(
+      units_ambig = !(luc %in% c('101', '104', '105', '102')) & !condo
+    )
+  
+  df <- df |>
+    std_flag_unit_validity(
+      "units",
+      muni_id_col="muni_id",
+      luc_col = "luc"
+    )
+  
+  df <- df |>
+    dplyr::filter(!units_valid & !units_ambig) |>
+    dplyr::left_join(
+      addresses |> 
+        sf::st_drop_geometry() |>
+        dplyr::select(c(loc_id, body, muni, even, postal, addr_count)),
+      by = dplyr::join_by(loc_id, body, muni, postal, even)
+    ) |>
+    std_estimate_units("units", "luc", "muni_id", "addr_count") |>
+    dplyr::select(-addr_count)  |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(units_valid | units_ambig)
+    ) |>
+    dplyr::select(-c(units_ambig, units_valid))
+}
+
+flow_assess_co_dba_attn <- function(df, col, target, clear_cols = c()) {
   df |>
     std_separate_and_label(
       col = col,
       target_col = target,
-      regex = "(^C ?O )|((?!= )C O (?=[A-Z]+))",
+      regex = "(^(CO |C O ?))|( C O (?=[A-Z]+))",
       label = "co",
-      base_label = base_label,
       clear_cols = clear_cols
     ) |>
     std_separate_and_label(
       col = col,
       target_col = target,
-      regex = "(^(ATTN|A T T N) )|((?!= )(ATTN|A T T N) (?=[A-Z]+))",
+      regex = "(^(ATTN|A T T N) ?)|( (ATTN|A T T N) (?=[A-Z]+))",
       label = "attn",
-      base_label = base_label,
       clear_cols = clear_cols
     ) |>
     std_separate_and_label(
       col = col,
       target_col = target,
-      regex = "(^(DBA|D B A) )|((?!= )(DBA|D B A) (?=[A-Z]+))",
+      regex = "(^(DBA|D B A) ?)|( (DBA|D B A) (?=[A-Z]+))",
       label = "dba",
-      base_label = base_label
+      clear_cols = clear_cols
     )
 }
 
-flow_assess_omni <- function(df, site_prefix, own_prefix, zips, parcels, places) {
+flow_assess_omni <- function(df, 
+                             site_prefix, 
+                             own_prefix, 
+                             zips, 
+                             parcels, 
+                             places, 
+                             state_constraint) {
   util_log_message("Processing assessors table.")
   df |>
     flow_assess_address_text(
@@ -718,8 +988,9 @@ flow_assess_omni <- function(df, site_prefix, own_prefix, zips, parcels, places)
       site_prefix=site_prefix,
       own_prefix=own_prefix,
       zips=zips,
-      parcels=parcels
-    ) |> 
+      parcels=parcels,
+      state_constraint=state_constraint
+    ) |>
     flow_assess_muni(
       own_prefix=own_prefix,
       places=places,
@@ -728,4 +999,135 @@ flow_assess_omni <- function(df, site_prefix, own_prefix, zips, parcels, places)
     flow_assess_luc_units(
       site_prefix=site_prefix
     )
+}
+
+# Omnibus Data Process ====
+
+flow_process_all <- function(assess,
+                             addresses,
+                             zips,
+                             parcels,
+                             places) {
+  ASSESS_PROC <<- assess |>
+    flow_assess_omni(
+      site_prefix="site",
+      own_prefix="own",
+      zips=zips,
+      parcels=parcels,
+      places=places,
+      state_constraint="MA"
+    )
+  
+  SITES <<- ASSESS_PROC |>
+    load_sites_from_assess(
+      site_prefix="site",
+      addresses=addresses
+    )
+
+  OWNERS <<- ASSESS_PROC |>
+    load_owners_from_assess(
+      site_prefix="site",
+      own_prefix="own",
+      sites=SITES
+    ) |>
+    flow_owners_omni(
+      name_col="name",
+      address_col="addr",
+      addresses = addresses
+    )
+
+  COMPANIES_PROC <<- COMPANIES |>
+    flow_oc_companies_omni(
+      zips=ZIPS,
+      places=PLACES
+    )
+
+  OFFICERS_PROC <<- OFFICERS |>
+    flow_oc_officers_omni(
+      zips=ZIPS,
+      places=PLACES
+    )
+  
+  UNIQUE_ADDRESSES <<- OWNERS |>
+    dplyr::bind_rows(SITES) |>
+    dplyr::bind_rows(OFFICERS_PROC) |>
+    dplyr::bind_rows(COMPANIES_PROC) |>
+    dedupe_unique_addresses(sites=SITES, addresses=ADDRESSES)
+  
+  OWNERS <<- OWNERS |>
+    dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
+  
+  SITES <<- SITES |>
+    dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
+  
+  COMPANIES_PROC <<- COMPANIES_PROC |>
+    dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
+  
+  OFFICERS_PROC <<- OFFICERS_PROC |>
+    dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
+}
+
+flow_dedupe_all <- function() {
+  own_dedupe <- OWNERS |>
+    dedupe_cosine_bounded(
+      id="id", field1="name", field2="addr_id", thresh=0.8
+    )
+  
+  OWNERS_ <<- own_dedupe |>
+    dplyr::select(site_id, group_id, name, addr_id, inst, trust, trustees)
+  
+  matched_companies <- OWNERS_ |>
+    dplyr::left_join(
+      COMPANIES_PROC |> dplyr::select(company_id, name),
+      by=dplyr::join_by(name)
+    )
+  
+  OFFICERS_PROC_ <<- OFFICERS_PROC |>
+    dedupe_cosine_bounded(
+      id="id", field1="name", field2="addr_id", thresh=0.95
+    ) |>
+    dplyr::left_join(
+      matched_companies |> 
+        dplyr::filter(!is.na(company_id)) |> 
+        dplyr::select(company_id) |>
+        dplyr::mutate(match = TRUE) |>
+        dplyr::distinct(),
+      by=dplyr::join_by(company_id)
+    ) |>
+    dplyr::group_by(group_id) |>
+    tidyr::fill(match) 
+  
+  OFFICERS_MATCHED_ <<- OFFICERS_PROC_ |>
+    dplyr::filter(match) |>
+    dplyr::select(-match) |>
+    dplyr::select(company_id, group_id)
+  
+  
+  OWNERS_ <<- matched_companies |>
+    dplyr::left_join(
+      OFFICERS_MATCHED_ |>
+        dplyr::distinct() |>
+        dedupe_community(
+          "network",
+          name="company_id",
+          membership="network_id"
+        ),
+      by=dplyr::join_by(company_id)
+    ) |>
+    dplyr::mutate(
+      group_id = dplyr::case_when(
+        !is.na(network_id) ~ network_id,
+        .default = group_id
+      )
+    )
+  
+  METACORPS_ <<- OWNERS_ |>
+    dplyr::group_by(group_id, name) |>
+    dplyr::summarize(
+      count = dplyr::n()
+    ) |>
+    dplyr::arrange(dplyr::desc(count)) |>
+    dplyr::slice(1) |>
+    dplyr::ungroup() |>
+    dplyr::select(-count)
 }
