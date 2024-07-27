@@ -306,9 +306,10 @@ load_postgis_read <- function(conn, table_name) {
   #' 
   #' @export
   
-  q <- DBI::dbSendQuery(conn, "SELECT * FROM geometry_columns")
-  
-  geo_tables <- DBI::dbFetch(q) |> 
+  geo_tables <- DBI::dbGetQuery(
+      conn, 
+      "SELECT * FROM geometry_columns"
+      ) |> 
     dplyr::pull(f_table_name)
   
   if (table_name %in% geo_tables) {
@@ -340,7 +341,9 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
   #' 
   #' @export
   
+  # Disconnect on function exit.
   on.exit(DBI::dbDisconnect(conn))
+  
   table_exists <- load_check_for_table(conn, table_name)
   if(!table_exists | refresh) {
     if(!table_exists) {
