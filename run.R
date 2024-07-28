@@ -19,18 +19,36 @@ run <- function() {
     crs = CRS,
     gdb_path = GDB_PATH,
     oc_path = OC_PATH
-  )
+  ) |>
+    wrapr::unpack(
+      munis <- munis,
+      zips <- zips,
+      places <- places,
+      assess <- assess,
+      parcels <- parcels,
+      addresses <- addresses,
+      companies <- companies,
+      officers <- officers
+    )
   
   # Process Assessors Table ====
   flow_process_all(
-    assess = ASSESS,
-    addresses = ADDRESSES,
-    zips=ZIPS,
-    parcels=PARCELS,
-    places=PLACES
-  )
+    assess=assess,
+    companies=companies,
+    officers=officers,
+    addresses=addresses,
+    zips=zips,
+    parcels=parcels,
+    places=places
+  ) |>
+    wrapr::unpack(
+      sites <- sites,
+      owners <- owners,
+      companies <- companies,
+      officers <- officers
+    )
   
-  flow_dedupe_all()
+  dedupe_all()
   
   # Close log ====
   logr::log_close()

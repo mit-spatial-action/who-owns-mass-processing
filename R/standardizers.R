@@ -127,6 +127,30 @@ std_pad_muni_ids <- function(ids) {
     stringr::str_pad(3, side="left", pad="0")
 }
 
+std_col_prefixes <- function (df, prefixes=c(), parsed_cols=c()) {
+  if (length(prefixes) != 0) {
+    prefixes <- stringr::str_c(
+      "(?<=(", 
+      stringr::str_c(prefixes, collapse="|"), 
+      ")_)"
+    )
+  } 
+  
+  df |>
+    dplyr::rename_with(
+      ~ stringr::str_replace(
+        .x,
+        stringr::str_c(
+          prefixes,
+          "[a-z\\_]+(?=(", 
+          stringr::str_c(parsed_cols, collapse="|"), 
+          ")$)"
+        ),
+        ""
+      )
+    )
+}
+
 # General Character Handlers ====
 
 std_uppercase <- function(df, cols) {
@@ -744,75 +768,6 @@ std_massachusetts <- function(df, cols, rm_ma = TRUE) {
   )
 }
 
-
-std_luc <- function(
-    df, 
-    path, 
-    muni_id_col, 
-    use_code_col,
-    luc_col,
-    file = "luc_crosswalk.csv"
-    ){
-  
-  # Read Land Use Codes
-  lu <- readr::read_csv(file.path(path, file), show_col_types = FALSE) |>
-    dplyr::rename_with(tolower) |>
-    dplyr::select(c(use_code, luc_assign))
-  
-  nonboston <- df |> 
-    dplyr::filter(.data[[muni_id_col]] != "035")
-  
-  boston <- df |> 
-    dplyr::filter(.data[[muni_id_col]] == "035")
-  
-  nonboston <- nonboston |>
-    dplyr::left_join(
-      lu,
-      by = dplyr::join_by(
-        !!use_code_col == use_code
-        ),
-      na_matches = "never"
-    )
-  
-  unmatched <- nonboston |>
-    dplyr::filter(is.na(luc_assign)) |>
-    dplyr::select(-luc_assign) |>
-    dplyr::mutate(
-      !!stringr::str_c(use_code_col, "_simp") := 
-        substr(.data[[use_code_col]], 1, 3)
-    ) |>
-    dplyr::left_join(
-      lu,
-      by = dplyr::join_by(
-        !!stringr::str_c(use_code_col, "_simp") == use_code
-        ),
-      na_matches = "never"
-    ) |>
-    dplyr::select(-dplyr::ends_with("_simp"))
-  
-  boston <- boston |>
-    dplyr::mutate(
-      !!luc_col := dplyr::case_when(
-        .data[[use_code_col]] %in% c('012', '013', '019', '031') ~ '0xxR',
-        .default = .data[[use_code_col]]
-      )
-    )
-  
-  nonboston |>
-    dplyr::filter(!is.na(luc_assign)) |>
-    dplyr::bind_rows(unmatched) |>
-    dplyr::rename(!!luc_col := luc_assign) |>
-    dplyr::bind_rows(
-      boston
-    ) |>
-    dplyr::mutate(
-      !!luc_col := dplyr::case_when(
-        is.na(.data[[luc_col]]) ~ .data[[use_code_col]],
-        .default = .data[[luc_col]]
-      )
-    )
-}
-
 std_mass_corp <- function(df, col) {
   df |> 
     dplyr::mutate(
@@ -911,7 +866,75 @@ std_remove_titles <- function(df, col) {
     )
 }
 
-# Unit Estimation ====
+# Use Code/Unit Estimation ====
+
+std_luc <- function(
+    df, 
+    col,
+    muni_id_col, 
+    path=DATA_PATH,
+    name="luc",
+    file = "luc_crosswalk.csv"
+){
+  
+  # Read Land Use Codes
+  lu <- readr::read_csv(file.path(path, file), show_col_types = FALSE) |>
+    dplyr::rename_with(tolower) |>
+    dplyr::select(c(use_code, luc_assign))
+  
+  nonboston <- df |> 
+    dplyr::filter(.data[[muni_id_col]] != "035")
+  
+  boston <- df |> 
+    dplyr::filter(.data[[muni_id_col]] == "035")
+  
+  nonboston <- nonboston |>
+    dplyr::left_join(
+      lu,
+      by = dplyr::join_by(
+        !!col == use_code
+      ),
+      na_matches = "never"
+    )
+  
+  unmatched <- nonboston |>
+    dplyr::filter(is.na(luc_assign)) |>
+    dplyr::select(-luc_assign) |>
+    dplyr::mutate(
+      !!stringr::str_c(col, "_simp") := 
+        substr(.data[[col]], 1, 3)
+    ) |>
+    dplyr::left_join(
+      lu,
+      by = dplyr::join_by(
+        !!stringr::str_c(col, "_simp") == use_code
+      ),
+      na_matches = "never"
+    ) |>
+    dplyr::select(-dplyr::ends_with("_simp"))
+  
+  boston <- boston |>
+    dplyr::mutate(
+      !!name := dplyr::case_when(
+        .data[[col]] %in% c('012', '013', '019', '031') ~ '0xxR',
+        .default = .data[[col]]
+      )
+    )
+  
+  nonboston |>
+    dplyr::filter(!is.na(luc_assign)) |>
+    dplyr::bind_rows(unmatched) |>
+    dplyr::rename(!!name := luc_assign) |>
+    dplyr::bind_rows(
+      boston
+    ) |>
+    dplyr::mutate(
+      !!name := dplyr::case_when(
+        is.na(.data[[name]]) ~ .data[[col]],
+        .default = .data[[name]]
+      )
+    )
+}
 
 std_units_from_luc <- function(df, col, muni_id_col, units_col) {
   non_boston <- df |>
@@ -935,92 +958,147 @@ std_units_from_luc <- function(df, col, muni_id_col, units_col) {
   df |>
     dplyr::mutate(
       !!units_col := dplyr::case_when(
-        # Single-family.
-        .data[[col]] == '101' ~ 1,
+        # Single-family. 102: Condos
+        .data[[col]] %in% c('101', '102') ~ 1,
         # Two-family.
         .data[[col]] == '104' ~ 2,
         # Three-family.
         .data[[col]] == '105' ~ 3,
-        # 102: Condos
-        .data[[col]] == '102' ~ 1,
         .default = .data[[units_col]]
       )
     )
 }
 
-std_flag_unit_validity <- function(df, col, luc_col, muni_id_col) {
-  df |>
+std_test_units <- function(df, col, luc_col, muni_id_col) {
+  boston <- df |>
+    dplyr::filter(.data[[muni_id_col]] == '035') |>
+    dplyr::mutate(
+      units_valid = dplyr::case_when(
+        # BOSTON, 112: 4-6 Unit
+        .data[[luc_col]] == '111' & !dplyr::between(.data[[col]], 4, 6) ~
+          FALSE,
+        # BOSTON, 112: 7-30 Unit
+        .data[[luc_col]] == '112' & !dplyr::between(.data[[col]], 7, 30) ~
+          FALSE,
+        # BOSTON, 113: 31-99 Unit
+        .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 7, 30) ~
+          FALSE,
+        # BOSTON, 114: 31-99 Unit
+        .data[[luc_col]] == '114' & .data[[col]] < 100 ~
+          FALSE
+      )
+    )
+  
+  nonboston <- df |>
+    dplyr::filter(.data[[muni_id_col]] != '035') |>
     dplyr::mutate(
       units_valid = dplyr::case_when(
         # 4-8 Unit
-        .data[[muni_id_col]] != '035' & .data[[luc_col]] == '111' & dplyr::between(.data[[col]], 4, 8) ~
-          TRUE,
+        .data[[luc_col]] == '111' & !dplyr::between(.data[[col]], 4, 8) ~
+          FALSE,
         # 112: >8 Unit
-        .data[[muni_id_col]] != '035' & .data[[luc_col]] == '112' & .data[[col]] > 8 ~
-          TRUE,
-        # BOSTON, 112: 4-6 Unit
-        .data[[muni_id_col]] == '035' & .data[[luc_col]] == '111' & dplyr::between(.data[[col]], 4, 6) ~
-          TRUE,
-        # BOSTON, 112: 7-30 Unit
-        .data[[muni_id_col]] == '035' & .data[[luc_col]] == '112' & dplyr::between(.data[[col]], 7, 30) ~
-          TRUE,
-        # BOSTON, 113: 31-99 Unit
-        .data[[muni_id_col]] == '035' & .data[[luc_col]] == '113' & dplyr::between(.data[[col]], 7, 30) ~
-          TRUE,
-        # BOSTON, 114: 31-99 Unit
-        .data[[muni_id_col]] == '035' & .data[[luc_col]] == '114' & .data[[col]] > 100 ~
-          TRUE,
-        .data[[muni_id_col]] == '035' & .data[[luc_col]] %in% c('025', '026', '027') ~
-          TRUE,
-        .data[[luc_col]] %in% c('101', '102', '104', '105') ~
-          TRUE,
-        .default = FALSE
+        .data[[luc_col]] == '112' & .data[[col]] <= 8 ~
+          FALSE
+      )
+    )
+  
+  nonboston |>
+    dplyr::bind_rows(boston) |>
+    dplyr::mutate(
+      units_valid = dplyr::case_when(
+        condo & .data[[col]] != 1 & res ~
+          FALSE,
+        res & .data[[col]] == 0 ~
+          FALSE,
+        .default = TRUE
       )
     )
 }
 
-std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, est_size=900) {
-  df |>
+std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, addresses, est_size=900) {
+  if ("sf" %in% class(addresses)) {
+    addresses <- addresses |>
+      sf::st_drop_geometry()
+  }
+  
+  df <- df |>
+    dplyr::left_join(
+      addresses |>
+        dplyr::select(c(loc_id, body, even, dplyr::all_of(count_col))),
+      by = dplyr::join_by(loc_id, body, even)
+    ) |>
     dplyr::mutate(
-      boston = .data[[muni_id_col]] != '035',
-      units_by_area = ceiling(res_area / est_size),
+      units_by_area = ceiling(res_area / est_size)
+      )
+  
+  boston <- df |>
+    dplyr::filter(.data[[muni_id_col]] == '035') |>
+    dplyr::mutate(
+      !!col := dplyr::case_when(
+        .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 6) ~
+          .data[[count_col]],
+        .data[[luc_col]] == '111' & dplyr::between(units_by_area, 4, 6) ~
+          units_by_area,
+        .data[[luc_col]] == '111' ~
+          4,
+        .data[[luc_col]] == '112' & dplyr::between(.data[[count_col]], 7, 30) ~
+          .data[[count_col]],
+        .data[[luc_col]] == '112' & dplyr::between(units_by_area, 7, 30) ~
+          units_by_area,
+        .data[[luc_col]] == '112' ~
+          7,
+        .data[[luc_col]] == '113' & dplyr::between(.data[[count_col]], 31, 99) ~
+          .data[[count_col]],
+        .data[[luc_col]] == '113' & dplyr::between(units_by_area, 31, 99)  ~
+          units_by_area,
+        .data[[luc_col]] == '113' ~
+          31,
+        .data[[luc_col]] == '114' & .data[[count_col]] >= 100 ~
+          .data[[count_col]],
+        .data[[luc_col]] == '114' & units_by_area >= 100 ~
+          units_by_area,
+        .data[[luc_col]] == '114' ~
+          100,
+        .default = .data[[col]]
+      )
+    )
+  
+  nonboston <- df |>
+    dplyr::filter(.data[[muni_id_col]] != '035') |>
+    dplyr::mutate(
       !!col := dplyr::case_when(
         # 4-8 Unit
         # ===
-        !boston & .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 8) ~
+        .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 8) ~
           .data[[count_col]],
-        !boston & .data[[luc_col]] == '111' & (!dplyr::between(.data[[count_col]], 4, 8) | is.na(.data[[count_col]])) ~
+        .data[[luc_col]] == '111' & dplyr::between(units_by_area, 4, 8) ~
           units_by_area,
-        boston & .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 6) ~
-          .data[[count_col]],
-        boston & .data[[luc_col]] == '111' & (!dplyr::between(.data[[count_col]], 4, 6) | is.na(.data[[count_col]])) ~
-          units_by_area,
+        .data[[luc_col]] == '111' ~
+          4,
         # 112: >8 Unit
         # ===
-        !boston & .data[[luc_col]] == '112' & .data[[count_col]] > 8 ~
+        .data[[luc_col]] == '112' & .data[[count_col]] > 8 ~
           .data[[count_col]],
-        !boston & .data[[luc_col]] == '112' & (.data[[count_col]] <= 8 | is.na(.data[[count_col]])) ~
+        .data[[luc_col]] == '112' & units_by_area > 8 ~
           units_by_area,
-        boston & .data[[luc_col]] == '112' & dplyr::between(.data[[count_col]], 7, 30) ~
+        .data[[luc_col]] == '112' ~
+          9,
+        .default = .data[[col]]
+      )
+    )
+  
+  nonboston |>
+    dplyr::bind_rows(boston) |>
+    dplyr::mutate(
+      !!col := dplyr::case_when(
+        res & .data[[col]] == 0  & !is.na(.data[[count_col]]) ~
           .data[[count_col]],
-        boston & .data[[luc_col]] == '112' & (!dplyr::between(.data[[count_col]], 7, 30) | is.na(.data[[count_col]])) ~
+        res & .data[[col]] == 0 & units_by_area > 0 ~
           units_by_area,
-        boston & .data[[luc_col]] == '113' & dplyr::between(.data[[count_col]], 31, 99) ~
-          .data[[count_col]],
-        boston & .data[[luc_col]] == '113' & (!dplyr::between(.data[[count_col]], 31, 99) | is.na(.data[[count_col]])) ~
-          units_by_area,
-        boston & .data[[luc_col]] == '114' & .data[[count_col]] >= 100 ~
-          .data[[count_col]],
-        boston & .data[[luc_col]] == '114' & (.data[[count_col]] < 100 | is.na(.data[[count_col]])) ~
-          .data[[count_col]],
-        # 109: Multi House, 0xx: Multi-Use, 103: Mobile Home
-        # ===
-        .data[[luc_col]] %in% c('109', '0xx', '103', '114', '970', '908', '959') & .data[[col]] == 0  & !is.na(.data[[count_col]]) ~
-          .data[[count_col]],
         .default = .data[[col]]
       )
     ) |>
-    dplyr::select(-c(boston, units_by_area))
+    dplyr::select(-c(units_by_area, addr_count))
 }
 
 # Address Refinement/Completion ====
@@ -1731,24 +1809,26 @@ std_flag_hns <- function(df, col) {
 }
 
 std_flag_condos <- function(df, luc_col, id_cols) {
+  condo <- df |>
+    dplyr::filter(.data[[luc_col]] == '102')
+  
   df |>
     dplyr::mutate(
-      condo_unit = .data[[luc_col]] == '102'
+      condo = dplyr::case_when(
+        id %in% condo$id ~ TRUE,
+        .default = NA
+      )
     ) |>
     dplyr::group_by(
       dplyr::across(
         dplyr::all_of(id_cols)
-        )
-      ) |>
-    dplyr::mutate(
-      condo = dplyr::case_when(
-        sum(condo_unit) != 0 ~ TRUE,
-        .default = FALSE
       )
     ) |>
+    tidyr::fill(condo, .direction = "downup") |>
     dplyr::ungroup() |>
-    dplyr::select(-condo_unit)
+    tidyr::replace_na(list(condo = FALSE))
 }
+
 
 std_flag_inst <- function(df, col) {
   #' Flags institutional names in provided column using terms defined in global
@@ -1875,6 +1955,28 @@ std_flag_estate <- function(df, col, estate_name = "estate") {
       !!flag := tidyr::replace_na(
         .data[[flag]],
         FALSE
+      )
+    )
+}
+
+std_flag_lawyers <- function(df, cols) {
+  #' Flags likely law offices and lawyers.
+  #'
+  #' @param df A dataframe.
+  #' @param cols Columns to be processed.
+  #' @returns A dataframe.
+  #' @export
+  df |>
+    dplyr::mutate(
+      lawyer = dplyr::case_when(
+        dplyr::if_any(
+          tidyselect::any_of(cols),
+          ~stringr::str_detect(
+            .,
+            "( (PC)|([A-Z]+ AND [A-Z]+ LLP)|(ESQ(UIRE)?$)|(LAW (OFFICES?|LLC|LLP|GROUP))|(ATTORNEY))"
+          )
+        ) ~ TRUE,
+        TRUE ~ FALSE
       )
     )
 }
@@ -2066,90 +2168,6 @@ std_match_address_to_address <- function(a1, a2, fill_cols, ...) {
     dplyr::select(-dplyr::all_of(stringr::str_c(fill_cols, "_replace")), -c(start_y, end_y))
 }
 
-
-# Workflows ====
-
-# std_link_owner_parcel <- function(owner, parcel) {
-#   owner <- owner |>
-#     dplyr::left_join(
-#       parcel |>
-#         dplyr::select(
-#           address_id = loc_id, 
-#           addr_start_y = addr_start, 
-#           addr_end_y = addr_end, 
-#           addr_body, 
-#           even, 
-#           muni, 
-#           state
-#         ), 
-#       by = dplyr::join_by(
-#         addr_body, 
-#         even, 
-#         muni, 
-#         state, 
-#         between(
-#           addr_start, 
-#           addr_start_y, 
-#           addr_end_y
-#         )
-#       ),
-#       na_matches = "never"
-#     ) |>
-#     dplyr::select(-c(addr_start_y, addr_end_y))
-#   
-#   owner <- owner |>
-#     dplyr::filter(!is.na(addr_start) & !is.na(corp_id)) |>
-#     dplyr::group_by(corp_id, addr_start) |>
-#     dplyr::mutate(
-#       dplyr::across(
-#         c(addr, postal, state, country, addr_num, addr_body, address_id),
-#         ~ collapse::fmode(.)
-#       ),
-#       dplyr::across(
-#         c(corp, trust, even),
-#         ~ as.logical(max(., na.rm = TRUE))
-#       ),
-#       addr_end = max(na.omit(addr_end), na.rm = TRUE)
-#     ) |>
-#     dplyr::ungroup() |>
-#     dplyr::bind_rows(
-#       owner |> 
-#         dplyr::filter(is.na(addr_start))
-#     )
-#   
-#   owner |>
-#     dplyr::filter(!is.na(corp_id)) |>
-#     dplyr::group_by(corp_id, corp, trust) |>
-#     dplyr::mutate(
-#       dplyr::across(
-#         c(addr, postal, po_box, state, country, addr_num, addr_body, address_id),
-#         ~ dplyr::case_when(
-#           is.na(.) ~ collapse::fmode(.),
-#           .default = .
-#         )
-#       ),
-#       dplyr::across(
-#         c(even),
-#         ~ dplyr::case_when(
-#           is.na(.) ~ as.logical(max(., na.rm = TRUE)),
-#           .default = .
-#         )
-#       ),
-#       dplyr::across(
-#         c(addr_end, addr_start),
-#         ~ dplyr::case_when(
-#           is.na(.) ~ max(na.omit(.), na.rm = TRUE),
-#           .default = .
-#         )
-#       )
-#     ) |>
-#     dplyr::ungroup() |>
-#     dplyr::bind_rows(
-#       owner |> 
-#         dplyr::filter(is.na(corp_id))
-#     )
-# }
-
 # Deprecated ====
 
 #' std_use_codes <- function(df, col) {
@@ -2216,73 +2234,4 @@ std_match_address_to_address <- function(a1, a2, fill_cols, ...) {
 #'       )
 #'     )
 #' }
-#' 
-#' std_assess_addr <- function(df, 
-#'                                    zips,
-#'                                    places,
-#'                                    states = FALSE, 
-#'                                    postal = FALSE,
-#'                                    country = FALSE) {
-#'   df <- df |>
-#'     std_street_types("addr") |>
-#'     std_directions(c("muni", "addr")) |>
-#'     std_leading_zeros("addr", rmsingle = TRUE) |>
-#'     std_massachusetts("addr", street_name = TRUE) |>
-#'     std_postal_format(c("postal"), zips) |>
-#'     std_muni_names(c("muni"))
-#'   
-#'   if (country) {
-#'     df <- df |>
-#'       dplyr::mutate(
-#'         country = stringr::str_squish(
-#'           stringr::str_remove_all(country, "[:digit:]|\\/|//-")
-#'         ),
-#'         country = countrycode::countrycode(
-#'           country,
-#'           'country.name.en.regex',
-#'           'iso2c',
-#'           warn = FALSE
-#'         ),
-#'         country = dplyr::case_when(
-#'           is.na(country) & stringr::str_detect(muni, "SINGAPORE") ~ "SG",
-#'           is.na(country) & stringr::str_detect(muni, "JERUSALEM") ~ "IL",
-#'           is.na(country) & stringr::str_detect(muni, "BEIJING") ~ "CN",
-#'           is.na(country) & stringr::str_detect(muni, "LONDON") ~ "GB",
-#'           is.na(country) & stringr::str_detect(muni, "TOKYO") ~ "JP",
-#'           is.na(country) & state %in% state.abb & postal %in% zips$all ~ "US",
-#'           .default = country
-#'         ),
-#'         muni = dplyr::case_when(
-#'           country == "SG" ~ "SINGAPORE",
-#'           .default = muni
-#'         )
-#'       )
-#'   }
-#'   
-#'   df <- df |>
-#'     std_address_by_matching(zips = zips, places = places)
-#'   
-#'   df
-#' }
-#' 
-#' 
-#' 
-#' std_hyphenated_numbers <- function(df, cols) {
-#'   #' Strips away second half of hyphenated number
-#'   #'
-#'   #' @param cols Columns to be processed.
-#'   #' @returns A dataframe.
-#'   #' @export
-#'   df |>
-#'     # Remove "C / O" prefix.
-#'     dplyr::mutate(
-#'       dplyr::across(
-#'         tidyselect::where(is.character) & tidyselect::all_of(cols),
-#'         ~ stringr::str_replace_all(
-#'           stringr::str_replace_all(., "(?<=[0-9]{1,4}[A-Z]?)-[0-9]+[A-Z]?", ""),
-#'           "(?<=[0-9]{1,4}[A-Z]?)-(?=[A-Z]{1,2})",
-#'           ""
-#'         )
-#'       )
-#'     )
-#' }
+

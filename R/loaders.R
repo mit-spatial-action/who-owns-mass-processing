@@ -908,49 +908,6 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     sf::st_transform(crs)
 }
 
-# Derive Layers ====
-
-load_sites_from_assess <- function(df, site_prefix, addresses) {
-  # WIP
-  
-  df |> 
-    dplyr::select(
-      dplyr::starts_with(site_prefix)
-      ) |>
-    dplyr::rename_with(
-      ~ stringr::str_remove(.x, stringr::str_c(site_prefix, "_"))
-      ) |>
-    dplyr::select(-c(country))
-}
-
-
-load_owners_from_assess <- function(df, site_prefix, own_prefix, sites) {
-  # WIP
-  res_col <- stringr::str_c(site_prefix, "res", sep="_")
-  df <- df |> 
-    dplyr::filter(.data[[res_col]]) |>
-    dplyr::select(
-      c(site_id, dplyr::starts_with(own_prefix), dplyr::all_of(res_col))
-    ) |>
-    dplyr::rename_with(
-      ~ stringr::str_remove(.x, stringr::str_c(own_prefix, "_"))
-    ) |>
-    dplyr::select(-c(country))
-  
-  df |>
-    dplyr::filter(!is.na(loc_id)) |>
-    dplyr::select(site_id, loc_id, site_res, name) |>
-    dplyr::left_join(
-      sites |>
-        dplyr::select(id, addr, start, end, body, even, muni, postal, state),
-      by = dplyr::join_by(site_id == id)
-    ) |>
-    dplyr::bind_rows(
-      df |> 
-        dplyr::filter(is.na(loc_id))
-    )
-}
-
 # In-Progress ====
 
 load_companies <- function(path, gdb_path, filename = "companies.csv") {
@@ -1051,122 +1008,117 @@ load_ingest_read_all <- function(
   #' 
   #' @export
   
-  # Test Validity of Municipality IDs ====
+  # Test Validity of Municipality IDs
   muni_ids <- load_test_muni_ids(
     muni_ids=muni_ids,
     path=data_path
   )
   
-  # Read Municipalities ====
-  if (any(c("munis", "zips", "places") %in% tables) | is.null(tables)) {
-    MUNIS <<- load_ingest_read(
-      load_conn(),
-      "munis",
-      loader=load_munis(
-        crs=crs
-      ),
-      refresh=refresh
-    )
-  }
+  # Read Municipalities
+  munis <- load_ingest_read(
+    load_conn(),
+    "munis",
+    loader=load_munis(
+      crs=crs
+    ),
+    refresh=refresh
+  )
 
-  # Read ZIPs ====
-  if ("zips" %in% tables | is.null(tables)) {
-    ZIPS <<- load_ingest_read(
-      load_conn(),
-      "zips",
-      load_zips(
-        munis=MUNIS,
-        crs=crs
-      ),
-      refresh=refresh
-    )
-  }
+  # Read ZIPs
+  zips <- load_ingest_read(
+    load_conn(),
+    "zips",
+    load_zips(
+      munis=munis,
+      crs=crs
+    ),
+    refresh=refresh
+  )
 
-  # Read Places ====
-  if ("places" %in% tables | is.null(tables)) {
-    PLACES <<- load_ingest_read(
-      load_conn(),
-      "places",
-      load_places(
-        munis=MUNIS,
-        zips=ZIPS,
-        crs=crs
-      ),
-      refresh=refresh
-    )
-  }
+  # Read Places
+  places <- load_ingest_read(
+    load_conn(),
+    "places",
+    load_places(
+      munis=munis,
+      zips=zips,
+      crs=crs
+    ),
+    refresh=refresh
+  )
 
-  # Read Assessors Tables ====
-  if ("assess" %in% tables | is.null(tables)) {
-    ASSESS <<- load_ingest_read(
-      load_conn(),
-      "assess",
-      load_assess(
-        path=data_path,
-        gdb_path=file.path(data_path, gdb_path),
-        muni_ids=muni_ids,
-        quiet=TRUE
-      ),
-      refresh=refresh
-    )
-  }
+  # Read Assessors Tables
+  assess <- load_ingest_read(
+    load_conn(),
+    "assess",
+    load_assess(
+      path=data_path,
+      gdb_path=file.path(data_path, gdb_path),
+      muni_ids=muni_ids,
+      quiet=TRUE
+    ),
+    refresh=refresh
+  )
 
-  # Read Parcels ====
-  if (any(c("parcels", "addresses") %in% tables) | is.null(tables)) {
-    PARCELS <<- load_ingest_read(
-      load_conn(),
-      "parcels",
-      loader=load_parcels(
-        gdb_path=file.path(data_path, gdb_path),
-        muni_ids=muni_ids,
-        crs=crs,
-        quiet=TRUE
-      ),
-      refresh=refresh
-    )
-  }
-
-  # Read Master Address File ====
-  if ("addresses" %in% tables | is.null(tables)) {
-    ADDRESSES <<- load_ingest_read(
-      load_conn(),
-      "addresses",
-      load_addresses(
-        path=data_path,
-        muni_ids=muni_ids,
-        parcels=PARCELS,
-        crs=crs,
-        quiet=TRUE
-      ),
-      refresh=refresh
-    )
-  }
+  # Read Parcels
+  parcels <- load_ingest_read(
+    load_conn(),
+    "parcels",
+    loader=load_parcels(
+      gdb_path=file.path(data_path, gdb_path),
+      muni_ids=muni_ids,
+      crs=crs,
+      quiet=TRUE
+    ),
+    refresh=refresh
+  )
   
-  # Read OpenCorpoates Companies ====
-  if (any(c("companies", "officers") %in% tables) | is.null(tables)) {
-    COMPANIES <<- load_ingest_read(
-      load_conn(),
-      "companies",
-      load_companies(
-        path=file.path(data_path, oc_path),
-        gdb_path=file.path(data_path, gdb_path)
-      ),
-      refresh=refresh
-    )
-  }
+  # Read Master Address File
+  addresses <- load_ingest_read(
+    load_conn(),
+    "addresses",
+    load_addresses(
+      path=data_path,
+      muni_ids=muni_ids,
+      parcels=parcels,
+      crs=crs,
+      quiet=TRUE
+    ),
+    refresh=refresh
+  )
   
-  # Read OpenCorporates Officers ====
-  if ("officers" %in% tables | is.null(tables)) {
-    OFFICERS <<- load_ingest_read(
-      load_conn(),
-      "officers",
-      load_officers(
-        path=file.path(data_path, oc_path),
-        companies=COMPANIES
-      ),
-      refresh=refresh
-    )
-  }
+  # Read OpenCorpoates Companies
+  companies <- load_ingest_read(
+    load_conn(),
+    "companies",
+    load_companies(
+      path=file.path(data_path, oc_path),
+      gdb_path=file.path(data_path, gdb_path)
+    ),
+    refresh=refresh
+  )
+  
+  # Read OpenCorporates Officers
+  officers <- load_ingest_read(
+    load_conn(),
+    "officers",
+    load_officers(
+      path=file.path(data_path, oc_path),
+      companies=companies
+    ),
+    refresh=refresh
+  )
+  
+  list(
+    munis = munis,
+    zips = zips,
+    places = places,
+    assess = assess,
+    parcels = parcels,
+    addresses = addresses,
+    companies = companies,
+    officers = officers
+  )
 }
 
 # Needs rework ====
@@ -1229,62 +1181,3 @@ load_filings <- function(munis, bos_neighs, crs, town_ids = FALSE) {
     dplyr::rename_with(stringr::str_to_lower) |>
     dplyr::filter(!is.na(add1))
 }
-
-# Deprecated ====
-
-#' load_corps_deprec <- function(path) {
-#'   #' Load corporations, sourced from the MA Secretary of the Commonwealth.
-#'   #'
-#'   #' @param path Path to delimited text Corporations file
-#'   #' @return A dataframe.
-#'   #' @export
-#'   readr::read_delim(
-#'     path,
-#'     delim = "|",
-#'     col_select = c(
-#'       DataID, EntityName,
-#'       AgentName, AgentAddr1, AgentAddr2, AgentCity,
-#'       AgentState, AgentPostalCode, ActiveFlag
-#'     ),
-#'     show_col_types = FALSE
-#'   ) |>
-#'     dplyr::rename(
-#'       id_corp = DataID
-#'     ) |>
-#'     dplyr::rename_with(stringr::str_to_lower)
-#' }
-#' 
-#' load_agents_deprec <- function(df, cols, drop_na_col) {
-#'   #' Load agents, which are listed alongside corporations.
-#'   #'
-#'   #' @param df Dataframe created by `load_corps`
-#'   #' @param cols Columns containing fields describing agents.
-#'   #' @param drop_na_col Column for which NA rows should be dropped.
-#'   #' @return A dataframe of corporate agents.
-#'   #' @export
-#'   df |>
-#'     dplyr::select(all_of(cols)) |>
-#'     dplyr::filter(!is.na(get({{ drop_na_col }})))
-#' }
-#' 
-#' load_inds_deprec <- function(path) {
-#'   #' Load individuals from corporate db, 
-#'   #' sourced from the MA Secretary of the Commonwealth.
-#'   #'
-#'   #' @param path Path to delimited text Corporations file
-#'   #' @return A dataframe.
-#'   #' @export
-#'   readr::read_delim(
-#'     path,
-#'     delim = "|",
-#'     col_select = c(
-#'       DataID, FirstName, LastName, BusAddr1,
-#'       ResAddr1
-#'     ),
-#'     show_col_types = FALSE
-#'   ) |>
-#'     dplyr::rename(
-#'       id_corp = DataID
-#'     ) |>
-#'     dplyr::rename_with(stringr::str_to_lower)
-#' }
