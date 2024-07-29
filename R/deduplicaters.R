@@ -1,9 +1,42 @@
 source("R/utilities.R")
 
-dedupe_unique_addresses <- function(df, sites, addresses) {
+dedupe_address_to_id <- function(df, df2) {
+  df |>
+    dplyr::select(-dplyr::any_of(c("addr", "start", "end", "body", "even", "muni", "postal", "state", "loc_id"))) |>
+    dplyr::left_join(
+      df2,
+      dplyr::join_by(id == id)
+    )
+}
+
+dedupe_unique_addresses <- function(owners, officers, companies, sites, addresses) {
+  if ("sf" %in% class(addresses)) {
+    addresses <- addresses |>
+      sf::st_drop_geometry()
+  }
+  
+  addresses <- addresses |>
+    dplyr::mutate(
+      id=stringr::str_c("address-", dplyr::row_number())
+    ) |>
+    std_assemble_addr() |>
+    dplyr::select(-c(po, pmb))
+  
+  df <- owners |>
+    dplyr::bind_rows(
+      officers, 
+      companies
+    )
+  
   df <- df |>
     dplyr::select(id, addr, start, end, body, even, muni, postal, state, loc_id)  |>
     flow_address_to_address_seq(sites, addresses) |>
+    dplyr::bind_rows(
+      addresses |>
+        dplyr::select(id, addr, start, end, body, even, muni, postal, state, loc_id),
+      sites |>
+        dplyr::select(id, addr, start, end, body, even, muni, postal, state, loc_id)
+    ) |>
     dplyr::filter(!is.na(addr)) |>
     dplyr::group_by(addr, start, end, body, even, muni, postal, loc_id) |>
     tidyr::fill(state, .direction = "updown") |>
@@ -12,19 +45,21 @@ dedupe_unique_addresses <- function(df, sites, addresses) {
     ) |>
     dplyr::ungroup()
   
-  list(
-    through_table = df |> dplyr::select(id, addr_id) |> dplyr::distinct(),
-    addresses = df |> dplyr::select(-id) |> dplyr::rename(id = addr_id) |> dplyr::distinct()
+  relation <- df |> dplyr::select(id, addr_id) |> dplyr::distinct()
+  addresses <- df |> dplyr::select(-id) |> dplyr::rename(id = addr_id) |> dplyr::distinct()
+  
+  results <- purrr::map(
+    list(
+      owners = owners, 
+      sites = sites |> dplyr::filter(res),
+      companies = companies, 
+      officers = officers
+    ), 
+    ~ dedupe_address_to_id(.x, relation)
   )
-}
-
-dedupe_address_to_id <- function(df, df2) {
-  df |>
-    dplyr::select(-dplyr::any_of(c("addr", "start", "end", "body", "even", "muni", "postal", "state", "loc_id"))) |>
-    dplyr::left_join(
-      df2,
-      dplyr::join_by(id == id)
-    )
+  
+  results[['unique_addresses']] <- addresses
+  results
 }
 
 dedupe_naive <- function(df, str_field, prefix="naive") {
@@ -95,10 +130,12 @@ dedupe_text_mode <- function(df, group_col, cols) {
       count = dplyr::n()
     ) |>
     dplyr::arrange(get({{ group_col }}), dplyr::desc(count)) |>
+    dplyr::ungroup() |>
     dplyr::group_by(across({{ group_col }})) |>
     dplyr::summarize(
       dplyr::across({{ cols }}, ~dplyr::first(.))
-    )
+    ) |>
+    dplyr::ungroup()
 }
 
 dedupe_cosine <- function(df,
@@ -156,7 +193,7 @@ dedupe_cosine <- function(df,
     dplyr::arrange( .data[[group]] )
 }
 
-dedupe_cosine_bounded <- function(df, id, field1, field2, thresh) {
+dedupe_cosine_bounded <- function(df, field1, field2, thresh, fill_by_naive = TRUE) {
   df <- df |>
     dplyr::filter(!is.na(.data[[field1]]) & !is.na(.data[[field2]])) |>
     dedupe_naive(field1) |>
@@ -171,78 +208,114 @@ dedupe_cosine_bounded <- function(df, id, field1, field2, thresh) {
     dplyr::mutate(
       cosine_bounded = stringr::str_c("cosine-bounded-", dplyr::cur_group_id())
     ) |>
-    dplyr::ungroup()
+    dplyr::ungroup() |>
+    dplyr::select(-c(group_cosine))
   
-  df |>
-    dplyr::left_join(
-      df |>
-        dplyr::select(cosine_bounded, group_naive) |>
-        dplyr::distinct() |>
-        dedupe_community(
-          "grouped",
-          name="cosine_bounded",
-          membership="group_id"
-        ),
-      dplyr::join_by(cosine_bounded)
-    ) |>
-    dplyr::select(-c(cosine_bounded, group_cosine, group_naive))
-}
-
-dedupe_fill_group <- function(df, group, fill_col) {
-  #' Fill group rows with no corporate matches with in-group corporate matches.
-  #'
-  #' @param df A dataframe.
-  #' @param group Column identifying group.
-  #' @param fill_col Column containing data to be filled.
-  #' @returns A dataframe.
-  #' @export
-  df |>
-    dplyr::group_by(
-      dplyr::across({{ group }})
+  if (fill_by_naive) {
+    df <- df |>
+      dplyr::left_join(
+        df |>
+          dplyr::select(group_naive, .data[[field2]]) |>
+          dplyr::distinct() |>
+          dedupe_community(
+            "group-naive",
+            name="group_naive",
+            membership="naive_bounded"
+          ),
+        dplyr::join_by(group_naive)
       ) |>
-    tidyr::fill({{ fill_col }}, .direction = "updown") |>
-    dplyr::ungroup()
+      dplyr::select(-group_naive)
+    
+    df <- df |>
+      dplyr::left_join(
+        df |>
+          dplyr::select(cosine_bounded, naive_bounded) |>
+          dplyr::distinct() |>
+          dedupe_community(
+            "cosine-bounded",
+            name="cosine_bounded",
+            membership="group_cosine"
+          ),
+        dplyr::join_by(cosine_bounded)
+      ) |>
+      dplyr::select(-c(cosine_bounded)) |>
+      dplyr::rename(
+        group_naive = naive_bounded
+      )
+  }
+  
+  df
 }
 
-dedupe_all <- function() {
-  own_dedupe <- OWNERS |>
-    dedupe_cosine_bounded(
-      id="id", field1="name", field2="addr_id", thresh=0.8
+dedupe_all <- function(
+    owners,
+    officers,
+    companies,
+    sites,
+    addresses) {
+  
+  dedupe_unique_addresses(
+    owners = owners, 
+    officers = officers,
+    companies = companies, 
+    sites = sites, 
+    addresses = addresses
+  ) |>
+    wrapr::unpack(
+      owners <- owners,
+      officers <- officers,
+      companies <- companies,
+      sites <- sites,
+      unique_addresses <- unique_addresses
     )
   
-  OWNERS_ <<- own_dedupe |>
-    dplyr::select(site_id, group_id, name, addr_id, inst, trust, trustees)
-  
-  matched_companies <- OWNERS_ |>
+  owners <- owners |>
     dplyr::left_join(
-      COMPANIES_PROC |> dplyr::select(company_id, name),
-      by=dplyr::join_by(name)
+      sites |>
+        dplyr::select(id, condo),
+      dplyr::join_by(site_id == id)
     )
   
-  OFFICERS_PROC_ <<- OFFICERS_PROC |>
+  owners <- owners |>
+    dplyr::filter(!condo) |>
     dedupe_cosine_bounded(
-      id="id", field1="name", field2="addr_id", thresh=0.95
+      field1="name", 
+      field2="addr_id", 
+      thresh=0.8
     ) |>
     dplyr::left_join(
-      matched_companies |> 
-        dplyr::filter(!is.na(company_id)) |> 
+      companies |> dplyr::select(company_id, name),
+      by=dplyr::join_by(name)
+    ) |>
+    dplyr::bind_rows(
+      owners |>
+        dplyr::filter(condo)
+    )
+  
+  officers <- officers |>
+    dedupe_cosine_bounded(
+      field1="name",
+      field2="addr_id",
+      thresh=0.95
+    ) |>
+    dplyr::left_join(
+      owners |>
+        dplyr::filter(!is.na(company_id)) |>
         dplyr::select(company_id) |>
         dplyr::mutate(match = TRUE) |>
         dplyr::distinct(),
       by=dplyr::join_by(company_id)
     ) |>
-    dplyr::group_by(group_id) |>
-    tidyr::fill(match) 
+    dplyr::group_by(group_cosine) |>
+    tidyr::fill(match, .direction="downup") |>
+    dplyr::ungroup()
   
-  OFFICERS_MATCHED_ <<- OFFICERS_PROC_ |>
-    dplyr::filter(match) |>
-    dplyr::select(-match) |>
-    dplyr::select(company_id, group_id)
-  
-  
-  OWNERS_ <<- matched_companies |>
+  owners <- owners |>
     dplyr::left_join(
-      OFFICERS_MATCHED_ |>
+      officers |>
+        dplyr::filter(match) |>
+        dplyr::select(-match) |>
+        dplyr::select(company_id, group_cosine) |>
         dplyr::distinct() |>
         dedupe_community(
           "network",
@@ -251,20 +324,28 @@ dedupe_all <- function() {
         ),
       by=dplyr::join_by(company_id)
     ) |>
+    dplyr::group_by(group_cosine) |>
+    tidyr::fill(network_id, .direction="downup") |>
+    dplyr::ungroup() |>
     dplyr::mutate(
-      group_id = dplyr::case_when(
+      group_network = dplyr::case_when(
         !is.na(network_id) ~ network_id,
-        .default = group_id
+        .default = group_cosine
       )
+    ) |>
+    dplyr::select(-network_id)
+
+  metacorps <- owners |>
+    dedupe_text_mode(
+      group_col="group_network",
+      cols = "name"
     )
   
-  METACORPS_ <<- OWNERS_ |>
-    dplyr::group_by(group_id, name) |>
-    dplyr::summarize(
-      count = dplyr::n()
-    ) |>
-    dplyr::arrange(dplyr::desc(count)) |>
-    dplyr::slice(1) |>
-    dplyr::ungroup() |>
-    dplyr::select(-count)
+  list(
+    owners = owners,
+    officers = officers,
+    metacorps = metacorps,
+    sites = sites,
+    unique_addresses = unique_addresses
+  )
 }

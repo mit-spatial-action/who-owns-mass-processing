@@ -618,7 +618,7 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
       ),
       even = dplyr::case_when(
         floor(start) %% 2 == 0 ~ TRUE,
-        .default = FALSE
+        floor(start) %% 2 != 0 ~ FALSE
       )
     ) |>
     tibble::rowid_to_column("id")

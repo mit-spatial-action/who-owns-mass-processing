@@ -1024,8 +1024,8 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
   df <- df |>
     dplyr::left_join(
       addresses |>
-        dplyr::select(c(loc_id, body, even, dplyr::all_of(count_col))),
-      by = dplyr::join_by(loc_id, body, even)
+        dplyr::select(c(loc_id, body, even, muni, postal, dplyr::all_of(count_col))),
+      by = dplyr::join_by(loc_id, body, even, muni, postal)
     ) |>
     dplyr::mutate(
       units_by_area = ceiling(res_area / est_size)
@@ -1140,6 +1140,12 @@ std_extract_address <- function(df, col, target_col) {
 }
 
 std_assemble_addr <- function(df, range = TRUE) {
+  if (!("po" %in% names(df))) {
+    df <- dplyr::mutate(df, po = NA_character_)
+  }
+  if (!("pmb" %in% names(df))) {
+    df <- dplyr::mutate(df, pmb = NA_character_)
+  }
   if (range) {
     df |>
       dplyr::mutate(

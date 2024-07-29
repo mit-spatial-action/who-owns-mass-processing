@@ -797,7 +797,7 @@ flow_assess_sites_units <- function(df, luc_col, addresses) {
       df |>
         dplyr::filter(units_valid)
     ) |>
-    dplyr::select
+    dplyr::select(-c(units_valid))
 }
 
 flow_assess_sites <- function(df, addresses) {
@@ -810,7 +810,7 @@ flow_assess_sites <- function(df, addresses) {
     flow_assess_sites_units(
       "luc",
       addresses
-      )
+    )
 }
 
 flow_assess_owners <- function(df, name_col, address_col, type_name = "owners") {
@@ -1093,22 +1093,4 @@ flow_process_all <- function(assess,
     companies = companies,
     officers = officers
   )
-  
-  # UNIQUE_ADDRESSES <<- OWNERS |>
-  #   dplyr::bind_rows(SITES) |>
-  #   dplyr::bind_rows(OFFICERS_PROC) |>
-  #   dplyr::bind_rows(COMPANIES_PROC) |>
-  #   dedupe_unique_addresses(sites=SITES, addresses=ADDRESSES)
-  # 
-  # OWNERS <<- OWNERS |>
-  #   dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
-  # 
-  # SITES <<- SITES |>
-  #   dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
-  # 
-  # COMPANIES_PROC <<- COMPANIES_PROC |>
-  #   dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
-  # 
-  # OFFICERS_PROC <<- OFFICERS_PROC |>
-  #   dedupe_address_to_id(UNIQUE_ADDRESSES$through_table)
 }
