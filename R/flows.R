@@ -253,13 +253,13 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
   df <- df |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           num_ = ~ stringr::str_extract(.x, "^[0-9\\.]+[A-Z]{0,2}([ \\-][0-9\\.]+[A-Z]{0,1})*(?= ([0-9]{1,3}(ST|ND|RD|TH)|[A-Z]))")
         )
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           body = ~ dplyr::case_when(
             !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~
@@ -269,7 +269,7 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
         )
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           start = ~ dplyr::case_when(
             !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~ 
@@ -279,7 +279,7 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
         )
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           end_init_ = ~ dplyr::case_when(
             !is.na(get(paste0(dplyr::cur_column(), "_num_"))) ~ as.numeric(
@@ -293,7 +293,7 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
         )
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           end = ~ dplyr::case_when(
             (get(paste0(dplyr::cur_column(), "_end_init_")) > get(paste0(dplyr::cur_column(), "_start"))) | is.na(get(paste0(dplyr::cur_column(), "_end_init_")))
@@ -303,7 +303,7 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
         )
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           even = ~ dplyr::case_when(
             floor(get(paste0(dplyr::cur_column(), "_start"))) %% 2 == 0 ~ TRUE,
@@ -333,7 +333,7 @@ flow_address_match_simp <- function(df, cols) {
         first_longer = nchar(.data[[cols[1]]]) > nchar(.data[[cols[2]]]),
         match = .data[[paste0(cols[1], "_simp")]] == .data[[paste0(cols[2], "_simp")]],
         dplyr::across(
-          cols,
+          dplyr::all_of(cols),
           ~ dplyr::case_when(
             !first_longer & match ~ .data[[cols[2]]],
             first_longer & match ~ .data[[cols[1]]],
@@ -954,7 +954,7 @@ flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
         .default = get(cols$site$postal)
       )
     ) |>
-    dplyr::group_by(dplyr::across(cols$site$loc_id)) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(cols$site$loc_id))) |>
     tidyr::fill(
       dplyr::all_of(cols$site$postal)
     ) |>

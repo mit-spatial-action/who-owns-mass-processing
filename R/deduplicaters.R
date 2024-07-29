@@ -71,7 +71,7 @@ dedupe_naive <- function(df, str_field, prefix="naive") {
   #' @export
   distinct <- df |>
     dplyr::group_by(
-      dplyr::across({{ str_field }})
+      dplyr::across(dplyr::all_of({{ str_field }}))
       ) |>
     dplyr::mutate(
       group_naive = stringr::str_c(prefix, "-", dplyr::cur_group_id())
@@ -125,7 +125,7 @@ dedupe_text_mode <- function(df, group_col, cols) {
   #' @export
   df |>
     dplyr::filter(!is.na(get({{ group_col }}))) |>
-    dplyr::group_by(across(c({{ group_col }}, {{ cols }}))) |>
+    dplyr::group_by(dplyr::across(c({{ group_col }}, {{ cols }}))) |>
     dplyr::summarize(
       count = dplyr::n()
     ) |>

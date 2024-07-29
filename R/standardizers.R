@@ -331,7 +331,7 @@ std_replace_blank <- function(df, cols) {
   ) |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ dplyr::case_when(
           stringr::str_detect(., "^SAME|NONE|UNKNOWN(?=\\s|\\,|$)") ~ NA_character_,
           .default = .
@@ -1219,7 +1219,7 @@ std_addr2_parser <- function(df, cols, regex, from_end = TRUE) {
     df <- df |> 
       dplyr::mutate(
         dplyr::across(
-          cols,
+          dplyr::all_of(cols),
           list(
             addr2 = ~ NA_character_
           ),
@@ -1230,14 +1230,14 @@ std_addr2_parser <- function(df, cols, regex, from_end = TRUE) {
   df |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           temp = ~ stringr::str_extract(.x, regex)
         ),
         .names = "{.col}_{.fn}"
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ dplyr::case_when(
           !is.na(get(paste0(dplyr::cur_column(), "_temp"))) ~ 
             stringr::str_remove(
@@ -1248,14 +1248,14 @@ std_addr2_parser <- function(df, cols, regex, from_end = TRUE) {
         )
       ),
       dplyr::across(
-        stringr::str_c(cols, "_temp"),
+        dplyr::all_of(stringr::str_c(cols, "_temp")),
         ~ dplyr::case_when(
           !is.na(.x) ~ std_leading_zero_vector(stringr::str_squish(.x)),
           .default = .x
         )
       ),
       dplyr::across(
-        stringr::str_c(cols, "_addr2"),
+        dplyr::all_of(stringr::str_c(cols, "_addr2")),
         ~ dplyr::case_when(
           !is.na(.x) & 
             !is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
@@ -1303,7 +1303,7 @@ std_addr2_po_pmb <- function(df, cols) {
   ) |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         list(
           po = ~ stringr::str_extract(., "(?<=PO BOX ?)[A-Z0-9\\-]+( [0-9]+)?"),
           pmb = ~ stringr::str_extract(., "(?<= PMB ?)[A-Z0-9\\-]+( [0-9]+)?")
@@ -1311,7 +1311,7 @@ std_addr2_po_pmb <- function(df, cols) {
         .names = "{.col}_{.fn}"
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ stringr::str_remove_all(., ",?(PO BOX|PMB) ?[A-Z0-9\\-]+( [0-9]+)?")
       )
     ) |>
@@ -1395,7 +1395,7 @@ std_hyphenate_range <- function (df, cols) {
   df |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ stringr::str_replace(
           ., 
           "(?<=^[0-9]{1,6}[A-Z]{0,2}) (?=[0-9]{1,6}[A-Z]{0,1} )", 
@@ -1404,7 +1404,7 @@ std_hyphenate_range <- function (df, cols) {
         ),
       
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ stringr::str_replace(
           ., 
           "(?<=^[0-9]{1,6}[A-Z]{1,2})(?=[0-9]{1,6}[A-Z]{0,1} )", 
@@ -1418,11 +1418,11 @@ std_frac_to_dec <- function(df, cols) {
   df |>
     dplyr::mutate(
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ stringr::str_replace_all(., "(?<=[0-9]) 1\\/2", ".5")
       ),
       dplyr::across(
-        cols,
+        dplyr::all_of(cols),
         ~ stringr::str_replace_all(., "\\/", " ")
       )
     )
