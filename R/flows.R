@@ -567,8 +567,8 @@ flow_name <- function(df, col, address_col, type="") {
     std_squish(c(col))
 }
 
-flow_name_co_dba_attn <- function(df, col, target, clear_cols = c()) {
-  df |>
+flow_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain=TRUE) {
+  df <- df |>
     std_separate_and_label(
       col = col,
       target_col = target,
@@ -590,6 +590,12 @@ flow_name_co_dba_attn <- function(df, col, target, clear_cols = c()) {
       label = "dba",
       clear_cols = clear_cols
     )
+  
+  if (!retain) {
+    df <- df |>
+      dplyr::filter(!(type %in% c("co", "attn", "dba")))
+  }
+  df
 }
 
 # OpenCorporates ====
@@ -674,14 +680,8 @@ flow_oc_officers <- function(df, zips, places, type_name="officer") {
       c("addr", "name", "position", "str", "muni", "state", "postal", "country")
     ) |>
     flow_oc_fix_officer_addresses() |>
-    flow_oc_generic(zips=zips, places=places, type=type_name)
-  
-  df |>
-    dplyr::filter(!inst & !trust) |>
-    dplyr::bind_rows(
-      df |>
-        dplyr::filter(inst | trust)
-    ) |>
+    flow_oc_generic(zips=zips, places=places, type=type_name) |>
+    std_flag_reg_agent("name") |>
     dplyr::mutate(
       id = stringr::str_c(type_name, "-", dplyr::row_number())
     )

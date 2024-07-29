@@ -1814,6 +1814,13 @@ std_flag_hns <- function(df, col) {
     )
 }
 
+std_flag_reg_agent <- function(df, col) {
+  df |>
+    dplyr::mutate(
+      reg_agent = stringr::str_detect(.data[[col]], "(^C ?T ?CORP)|( REGISTERED A)|( AGENTS?)")
+    )
+}
+
 std_flag_condos <- function(df, luc_col, id_cols) {
   condo <- df |>
     dplyr::filter(.data[[luc_col]] == '102')

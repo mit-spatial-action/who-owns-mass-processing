@@ -295,6 +295,7 @@ dedupe_all <- function(
     )
   
   officers <- officers |>
+    dplyr::filter(!reg_agent) |>
     dedupe_cosine_bounded(
       field1="name",
       field2="addr_id",
@@ -349,6 +350,7 @@ dedupe_all <- function(
   
   list(
     owners = owners,
+    companies = companies,
     officers = officers,
     metacorps = metacorps,
     sites = sites,
