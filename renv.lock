@@ -260,27 +260,6 @@
       ],
       "Hash": "3f038e5ac7f41d4ac41ce658c85e3042"
     },
-    "collapse": {
-      "Package": "collapse",
-      "Version": "2.0.10",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "Rcpp"
-      ],
-      "Hash": "0ecca5a3f584b203b7036093fd179935"
-    },
-    "countrycode": {
-      "Package": "countrycode",
-      "Version": "1.5.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "bbc5ab5258e5ddf38f2cd2c5a7afa860"
-    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.4.7",
@@ -1137,6 +1116,19 @@
       ],
       "Hash": "4801d436beeacde30e87f3485a042326"
     },
+    "wrapr": {
+      "Package": "wrapr",
+      "Version": "2.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Hash": "6f0a88651e706c55011784dfd40cf1bc"
+    },
     "xml2": {
       "Package": "xml2",
       "Version": "1.3.3",
@@ -1154,20 +1146,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "9b570515751dcbae610f29885e025b41"
-    },
-    "zoomerjoin": {
-      "Package": "zoomerjoin",
-      "Version": "0.1.5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "collapse",
-        "dplyr",
-        "tibble",
-        "tidyr"
-      ],
-      "Hash": "cdf88ad92edab19ebc731460d6895075"
     }
   }
 }
