@@ -686,6 +686,7 @@ std_zip_format <- function(df, col, state_col, zips, state_constraint = "") {
   
   zips_unambig <- zips |>
     dplyr::filter(!is.na(unambig_state)) |>
+    dplyr::select(zip, new_state = unambig_state) |> 
     dplyr::distinct()
   
   if (state_constraint != "") {
@@ -724,8 +725,7 @@ std_zip_format <- function(df, col, state_col, zips, state_constraint = "") {
   df <- df |>
     dplyr::filter(is.na(.data[[state_col]])) |>
     dplyr::left_join(
-      zips_unambig |>
-        dplyr::select(zip, new_state = unambig_state),
+      zips_unambig,
       by = dplyr::join_by(
         !!col == zip
       ),

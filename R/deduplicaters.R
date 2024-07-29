@@ -243,7 +243,6 @@ dedupe_cosine_bounded <- function(df, field1, field2, thresh, fill_by_naive = TR
         group_naive = naive_bounded
       )
   }
-  
   df
 }
 
@@ -273,7 +272,8 @@ dedupe_all <- function(
     dplyr::left_join(
       sites |>
         dplyr::select(id, condo),
-      dplyr::join_by(site_id == id)
+      by=dplyr::join_by(site_id == id),
+      multiple="any"
     )
   
   owners <- owners |>
@@ -285,7 +285,9 @@ dedupe_all <- function(
     ) |>
     dplyr::left_join(
       companies |> dplyr::select(company_id, name),
-      by=dplyr::join_by(name)
+      by=dplyr::join_by(name),
+      na_matches="never",
+      multiple="any"
     ) |>
     dplyr::bind_rows(
       owners |>
@@ -304,7 +306,9 @@ dedupe_all <- function(
         dplyr::select(company_id) |>
         dplyr::mutate(match = TRUE) |>
         dplyr::distinct(),
-      by=dplyr::join_by(company_id)
+      by=dplyr::join_by(company_id),
+      na_matches="never",
+      multiple="any"
     ) |>
     dplyr::group_by(group_cosine) |>
     tidyr::fill(match, .direction="downup") |>
@@ -322,7 +326,9 @@ dedupe_all <- function(
           name="company_id",
           membership="network_id"
         ),
-      by=dplyr::join_by(company_id)
+      by=dplyr::join_by(company_id),
+      na_matches="never",
+      multiple="any"
     ) |>
     dplyr::group_by(group_cosine) |>
     tidyr::fill(network_id, .direction="downup") |>
