@@ -153,7 +153,7 @@ dedupe_cosine <- function(df,
   #' @export
   community <- df |>
     # Reduce to only unique string fields.
-    dplyr::distinct(dplyr::across({{ str_field }})) |>
+    dplyr::distinct(dplyr::across(dplyr::all_of( str_field ))) |>
     # Create a quanteda corpus.
     quanteda::corpus(docid_field = str_field, text_field = str_field) |>
     # Construct character-basedtokens object from corpus.
@@ -215,7 +215,7 @@ dedupe_cosine_bounded <- function(df, field1, field2, thresh, fill_by_naive = TR
     df <- df |>
       dplyr::left_join(
         df |>
-          dplyr::select(group_naive, .data[[field2]]) |>
+          dplyr::select(group_naive, dplyr::all_of(field2)) |>
           dplyr::distinct() |>
           dedupe_community(
             "group-naive",
