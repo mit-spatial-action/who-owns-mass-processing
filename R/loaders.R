@@ -349,7 +349,7 @@ load_ingest_read <- function(conn, table_name, loader, refresh=FALSE) {
     if(!table_exists) {
       util_log_message(
         glue::glue(
-          "Table '{table_name'} does not exist in PostGIS."
+          "Table '{table_name}' does not exist in PostGIS."
           )
         )
     } else {
