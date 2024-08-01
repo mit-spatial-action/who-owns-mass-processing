@@ -1205,6 +1205,7 @@ load_zips <- function(munis, crs, threshold = 0.95) {
       ma_unambig_muni_from_zip, 
       by=dplyr::join_by(zip)
       ) |>
+    sf::st_as_sf() |>
     sf::st_transform(crs)
 }
 

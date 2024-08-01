@@ -1837,7 +1837,7 @@ std_flag_hns <- function(df, col) {
     "FALL RIVER", "NEW BEDFORD", "BOSTON")
   df |>
     dplyr::mutate(
-      hns =  .data[[col]] %in% hns_munis
+      hns = .data[[col]] %in% hns_munis
     )
 }
 
