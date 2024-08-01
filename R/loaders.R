@@ -7,7 +7,7 @@ load_muni_table <- function(path, file="muni_ids.csv") {
     show_col_types = FALSE)
 }
 
-load_test_muni_ids <- function(muni_ids, path) {
+load_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #' Test Validity of Muni IDs and Pad
   #' 
   #' Tests whether provided municipality ids are valid (`stop()` if they are 
@@ -30,11 +30,15 @@ load_test_muni_ids <- function(muni_ids, path) {
     dplyr::pull(muni_id)
   if (is.null(muni_ids)) {
     muni_ids <- std_pad_muni_ids(ids)
+  } else if (muni_ids == "hns") {
+    muni_ids <- c("163", "057", "044", "095", "035", "201", "274", "049")
   } else {
     if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
       stop("VALIDATION: Provided invalid test municipality ids. ❌❌❌")
     } else {
-      util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
+      if(!quiet) {
+        util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
+      }
     }
     muni_ids <- std_pad_muni_ids(muni_ids)
   }
@@ -127,6 +131,15 @@ load_gdb_is_file <- function(path) {
     util_log_message("VALIDATION: Folder of geodatabases provided.")
   }
   file
+}
+
+load_rename_geometry <- function(g, name){
+  # Thank you StackExchange GIS user Spacedman!
+  # https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r
+  current <- attr(g, "sf_column")
+  names(g)[names(g)==current] <- name
+  sf::st_geometry(g) <- name
+  g
 }
 
 # Load from Services ====
@@ -259,15 +272,19 @@ load_check_for_tables <- function(conn, table_names) {
   all(table_names %in% DBI::dbListTables(conn))
 }
 
-load_check_for_muni_ids <- function(conn, table_name, muni_ids) {
+load_column_name_lookup <- function(table_name) {
   if (table_name == "init_assess") {
     col <- "site_muni_id"
-  } else if (table_name == "init_addresses" | table_name == "parcels") {
+  } else if (table_name %in% c("init_addresses", "init_parcels")) {
     col <- "muni_id"
   } else {
     stop("Invalid table to check for present muni IDs.")
   }
-  
+  col
+}
+
+load_check_for_muni_ids <- function(conn, table_name, muni_ids) {
+  col <- load_column_name_lookup(table_name)
   cols <- conn |>
     DBI::dbGetQuery(
       glue::glue("SELECT * FROM {table_name} WHERE FALSE")
@@ -359,7 +376,7 @@ load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALS
   df
 }
 
-load_postgis_read <- function(conn, table_name) {
+load_postgis_read <- function(conn, table_name, muni_ids = NULL) {
   #' Read table from PostGIS.
   #' 
   #' Reads table from PostGIS.
@@ -370,7 +387,17 @@ load_postgis_read <- function(conn, table_name) {
   #' @return Table as a data frame.
   #' 
   #' @export
-  
+  q <- glue::glue("SELECT * FROM {table_name}")
+  if (!is.null(muni_ids)) {
+    col <- load_column_name_lookup(table_name)
+    q <- q |>
+      stringr::str_c(
+        glue::glue(" WHERE {col} ~ '("),
+        stringr::str_c(muni_ids, collapse="|"),
+        ")'",
+        sep = ""
+      )
+  }
   geo_tables <- DBI::dbGetQuery(
       conn, 
       "SELECT * FROM geometry_columns"
@@ -380,18 +407,18 @@ load_postgis_read <- function(conn, table_name) {
   if (table_name %in% geo_tables) {
     sf::st_read(
       dsn = conn,
-      layer = table_name,
+      query = q,
       quiet = TRUE
     )
   } else {
-    DBI::dbReadTable(
+    DBI::dbGetQuery(
       conn = conn,
-      name = table_name
+      statement = q
     )
   }
 }
 
-load_read_write <- function(conn, table_name, loader, muni_ids=c(), refresh=FALSE, quiet=FALSE) {
+load_read_write <- function(conn, table_name, loader, muni_ids=NULL, refresh=FALSE, quiet=FALSE) {
   #' Ingest table to or read table from PostGIS.
   #' 
   #' Either writes or reads a table, depending on parameter settings and table
@@ -410,7 +437,7 @@ load_read_write <- function(conn, table_name, loader, muni_ids=c(), refresh=FALS
   on.exit(DBI::dbDisconnect(conn))
   
   table_exists <- load_check_for_tables(conn, table_name)
-  if (length(muni_ids) > 0 & table_exists) {
+  if (!is.null(muni_ids) & table_exists) {
     muni_ids_exist <- load_check_for_muni_ids(conn, table_name, muni_ids)
   } else {
     muni_ids_exist <- TRUE
@@ -421,13 +448,13 @@ load_read_write <- function(conn, table_name, loader, muni_ids=c(), refresh=FALS
       if(!table_exists) {
         util_log_message(
           glue::glue(
-            "INPUT/OUTPUT: Table '{table_name}' does not exist in PostGIS."
+            "VALIDATION: Table '{table_name}' does not exist in PostGIS."
           )
         )
       } else {
         util_log_message(
           glue::glue(
-            "INPUT/OUTPUT: Table '{table_name}' exists in PostGIS, but user specified refresh."
+            "VALIDATION: Table '{table_name}' exists in PostGIS, but user specified refresh."
           )
         )
       }
@@ -442,12 +469,12 @@ load_read_write <- function(conn, table_name, loader, muni_ids=c(), refresh=FALS
         )
       )
     }
-    df <- load_postgis_read(conn, table_name=table_name)
+    df <- load_postgis_read(conn, table_name=table_name, muni_ids)
   } else {
     if(!quiet) {
       util_log_message(
         glue::glue(
-          "INPUT/OUTPUT: Table '{table_name}' exists, but not all municipalities were found. Refreshing..."
+          "INPUT/OUTPUT: Table '{table_name}' exists, but not all municipalities were found. Refreshing."
         )
       )
     }
@@ -641,16 +668,24 @@ load_assess_preprocess <- function(df, path) {
 
 # Load Layers from Source ====
 
-load_block_groups <- function(state, crs, year=NULL) {
+load_block_groups <- function(state, crs, year=NULL, quiet=FALSE) {
+  if (!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Downloading {state} block groups."))
+  }
   tigris::block_groups(state=state, year=year) |>
     sf::st_transform(crs) |>
-    dplyr::select(id = GEOID)
+    dplyr::select(id = GEOID) |>
+    suppressMessages()
 }
 
-load_tracts <- function(state, crs, year=NULL) {
+load_tracts <- function(state, crs, year=NULL, quiet=FALSE) {
+  if (!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Downloading {state} census tracts."))
+  }
   tigris::tracts(state=state, year=year) |>
     sf::st_transform(crs) |>
-    dplyr::select(id = GEOID)
+    dplyr::select(id = GEOID)  |>
+    suppressMessages()
 }
 
 load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
@@ -689,7 +724,9 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
   )
   cols <- stringr::str_c(cols, collapse = ", ")
   
-  util_log_message(glue::glue("INPUT/OUTPUT: Loading assessors' records."))
+  if(!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Loading assessors' records."))
+  }
   
   single_gdb <- load_gdb_is_file(gdb_path)
   
@@ -711,7 +748,10 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
         quiet = TRUE
       )
   } else {
-    util_log_message(glue::glue("INPUT/OUTPUT: Reading from collection of GDBs.")) 
+    if (!quiet) {
+      util_log_message(glue::glue("INPUT/OUTPUT: Reading from collection of GDBs.")) 
+    }
+    
     vintages <- load_vintage_select(gdb_path, muni_ids)
     
     all <- list()
@@ -761,7 +801,10 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
   #' 
   #' @export
   
-  util_log_message(glue::glue("INPUT/OUTPUT: Loading parcels."))
+  if (!quiet){
+    util_log_message("INPUT/OUTPUT: Loading parcels.")
+  }
+  
   
   single_gdb <- load_gdb_is_file(gdb_path)
   
@@ -777,8 +820,6 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
         sep = " "
       )
     }
-    
-    util_log_message(glue::glue("INPUT/OUTPUT: Loading parcels."))
     
     sf::st_read(gdb_path, query = q, quiet = TRUE)
   } else {
@@ -798,11 +839,14 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
       file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
       q <- glue::glue("SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM M{muni_id}TaxPar")
       
-      all[[muni_id]] <- sf::st_read(
+       sdf <- sf::st_read(
         file.path(gdb_path, file), 
         query = q, 
         quiet = TRUE
-      )
+        ) |>
+         load_rename_geometry("geometry")
+        
+       all[[muni_id]] <- sdf
     }
     df <- dplyr::bind_rows(all)
     rm(all)
@@ -810,11 +854,8 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
   df <- df |>
     dplyr::rename_with(stringr::str_to_lower) |>
     dplyr::semi_join(assess, by=dplyr::join_by(loc_id==site_loc_id))
-  
+
   df <- df |>
-    # Correct weird naming conventions of GDB.
-    sf::st_set_geometry("shape") |>
-    sf::st_set_geometry("geometry") |>
     # Reproject to specified CRS.
     sf::st_transform(crs) |>
     # Cast from MULTISURFACE to MULTIPOLYGON.
@@ -822,21 +863,21 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
       muni_id = std_pad_muni_ids(muni_id),
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
-  
+
   df |>
     dplyr::mutate(
       point = sf::st_point_on_surface(geometry)
     ) |>
     sf::st_set_geometry("point") |>
     sf::st_join(
-      block_groups |> 
+      block_groups |>
         dplyr::select(block_group_id = id)
     ) |>
     sf::st_set_geometry("geometry") |>
+    dplyr::select(-point) |>
     dplyr::mutate(
       tract_id = stringr::str_sub(block_group_id, start = 1L, end = 11L)
-    ) |>
-    dplyr::select(-point)
+    )
 }
 
 load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
@@ -859,8 +900,9 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
     muni_ids <- munis |>
       dplyr::pull(muni_id)
   }
-  
-  util_log_message(glue::glue("INPUT/OUTPUT: Loading addresses."))
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Downloading addresses.")
+  }
   
   all <- list()
   nb <- list()
@@ -869,7 +911,7 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
     if (id == bos_id) {
       if (!quiet) {
         util_log_message(
-          glue::glue("INPUT/OUTPUT: Downloading Boston addresses from ArcGIS service.")
+          "INPUT/OUTPUT: Downloading Boston addresses from ArcGIS service."
         )
       }
       # Boston handler---MassGIS does not maintain the Boston Address list.
@@ -886,7 +928,7 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
       url <- glue::glue("{url_base}{filename}.zip")
       if (!quiet) {
         util_log_message(
-          glue::glue("INPUT/OUTPUT: Downloading {filename} from {url}...")
+          glue::glue("INPUT/OUTPUT: Downloading addresses for muni id {id}.")
         )
       }
       nb[[id]] <- load_shp_from_remote_zip(
@@ -976,7 +1018,7 @@ load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
     dplyr::ungroup()
 }
 
-load_places <- function(munis, zips, crs) {
+load_places <- function(munis, zips, crs, quiet=FALSE) {
   #' Load Massachusetts Geographic Place Names
   #' 
   #' Downloads Geographic Place Names from MassGIS Servers and performs some basic
@@ -991,6 +1033,11 @@ load_places <- function(munis, zips, crs) {
   #'    fuzzy matching.
   #' 
   #' @export
+  
+  
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Downloading placenames.")
+  }
   
   munis <- dplyr::select(munis, muni)
   
@@ -1073,7 +1120,7 @@ load_places <- function(munis, zips, crs) {
     dplyr::select(-tmp)
 }
 
-load_munis <- function(crs) {
+load_munis <- function(crs, quiet=FALSE) {
   #' Load Massachusetts Municipal Boundaries
   #' 
   #' Downloads MA municipalities from MassGIS ArcGIS Hub and flags
@@ -1084,8 +1131,10 @@ load_munis <- function(crs) {
   #' @return An `sf` dataframe containing municipal boundaries as MULTIPOLYGONs.
   #' 
   #' @export
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Downloading Massachusetts municipal boundaries.")
+  }
   
-  util_log_message("INPUT/OUTPUT: Downloading Massachusetts municipal boundaries...")
   load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
     dplyr::select(
       muni_id = town_id, 
@@ -1108,7 +1157,7 @@ load_munis <- function(crs) {
     std_flag_hns("muni")
 }
 
-load_zips <- function(munis, crs, threshold = 0.95) {
+load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
   #' Load ZIP Boundaries
   #' 
   #' Downloads ZIP boundaries and attributes from US Census, subsequently
@@ -1118,13 +1167,17 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   #'
   #' @param munis Municipalities as read by `load_muni()`.
   #' @param crs Coordinate reference system for output.
-  #' @param threshold Number between 0 and 1 that sets a threshold for ambiguity.
+  #' @param thresh Number between 0 and 1 that sets a threshold for ambiguity.
   #' 
   #' @return An `sf` dataframe containing ZIP boundaries as MULTIPOLYGONs.
   #' 
   #' @export
   
-  if(!dplyr::between(threshold, 0, 1)) {
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Downloading ZIP boundaries.")
+  }
+  
+  if(!dplyr::between(thresh, 0, 1)) {
     stop("Threshold must be between 0 and 1.")
   }
   
@@ -1142,7 +1195,11 @@ load_zips <- function(munis, crs, threshold = 0.95) {
     dplyr::filter(state %in% state.abb) |>
     suppressMessages()
   
-  int <- zips |>
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Identifying ZIP code states by intersection.")
+  }
+  
+  state_from_zip <- zips |>
     sf::st_set_agr("constant") |>
     sf::st_intersection(
       sf::st_set_agr(states, "constant")
@@ -1160,56 +1217,85 @@ load_zips <- function(munis, crs, threshold = 0.95) {
   
   zips <- zips |>
     dplyr::left_join(
-      int,
+      state_from_zip |>
+        dplyr::distinct(),
       by = dplyr::join_by(zip)
     )
   
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Intersecting ZIP codes with municipal borders.")
+  }
   
-  zips_ma <- zips |>
+  zips_ma <- zips  |>
     dplyr::filter(state == "MA") |>
-    sf::st_transform(crs)
-
-  # Identify cases where ZIPS can be unambiguously assigned from munis (i.e.,
-  # where the vast majority of a zip is contained w/in a single muni.)
-  ma_unambig_zip_from_muni <- munis |>
-    std_calculate_overlap(
-      zips_ma, 
-      threshold=threshold
+    sf::st_transform(crs) |>
+    sf::st_set_agr("constant") |>
+    sf::st_intersection(
+      sf::st_set_agr(
+        munis |> 
+          sf::st_union() |>
+          sf::st_as_sf() |>
+          dplyr::select(), "constant")
+    )
+  
+  if (thresh == 1) {
+    if(!quiet) {
+      util_log_message("INPUT/OUTPUT: Identifying ZIP codes that lie within a single municipal boundary by containment.")
+    }
+    ma_unambig_zip_from_muni <- munis |>
+      sf::st_join(
+        zips_ma, 
+        join = sf::st_contains_properly, 
+        left = FALSE
+        ) |>
+      sf::st_drop_geometry()
+    if(!quiet) {
+      util_log_message("INPUT/OUTPUT: Identifying municipal boundaries that lie within a single ZIP code by containment.")
+    }
+    ma_unambig_muni_from_zip <- zips_ma |>
+      sf::st_join(
+        munis, 
+        join = sf::st_contains_properly, 
+        left = FALSE
       ) |>
-    dplyr::select(
-      zip, 
-      muni_unambig_from=muni
+      sf::st_drop_geometry()
+  } else {
+    if(!quiet) {
+      util_log_message("INPUT/OUTPUT: Identifying ZIP codes that lie within a single municipal boundary by intersection.")
+    }
+    ma_unambig_zip_from_muni <- munis |>
+      std_calculate_overlap(
+        zips_ma, 
+        thresh=thresh
       )
+    if(!quiet) {
+      util_log_message("INPUT/OUTPUT: Identifying municipal boundaries that lie within a single ZIP code by intersection.")
+    }
+    ma_unambig_muni_from_zip <- zips_ma |>
+      std_calculate_overlap(
+        munis,
+        thresh=thresh
+      )
+  }
   
   zips <- zips |>
     dplyr::left_join(
-      ma_unambig_zip_from_muni, 
+      ma_unambig_zip_from_muni |>
+        dplyr::select(zip, muni_unambig_from=muni) |>
+        dplyr::distinct(), 
       by=dplyr::join_by(zip)
-      )
-
-  # Identify cases where munis can be unambiguously assigned
-  # from ZIPS (i.e., where the vast majority of a muni is contained w/in
-  # a single zip).
-  ma_unambig_muni_from_zip <- zips_ma |>
-    std_calculate_overlap(
-      munis,
-      threshold=threshold
-      ) |>
-    dplyr::select(
-      zip, 
-      muni_unambig_to=muni
-      )
-  
-  zips |>
+    ) |>
     dplyr::left_join(
-      ma_unambig_muni_from_zip, 
+      ma_unambig_muni_from_zip |>
+        dplyr::select(zip, muni_unambig_to=muni) |>
+        dplyr::distinct(),
       by=dplyr::join_by(zip)
-      ) |>
+    ) |>
     sf::st_as_sf() |>
     sf::st_transform(crs)
 }
 
-load_oc_companies <- function(path, gdb_path, filename = "companies.csv") {
+load_oc_companies <- function(path, gdb_path, test_count=NULL, quiet=FALSE, filename = "companies.csv") {
   #' Load OpenCorporates Companies
   #' 
   #' Load OpenCorporates companies.
@@ -1222,27 +1308,57 @@ load_oc_companies <- function(path, gdb_path, filename = "companies.csv") {
   #' 
   #' @export
   
+  
+  if(!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Loading companies from {path}/{filename}."))
+  }
+  
   min_year <- load_vintage_select(gdb_path) |>
     dplyr::pull(cy) |>
     min()
   
-  readr::read_csv(
-    file.path(path, filename),
-    progress = FALSE,
-    show_col_types = FALSE
-  ) |>
-    dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("{min_year}-01-01")) |>
-    dplyr::select(
+  df <- readr::read_csv(
+      file.path(path, filename),
+      col_select = c(name, company_type, registered_address.street_address,
+                     registered_address.locality, registered_address.region,
+                     registered_address.postal_code, registered_address.country,
+                     company_number, dissolution_date),
+      col_types = "ccccccccD",
+      progress = FALSE
+    ) |>
+    dplyr::rename(
       id = company_number,
-      name,
-      company_type,
-      nonprofit,
       addr = registered_address.street_address,
       muni = registered_address.locality,
       state = registered_address.region,
       postal = registered_address.postal_code,
       country = registered_address.country
     ) |>
+    dplyr::filter(is.na(dissolution_date) | dissolution_date > glue::glue("{min_year}-01-01")) |>
+    dplyr::select(-dissolution_date) |>
+    suppressWarnings()
+  
+  if(!is.null(test_count)) {
+    if (test_count <= nrow(df) & is.numeric(test_count)) {
+      if(!quiet) {
+        util_log_message(glue::glue("INPUT/OUTPUT: Loading only first {test_count} companies."))
+      }
+      df <- df |>
+        dplyr::slice_head(n=test_count)
+    } else if (test_count > nrow(df)) {
+      if(!quiet) {
+        util_log_message(glue::glue("VALIDATION: Test count larger than row count. Loading all companies."))
+      }
+    } else if (test_count == 0) {
+      if(!quiet) {
+        util_log_message(glue::glue("VALIDATION: Test count cannot be zero. Loading all companies."))
+      }
+    } else {
+      stop("Invalid test count provided to load_oc_companies(). Must be numeric.")
+    }
+  }
+  
+  df |>
     load_generic_preprocess(
       c("name", "addr", "company_type", "muni", "state", "postal", "country"),
       id_cols = c("id")
@@ -1252,7 +1368,12 @@ load_oc_companies <- function(path, gdb_path, filename = "companies.csv") {
     )
 }
 
-load_oc_officer_fix_addresses <- function(df) {
+load_oc_officer_fix_addresses <- function(df, quiet=FALSE) {
+  
+  if(!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Fixing officer addresses."))
+  }
+  
   parsed_or_none <- df |>
     dplyr::filter(is.na(addr) | !is.na(str)) |>
     dplyr::select(-addr) |>
@@ -1281,7 +1402,7 @@ load_oc_officer_fix_addresses <- function(df) {
     dplyr::bind_rows(parsed_or_none)
 }
 
-load_oc_officers <- function(path, companies, filename = "officers.csv") {
+load_oc_officers <- function(path, companies, quiet=FALSE, filename = "officers.csv") {
   #' Load OpenCorporates Officers
   #' 
   #' Load OpenCorporates officers.
@@ -1294,14 +1415,20 @@ load_oc_officers <- function(path, companies, filename = "officers.csv") {
   #' 
   #' @export
   
+  if(!quiet) {
+    util_log_message(glue::glue("INPUT/OUTPUT: Loading officers from {path}/{filename}."))
+  }
+  
   readr::read_csv(
     file.path(path, filename),
+    col_select = c(name, position, address.in_full, address.street_address, 
+                   address.locality, address.region, address.postal_code, 
+                   address.country, company_number),
+    col_types = "ccccccccc",
     progress = FALSE,
     show_col_types = FALSE
   ) |>
-    dplyr::select(
-      name, 
-      position, 
+    dplyr::rename(
       addr = address.in_full, 
       str = address.street_address, 
       muni = address.locality,
@@ -1315,8 +1442,10 @@ load_oc_officers <- function(path, companies, filename = "officers.csv") {
     load_generic_preprocess(
       c("addr", "name", "position", "str", "muni", "state", "postal", "country")
     ) |>
-    load_oc_officer_fix_addresses() |>
-    std_replace_blank(c("addr", "muni", "state", "postal"))
+    dplyr::filter(!is.na(name)) |>
+    load_oc_officer_fix_addresses(quiet=quiet) |>
+    std_replace_blank(c("addr", "muni", "state", "postal")) |>
+    suppressWarnings()
 }
 
 # Omnibus Ingestor/Loader ====
@@ -1327,7 +1456,9 @@ load_read_write_all <- function(
     gdb_path,
     oc_path,
     crs,
+    zip_int_thresh,
     refresh,
+    company_test_count=NULL,
     quiet=FALSE
     ) {
   #' Ingests/Read All Layers
@@ -1347,18 +1478,17 @@ load_read_write_all <- function(
   #' 
   #' @export
   
-  # Test Validity of Municipality IDs
-  muni_ids <- load_test_muni_ids(
-    muni_ids=muni_ids,
-    path=data_path
-  )
+  if(!quiet) {
+    util_log_message("BEGINNING DATA LOADING SEQUENCE", header=TRUE)
+  }
   
   # Read Municipalities
   munis <- load_read_write(
     load_conn(),
     "munis",
     loader=load_munis(
-      crs=crs
+      crs=crs,
+      quiet=quiet
     ),
     refresh=refresh,
     quiet=quiet
@@ -1370,7 +1500,9 @@ load_read_write_all <- function(
     "zips",
     load_zips(
       munis=munis,
-      crs=crs
+      crs=crs,
+      thresh=zip_int_thresh,
+      quiet=quiet
     ),
     refresh=refresh,
     quiet=quiet
@@ -1383,7 +1515,8 @@ load_read_write_all <- function(
     load_places(
       munis=munis,
       zips=zips,
-      crs=crs
+      crs=crs,
+      quiet=quiet
     ),
     refresh=refresh,
     quiet=quiet
@@ -1410,7 +1543,8 @@ load_read_write_all <- function(
     "tracts",
     load_tracts(
       state="MA",
-      crs=crs
+      crs=crs,
+      quiet=quiet
     ),
     refresh=refresh
   )
@@ -1421,7 +1555,8 @@ load_read_write_all <- function(
     "block_groups",
     loader=load_block_groups(
       state="MA",
-      crs=crs
+      crs=crs,
+      quiet=quiet
     ),
     refresh=refresh
   )
@@ -1429,14 +1564,14 @@ load_read_write_all <- function(
   # Read Parcels
   parcels <- load_read_write(
     load_conn(),
-    "parcels",
+    "init_parcels",
     loader=load_parcels(
       gdb_path=file.path(data_path, gdb_path),
       muni_ids=muni_ids,
       assess=assess,
       block_groups=block_groups,
       crs=crs,
-      quiet=TRUE
+      quiet=quiet
     ),
     refresh=refresh,
     muni_ids=muni_ids
@@ -1451,7 +1586,7 @@ load_read_write_all <- function(
       muni_ids=muni_ids,
       parcels=parcels,
       crs=crs,
-      quiet=TRUE
+      quiet=quiet
     ),
     refresh=refresh,
     muni_ids=muni_ids
@@ -1463,7 +1598,9 @@ load_read_write_all <- function(
     "init_companies",
     load_oc_companies(
       path=file.path(data_path, oc_path),
-      gdb_path=file.path(data_path, gdb_path)
+      gdb_path=file.path(data_path, gdb_path),
+      quiet=quiet,
+      test_count=company_test_count
     ),
     refresh=refresh
   )
@@ -1474,7 +1611,8 @@ load_read_write_all <- function(
     "init_officers",
     load_oc_officers(
       path=file.path(data_path, oc_path),
-      companies=companies
+      companies=companies,
+      quiet=quiet
     ),
     refresh=refresh
   )

@@ -341,7 +341,7 @@ dedupe_cosine_bounded <- function(df, field, bounding_field, thresh, table_col, 
     dedupe_naive(field) |>
     dplyr::group_by(naive) |>
     tidyr::fill(
-      .data[[bounding_field]],
+      dplyr::all_of(bounding_field),
       .direction="updown"
     )
   

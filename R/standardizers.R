@@ -725,27 +725,6 @@ std_zip_format <- function(df, col, state_col, zips, state_constraint = "") {
       )
     )
   
-  df <- df |>
-    dplyr::filter(is.na(.data[[state_col]])) |>
-    dplyr::left_join(
-      zips_unambig,
-      by = dplyr::join_by(
-        !!col == zip
-      ),
-      na_matches="never"
-    ) |>
-    dplyr::mutate(
-      !!state_col := dplyr::case_when(
-        is.na(.data[[state_col]]) ~ new_state,
-        .default = .data[[state_col]]
-      )
-    ) |>
-    dplyr::select(-new_state) |>
-    dplyr::bind_rows(
-      df |>
-        dplyr::filter(!is.na(.data[[state_col]]))
-    )
-  
   df |>
     dplyr::select(-c(temp, in_zips))
 }
@@ -1431,57 +1410,66 @@ std_frac_to_dec <- function(df, cols) {
     )
 }
 
-std_fill_state_by_zip <- function(df, zips) {
-  df <- df |>
-    dplyr::filter(is.na(state), !is.na(postal)) |>
+std_fill_state_by_zip <- function(df, col, postal_col, zips) {
+  df |>
+    dplyr::filter(
+      is.na(.data[[col]]) & !is.na(.data[[postal_col]])
+    ) |>
     dplyr::left_join(
       zips |>
-        dplyr::filter(state_unambig) |>
-        dplyr::select(zip, zip_state = state), 
-      by = c("postal" = "zip")) |>
+        sf::st_drop_geometry() |>
+        dplyr::filter(!is.na(unambig_state)) |>
+        dplyr::select(zip, zip_state = unambig_state)|>
+        dplyr::distinct(), 
+      by = dplyr::join_by(
+        !!postal_col == zip
+      )
+    )|>
     dplyr::mutate(
-      condition = !is.na(zip_state) & (country == "US" | is.na(country)),
-      state = dplyr::case_when(
-        condition ~ zip_state,
-        .default = state
+      !!col := dplyr::case_when(
+        !is.na(zip_state) ~ zip_state,
+        .default = .data[[col]]
       )
     ) |>
-    dplyr::select(-c(condition, zip_state)) |>
+    dplyr::select(-c(zip_state)) |>
     dplyr::bind_rows(
       df |>
-        dplyr::filter(!is.na(state) | is.na(postal))
+        dplyr::filter(
+          !(is.na(.data[[col]]) & !is.na(.data[[postal_col]]))
+        )
     )
 }
 
-# NEED TO IMPLEMENT fill_muni_by_zip ====
-# Replace/fill unmatched muni names using unambiguous ZIP codes
-# (i.e., ZIP codes that are fully within a municipality).
-
-# std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
-#   
-# }
-
-# df_ma <- df_ma |>
-#   dplyr::filter(!match, !is.na(postal)) |>
-#   dplyr::left_join(
-#     zips |>
-#       dplyr::filter(ma) |>
-#       dplyr::filter(!is.na(muni_unambig_to)) |>
-#       dplyr::select(zip, pl_name = muni_unambig_to),
-#     by = c("postal" = "zip")
-#   ) |>
-#   dplyr::mutate(
-#     match = !is.na(pl_name),
-#     muni = dplyr::case_when(
-#       match ~ pl_name,
-#       .default = muni
-#     )
-#   ) |>
-#   dplyr::select(-c(pl_name)) |>
-#   dplyr::bind_rows(
-#     df_ma |>
-#       dplyr::filter(match | is.na(postal))
-#   )
+std_fill_muni_by_zip <- function(df, col, postal_col, state_col, zips) {
+  df <- df |>
+    dplyr::filter(
+      is.na(.data[[col]]) & !is.na(.data[[postal_col]])
+    ) |>
+    dplyr::left_join(
+      zips |>
+        sf::st_drop_geometry() |>
+        dplyr::filter(!is.na(muni_unambig_from) & (unambig_state == "MA")) |>
+        dplyr::select(muni_unambig_from, zip, state) |>
+        dplyr::distinct(),
+      by = dplyr::join_by(
+        !!postal_col == zip,
+        !!state_col == state
+      )
+    ) |>
+    dplyr::mutate(
+      !!col := dplyr::case_when(
+        !is.na(muni_unambig_from) ~ muni_unambig_from,
+        .default = .data[[col]]
+      )
+    ) |>
+    dplyr::select(-muni_unambig_from) |>
+    dplyr::bind_rows(
+      df |> 
+        dplyr::filter(
+          !(is.na(.data[[col]]) & !is.na(.data[[postal_col]]))
+        )
+    )
+}
 
 std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
   df <- df |>
@@ -1491,11 +1479,11 @@ std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
     dplyr::left_join(
       zips |>
         sf::st_drop_geometry() |>
-        dplyr::filter(!is.na(muni_unambig_from)) |>
-        dplyr::select(muni_unambig_from, zip) |>
+        dplyr::filter(!is.na(muni_unambig_to)) |>
+        dplyr::select(muni_unambig_to, zip) |>
         dplyr::distinct(),
       by = dplyr::join_by(
-        !!muni_col == muni_unambig_from
+        !!muni_col == muni_unambig_to
         )
     ) |>
     dplyr::mutate(
@@ -1508,7 +1496,7 @@ std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
     dplyr::bind_rows(
       df |> 
         dplyr::filter(
-          !is.na(.data[[col]]) | is.na(.data[[muni_col]])
+          !(is.na(.data[[col]]) & !is.na(.data[[muni_col]]))
         )
     )
 }
@@ -2056,7 +2044,7 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips
     sf::st_drop_geometry()
 }
 
-std_calculate_overlap <- function(x, y, threshold = 0) {
+std_calculate_overlap <- function(x, y, thresh = 0) {
   #' Calculate Overlap
   #' 
   #' Given two `sf` ajects, returns a table of cases where the overlap is

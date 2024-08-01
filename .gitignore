@@ -15,6 +15,7 @@ sandbox.R
 *.msg
 # Results
 results/*.csv
+results/*.Rda
 # Spatial/GIS formats.
 *.qmd
 *.qgz

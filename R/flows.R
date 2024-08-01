@@ -178,7 +178,7 @@ flow_address_match_simp <- function(df, cols) {
     dplyr::select(-paste0(cols, "_simp"))
 }
 
-flow_address_postal <- function(df, col, state_col, zips, state_constraint = "") {
+flow_address_postal <- function(df, col, state_col, muni_col, zips, state_constraint = "") {
   if (state_constraint != "") {
     df <- df |>
       dplyr::filter(.data[[state_col]] == state_constraint) |>
@@ -205,7 +205,23 @@ flow_address_postal <- function(df, col, state_col, zips, state_constraint = "")
         zips=zips
       )
   }
-  df
+  df |>
+    std_fill_zip_by_muni(
+      col, 
+      muni_col=muni_col, 
+      zips
+    ) |>
+    std_fill_muni_by_zip(
+      muni_col, 
+      postal_col=col, 
+      state_col=state_col,
+      zips
+    ) |>
+    std_fill_state_by_zip(
+      state_col,
+      postal_col=col, 
+      zips
+    )
 }
 
 flow_address_muni <- function(df,
@@ -334,6 +350,7 @@ flow_address <- function(df, col, postal_col, muni_col, state_col, zips, places,
     flow_address_postal(
       postal_col, 
       state_col=state_col, 
+      muni_col=muni_col,
       zips, 
       state_constraint
     ) |>
@@ -668,12 +685,14 @@ flow_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
   df <- df |>
     flow_name_co_dba_attn(
       address_col,
-      target=name_col
+      target=name_col,
+      retain=FALSE
     )
   df <- df |>
     flow_name_co_dba_attn(
       name_col,
-      target=name_col
+      target=name_col,
+      retain=FALSE
     )
   df <- df |>
     flow_name(
@@ -796,6 +815,7 @@ flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
     flow_address_postal(
       cols$site$postal,
       state_col=cols$site$state, 
+      muni_col=cols$site$muni, 
       zips=zips,
       state_constraint=state_constraint
       )
@@ -810,6 +830,7 @@ flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
     flow_address_postal(
       cols$own$postal,
       state_col=cols$own$state, 
+      muni_col=cols$own$muni, 
       zips=zips
       ) |>
     dplyr::mutate(
@@ -884,7 +905,7 @@ flow_assess <- function(df,
                         state_constraint,
                         quiet = FALSE) {
   if(!quiet) {
-    util_log_message("BEGIN ASSESSORS TABLE PROCESSING SEQUENCE", header=TRUE)
+    util_log_message("BEGIN ASSESSORS TABLE SEQUENCE", header=TRUE)
   }
   df <- df |>
     flow_assess_address_text(
@@ -971,8 +992,6 @@ flow_process_all <- function(assess,
       owners <- owners
     )
   
-  rm(assess)
-  
   sites <- load_read_write(
     load_conn(),
     "proc_sites",
@@ -983,6 +1002,8 @@ flow_process_all <- function(assess,
     ),
     refresh=refresh
     )
+  
+  rm(addresses)
   
   owners <- load_read_write(
     load_conn(),
@@ -1021,6 +1042,7 @@ flow_process_all <- function(assess,
   )
 
   list(
+    assess = assess,
     sites = sites,
     owners = owners,
     companies = companies,
