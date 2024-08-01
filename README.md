@@ -14,6 +14,10 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 This library's dependencies are managed using `renv`. To install necessary dependencies, simply install `renv` and run `renv::restore()`. If you are using Windows, you'll probably have to [install the `Rtools` bundle appropriate for your version of R](https://cran.r-project.org/bin/windows/Rtools/).
 
+### Configuration (`config.R`)
+
+
+
 ### Setting up .Renviron
 
 Eviction filings are pulled down from a PostGIS database. As written, we expect PostgreSQL connection parameters to appear in an `.Renviron` file with the following environment variables defined:

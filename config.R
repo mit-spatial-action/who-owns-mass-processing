@@ -1,12 +1,18 @@
 # If true, load.R will re-ingest data from sources.
-REFRESH <- FALSE
+REFRESH <- TRUE
 
 # If not NULL, will run script on a subset of municipalities.
 # Can be provided as numeric or character vector.
-MUNI_IDS <- c(274, 49, 176, 35)
+# MUNI_IDS <- c(274, 49, 176, 35, 46)
 
 # To run on all MA municipalities, uncomment this line.
-# MUNI_IDS <- NULL
+MUNI_IDS <- NULL
+
+# These are thresholds for cosine similarity-based de-duplication.
+COSINE_THRESH <- 0.85
+INDS_THRESH <- 0.85
+
+QUIET <- FALSE
 
 # Coordinate Reference System into which spatial layers will be projected.
 CRS <- 2249

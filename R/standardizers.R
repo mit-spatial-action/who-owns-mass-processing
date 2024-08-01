@@ -316,7 +316,10 @@ std_replace_blank <- function(df, cols) {
     "[\\_\\-\\;\\:\\, ]+", 
     "N(ONE)?", 
     "N( /)? ?A",
-    "UNKNOWN",
+    "U ?NKNOWN",
+    "N N",
+    "LLC|LLP|INC|LTD",
+    "DOING BUSINESS (AS|BY)",
     " *",
     ""
     # "^[- ]*SAME( ADDRESS)?"
@@ -333,7 +336,7 @@ std_replace_blank <- function(df, cols) {
       dplyr::across(
         dplyr::all_of(cols),
         ~ dplyr::case_when(
-          stringr::str_detect(., "^SAME|NONE|UNKNOWN(?=\\s|\\,|$)") ~ NA_character_,
+          stringr::str_detect(., "^(SAME|NONE|UNKNOWN)(?=\\s|\\,|$)") ~ NA_character_,
           .default = .
         )
     )
@@ -827,13 +830,13 @@ std_inst_types <- function(df, cols) {
     "LTD LIABILITY (COMPANY|CORPORATION)" = "LLC",
     "LTD LLC" = "LLC",
     "LTD (LIABILITY )?PARTNERS(HIP)?" = "LLP",
-    "LP" = "LLP",
+    "LPS?" = "LLP",
     "JU?ST[ \\-]*A[ \\-]*START" = "JUST A START",
     "GENERAL PARTNERS(HIP)?" = "GP",
     "AUTH[ORITY]{0,6}" = "AUTHORITY",
     "(ASSN?|ASSOC)" = "ASSOCATION",
     "DEPT" = "DEPARTMENT",
-    "((G?ST|[0-9]{0,4}) )?(TRUST|TRU?ST|TR|TRT|TRUS|TRU|TRYST|T[RUS]{3}T)( (OF )?[0-9]{4})?" = "TRUST",
+    "((G?ST|[0-9]{0,4}) )?(TRUST|TRU?ST|TR|TRT|TRUS|TRU|TRYST|T[RUS]{3}T)( (OF )?[0-9\\s\\-]+)?" = "TRUST",
     "(C ?O-?)?(TRS|TRU?ST[ES]{1,4}|TRSTS|T[RUSTEE]{6}S|TS|BE)" = "TRUSTEES",
     "([A-Z]+)TRUST" = "\\1 TRUST",
     "([A-Z]+)TRUSTEES" = "\\1 TRUSTEES",
@@ -1035,26 +1038,26 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
     dplyr::filter(.data[[muni_id_col]] == '035') |>
     dplyr::mutate(
       !!col := dplyr::case_when(
-        .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 6) ~
-          .data[[count_col]],
+        .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]] - 1, 4, 6) ~
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '111' & dplyr::between(units_by_area, 4, 6) ~
           units_by_area,
         .data[[luc_col]] == '111' ~
           4,
-        .data[[luc_col]] == '112' & dplyr::between(.data[[count_col]], 7, 30) ~
-          .data[[count_col]],
+        .data[[luc_col]] == '112' & dplyr::between(.data[[count_col]] - 1, 7, 30) ~
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '112' & dplyr::between(units_by_area, 7, 30) ~
           units_by_area,
         .data[[luc_col]] == '112' ~
           7,
-        .data[[luc_col]] == '113' & dplyr::between(.data[[count_col]], 31, 99) ~
-          .data[[count_col]],
+        .data[[luc_col]] == '113' & dplyr::between(.data[[count_col]] - 1, 31, 99) ~
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '113' & dplyr::between(units_by_area, 31, 99)  ~
           units_by_area,
         .data[[luc_col]] == '113' ~
           31,
-        .data[[luc_col]] == '114' & .data[[count_col]] >= 100 ~
-          .data[[count_col]],
+        .data[[luc_col]] == '114' & .data[[count_col]] - 1 >= 100 ~
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '114' & units_by_area >= 100 ~
           units_by_area,
         .data[[luc_col]] == '114' ~
@@ -1687,7 +1690,8 @@ std_multiname <- function(df, col) {
     std_separate_and_label(
       col = col,
       target_col = col,
-      regex = " AND "
+      regex = " AND ",
+      label="and"
     ) |>
     std_replace_blank(col) |>
     dplyr::mutate(
@@ -1738,15 +1742,18 @@ std_separate_and_label <- function(df,
                                    regex, 
                                    label = "",
                                    target_col = "name",
-                                   clear_cols = c()) {
+                                   clear_cols = c(),
+                                   retain = TRUE) {
   regex = stringr::regex(regex)
   df <- df |>
+    tibble::rowid_to_column("t_id") |>
     dplyr::mutate(
       flag = dplyr::case_when(
         stringr::str_detect(.data[[col]], regex) ~ TRUE,
         .default = FALSE
       )
     )
+  
   match <- df |>
     dplyr::filter(flag) |>
     tidyr::separate_longer_delim(
@@ -1775,30 +1782,50 @@ std_separate_and_label <- function(df,
       dplyr::mutate(
         !!target_col := dplyr::case_when(
           type == label ~ .data[[col]],
-          .default = name
+          .default = .data[[target_col]]
         ),
-        addr = dplyr::case_when(
+        !!col := dplyr::case_when(
           type == label ~ NA_character_,
           .default = .data[[col]]
         )
       )
+  } else {
+    match <- match |>
+      dplyr::group_by(t_id) |>
+      dplyr::arrange(.data[[col]]) |>
+      dplyr::mutate(
+        rm_test = sum(!is.na(.data[[col]])) == 1,
+        type = dplyr::first(type)
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::filter(!(rm_test & is.na(.data[[col]]))) |>
+      dplyr::select(-rm_test)
   }
-  match |> 
+  
+  match <- match |> 
     dplyr::mutate(
       dplyr::across(
-        dplyr::any_of(clear_cols),
+        dplyr::any_of(clear_cols) & tidyselect::where(is.character),
         ~ dplyr::case_when(
           type != label ~
-            NA,
-          .default = .
+            NA_character_,
+          .default = .x
         )
       )
-    ) |>
+    ) 
+  
+  if (!retain) {
+    match <- match |>
+      dplyr::filter(type != label)
+  }
+  
+  match |>
     dplyr::bind_rows(
       df |>
         dplyr::filter(!flag)
     ) |>
-    dplyr::select(-c(row, count, flag))
+    dplyr::select(-c(row, count, flag, t_id))
+    
 }
 
 
@@ -1814,10 +1841,15 @@ std_flag_hns <- function(df, col) {
     )
 }
 
-std_flag_reg_agent <- function(df, col) {
+std_flag_agent <- function(df, col, position_col) {
   df |>
     dplyr::mutate(
-      reg_agent = stringr::str_detect(.data[[col]], "(^C ?T ?CORP)|( REGISTERED A)|( AGENTS?)")
+      agent = dplyr::case_when(
+        stringr::str_detect(.data[[col]], "(^C ?T ?CORP)|( REGISTERED A)|( AGENTS?)|(CORPORAT(E|ION) SERVICE)|(INC(ORP(ORATING)?)? SERVICES)|(BUSINESS FILL?INGS)|(CORPORATION COMPANY)|(PRENTICE[-\\s]?HALL CORP)|(COGENCY GLOB)") ~ TRUE,
+        stringr::str_detect(.data[[position_col]], "AGENT|SIGNATORY") ~ TRUE,
+        stringr::str_detect(.data[[col]], "\\b(LAW|ATTORNEY|LLP|ESQ(UIRE)?)\\b") ~ TRUE,
+        .default = FALSE
+      )
     )
 }
 
@@ -1995,37 +2027,6 @@ std_flag_lawyers <- function(df, cols) {
 }
 
 # Spatial Joiners ====
-
-std_join_censusgeo_sp <- function(sdf, state = "MA", crs = 2249) {
-  #' Bind census geography IDs to geometries of interest.
-  #'
-  #' @param sdf A sf dataframe.
-  #' @param state State of your study. (TODO: multiple states?)
-  #' @param crs EPSG code of appropriate coordinate reference system.
-  #' @returns A dataframe.
-  #' @export
-  censusgeo <- tigris::block_groups(state = state) |>
-    sf::st_transform(crs) |>
-    dplyr::rename(
-      geoid_bg = GEOID
-    ) |>
-    dplyr::select(geoid_bg)
-  sdf |>
-    dplyr::mutate(
-      point = sf::st_point_on_surface(geometry)
-    ) |>
-    sf::st_set_geometry("point") |>
-    sf::st_join(
-      censusgeo
-    ) |>
-    sf::st_set_geometry("geometry") |>
-    dplyr::mutate(
-      geoid_t = stringr::str_sub(geoid_bg, start = 1L, end = 11L)
-    ) |>
-    dplyr::select(
-      -c(point)
-    )
-}
 
 std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips) {
   ma_zips <- zips |>
