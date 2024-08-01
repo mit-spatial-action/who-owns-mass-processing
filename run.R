@@ -2,6 +2,7 @@ source("R/loaders.R")
 source('R/standardizers.R')
 source('R/deduplicaters.R')
 source("R/flows.R")
+source("R/utilities.R")
 source("config.R")
 
 run <- function(data_path=DATA_PATH,
@@ -9,7 +10,10 @@ run <- function(data_path=DATA_PATH,
                 refresh=REFRESH,
                 crs=CRS,
                 gdb_path=GDB_PATH,
-                oc_path=OC_PATH) {
+                oc_path=OC_PATH,
+                quiet=QUIET,
+                thresh=THRESH,
+                inds_thresh=INDS_THRESH) {
   # Open Log
   # ===
   
@@ -21,13 +25,14 @@ run <- function(data_path=DATA_PATH,
   # Ingest or Load Data
   # ===
   
-  load_ingest_read_all(
+  load_read_write_all(
     data_path=data_path,
     muni_ids=muni_ids,
-    refresh=refresh,
     crs=crs,
     gdb_path=gdb_path,
-    oc_path=oc_path
+    oc_path=oc_path,
+    quiet=quiet,
+    refresh=refresh
   ) |>
     wrapr::unpack(
       munis <- munis,
@@ -44,13 +49,15 @@ run <- function(data_path=DATA_PATH,
   # ===
   
   flow_process_all(
-    assess=assess |> dplyr::slice_head(n=50000),
-    companies=companies |> dplyr::slice_head(n=50000),
-    officers=officers |> dplyr::slice_head(n=50000),
+    assess=assess,
+    companies=companies,
+    officers=officers,
     addresses=addresses,
     zips=zips,
     parcels=parcels,
-    places=places
+    places=places,
+    quiet=quiet,
+    refresh=refresh
   ) |>
     wrapr::unpack(
       sites <- sites,
@@ -64,26 +71,34 @@ run <- function(data_path=DATA_PATH,
   # De-duplicate!
   # ===
   
-  dedupe_all(
+  out <- dedupe_all(
     owners=owners,
     companies=companies,
     officers=officers,
     sites=sites,
-    addresses=addresses
-    ) |>
-    wrapr::unpack(
-      owners <- owners,
-      officers <- officers,
-      sites <- sites,
-      metacorps <- metacorps,
-      unique_addresses <- unique_addresses
+    addresses=addresses,
+    thresh=thresh,
+    inds_thresh=inds_thresh,
+    quiet=quiet,
+    refresh=refresh
     )
   
   # Close Log
   logr::log_close()
+  out
 }
 
 # This is like if __name__ == "__main__" in python.
 if (!interactive()) {
   run()
+} else {
+  run() |>
+    wrapr::unpack(
+      owners <- owners,
+      companies <- companies,
+      officers <- officers,
+      sites <- sites,
+      metacorps <- metacorps,
+      addresses <- addresses
+    )
 }
