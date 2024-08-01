@@ -33,5 +33,6 @@ results/*.Rda
 
 data/*
 
+!data/muni_ids.csv
 !data/luc_crosswalk.csv
 !data/README.csv

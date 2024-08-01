@@ -234,17 +234,17 @@ load_conn <- function(remote=FALSE) {
   #' @export
   
   if (remote) {
+    dbname <- "REMOTE_DB_NAME"
+    host <- "REMOTE_DB_HOST"
+    port <- "REMOTE_DB_PORT"
+    user <- "REMOTE_DB_USER"
+    password <- "REMOTE_DB_PASS"
+  } else {
     dbname <- "DB_NAME"
     host <- "DB_HOST"
     port <- "DB_PORT"
     user <- "DB_USER"
     password <- "DB_PASS"
-  } else {
-    dbname <- "LOCAL_DB_NAME"
-    host <- "LOCAL_DB_HOST"
-    port <- "LOCAL_DB_PORT"
-    user <- "LOCAL_DB_USER"
-    password <- "LOCAL_DB_PASS"
   }
   DBI::dbConnect(
     RPostgres::Postgres(),
