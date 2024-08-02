@@ -58,7 +58,8 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
     muni_ids <- c("163", "057", "044", "095", "035", "201", "274", "049")
   } else {
     if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
-      stop("VALIDATION: Provided invalid test municipality ids. ❌❌❌")
+      util_log_message("VALIDATION: Got it! Check your config.R.")
+      tryCatch(stop(), error = function(e) {})
     } else {
       if(!quiet) {
         util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
@@ -125,6 +126,7 @@ util_check_for_tables <- function(conn, table_names) {
 util_run_tables_exist <- function(tables, push_remote) {
   l <- util_conn(push_remote$load)
   p <- util_conn(push_remote$proc)
+  d <- util_conn(push_remote$dedupe)
   tables_exist <- list(
     load = util_check_for_tables(
       l,
@@ -133,10 +135,15 @@ util_run_tables_exist <- function(tables, push_remote) {
     proc = util_check_for_tables(
       p,
       tables$proc
+    ),
+    dedupe = util_check_for_tables(
+      p,
+      tables$proc
     )
   )
   DBI::dbDisconnect(l)
   DBI::dbDisconnect(p)
+  DBI::dbDisconnect(d)
   tables_exist
 }
 
@@ -159,11 +166,74 @@ util_run_which_tables <- function(routines, push_remote) {
     load_tables <- tables <- c(
       load_tables,
       "munis", "zips", "places", "init_assess", "init_addresses", 
-      "init_companies", "init_officers", "parcels"
+      "init_companies", "init_officers", "parcels", "block_groups", "tracts"
+    )
+  }
+  if (routines$dedupe) {
+    load_tables <- c(
+      load_tables, 
+      c("init_addresses")
+    )
+    proc_tables <- tables <- c(
+      proc_tables,
+      c("proc_sites", "proc_owners", 
+        "proc_companies", "proc_officers")
     )
   }
   list(
     load = unique(load_tables),
     proc = unique(proc_tables)
   )
+}
+
+util_prompt_check <- function(prompt) {
+  util_log_message(prompt)
+  r <- readline()
+  if (r %in% c("Y", "y", "N", "n")) {
+    check <- TRUE
+  } else {
+    util_log_message(
+      glue::glue("VALIDATION: Response '{r}' is invalid. Must be Y or N.")
+      )
+    check <- FALSE
+  }
+  if (!check) {
+    util_prompt_check(prompt)
+  } else {
+    if (r %in% c("Y", "y")) {
+      util_log_message(
+        glue::glue("VALIDATION: You answered '{r}'---got it! Beginning process.")
+      )
+      return(TRUE)
+    } else if (r %in% c("N", "n")) {
+      util_log_message(
+        glue::glue("VALIDATION: You answered '{r}'---got it! Stopping. Change your settings in config.R.")
+      )
+      return(FALSE)
+    }
+  }
+}
+
+util_prompts <- function(refresh, muni_ids, company_test) {
+  if (refresh) {
+    continue <- util_prompt_check(
+      "VALIDATION: REFRESH is TRUE. Any explictly identified subroutines will rerun. Continue? (Y/N) "
+    )
+    return(continue)
+  }
+  
+  if (is.null(muni_ids)) {
+    continue <- util_prompt_check(
+      "VALIDATION: MUNI_IDS is set to NULL. This will run the process for the whole state, which will take a long time. Continue? (Y/N) "
+    ) 
+    return(continue)
+  }
+  
+  if (!company_test) {
+    continue <- util_prompt_check(
+      "VALIDATION: COMPANY_TEST is FALSE. This will run the process for all companies, which will take a long time. Continue? (Y/N) "
+    ) 
+    return(continue)
+  }
+  return(TRUE)
 }

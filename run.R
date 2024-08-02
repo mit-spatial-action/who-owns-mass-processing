@@ -33,6 +33,10 @@ run <- function(data_path=DATA_PATH,
   )
   
   on.exit(logr::log_close())
+
+  if(!util_prompts(refresh, muni_ids, company_test)) {
+    return(NULL)
+  }
   
   # Test Validity of Municipality IDs
   muni_ids <- util_test_muni_ids(
@@ -73,9 +77,10 @@ run <- function(data_path=DATA_PATH,
 
   # Ingest or Load Data
   # ===
-  if ((routines$proc & tables_exist$proc) & !refresh) {
+  init_state <- routines$load
+  if (((routines$proc & tables_exist$proc) | (routines$dedupe & tables_exist$dedupe)) & !routines$load & !refresh) {
     routines$load <- FALSE
-  } else if (routines$proc) {
+  } else if (routines$proc | routines$dedupe) {
     routines$load <- TRUE
   }
   if (routines$load) {
@@ -91,12 +96,14 @@ run <- function(data_path=DATA_PATH,
       quiet=quiet,
       company_test_count=company_test_count,
       # Don't refresh if load tables exist and user has specified a subroutine.
-      refresh=refresh & !(tables_exist$load & !routines$load & (routines$proc | routines$dedupe)),
+      refresh=refresh & init_state,
       remote_db=push_remote$load
     ) |>
       wrapr::unpack(
         munis,
         zips,
+        block_groups,
+        tracts,
         places,
         assess,
         parcels,
@@ -108,6 +115,8 @@ run <- function(data_path=DATA_PATH,
       out[['munis']] <- munis
       out[['zips']] <- zips
       out[['places']] <- places
+      out[['tracts']] <- tracts
+      out[['block_groups']] <- block_groups
       out[['init_assess']] <- assess
       out[['init_addresses']] <- addresses
       out[['init_companies']] <- companies
@@ -122,7 +131,23 @@ run <- function(data_path=DATA_PATH,
   # Process All Input Tables
   # ===
   
-  if (routines$proc | routines$dedupe) {
+  init_state <- routines$proc
+  if (routines$dedupe & tables_exist$dedupe & !routines$proc & !refresh) {
+    routines$proc <- FALSE
+  } else if (routines$dedupe) {
+    routines$proc <- TRUE
+  }
+  
+  if(!routines$load & routines$proc) {
+    assess = NULL
+    companies = NULL
+    officers = NULL
+    addresses = NULL
+    zips = NULL
+    parcels=NULL
+  }
+  
+  if (routines$proc) {
     proc_all(
       assess=assess,
       companies=companies,
@@ -135,7 +160,7 @@ run <- function(data_path=DATA_PATH,
       tables_exist=tables_exist$proc,
       quiet=quiet,
       # Don't refresh if tables exist and user has specified a subroutine.
-      refresh=refresh & !(tables_exist$proc & !routines$proc & routines$dedupe),
+      refresh=refresh & init_state,
       remote_db=push_remote$proc
     ) |>
       wrapr::unpack(
@@ -155,9 +180,19 @@ run <- function(data_path=DATA_PATH,
     }
   }
   
+  
+  
 
   # De-duplicate!
   # ===
+  
+  if(!routines$proc & routines$dedupe) {
+    owners = NULL
+    companies = NULL
+    officers = NULL
+    sites = NULL
+    addresses = NULL
+  }
   
   if (routines$dedupe) {
     dedupe_all(
@@ -173,6 +208,7 @@ run <- function(data_path=DATA_PATH,
       remote_db=push_remote$dedupe
     ) |>
       wrapr::unpack(
+        sites_to_owners,
         owners,
         companies,
         officers,
@@ -185,6 +221,7 @@ run <- function(data_path=DATA_PATH,
       out[['companies']] <- companies
       out[['officers']] <- officers
       out[['sites']] <- sites
+      out[['sites_to_owners']] <- sites_to_owners
       out[['metacorps']] <- metacorps
       out[['addresses']] <- addresses
     }
@@ -208,6 +245,7 @@ if (!interactive()) {
       companies,
       officers,
       sites,
+      sites_to_owners,
       metacorps,
       addresses,
       munis,

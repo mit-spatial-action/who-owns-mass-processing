@@ -1566,6 +1566,8 @@ load_read_write_all <- function(
     munis = munis,
     zips = zips,
     places = places,
+    tracts = tracts,
+    block_groups = block_groups,
     assess = assess,
     parcels = parcels,
     addresses = addresses,

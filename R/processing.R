@@ -438,7 +438,7 @@ proc_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain = TR
       regex = "(^(DBA|D B A) ?)|( (DBA|D B A) (?=[A-Z]+))",
       label = "dba",
       clear_cols = clear_cols,
-      retain = retain
+      retain = FALSE
     ) |>
     std_separate_and_label(
       col = col,
@@ -685,14 +685,12 @@ proc_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
   df <- df |>
     proc_name_co_dba_attn(
       address_col,
-      target=name_col,
-      retain=FALSE
+      target=name_col
     )
   df <- df |>
     proc_name_co_dba_attn(
       name_col,
-      target=name_col,
-      retain=FALSE
+      target=name_col
     )
   df <- df |>
     proc_name(
@@ -997,7 +995,7 @@ proc_all <- function(assess,
         owners <- owners
       )
   } else {
-    asses <- list(NULL)
+    assess <- list(NULL)
   }
   
   if ("proc_sites" %in% tables | !tables_exist) {

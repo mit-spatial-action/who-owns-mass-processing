@@ -47,8 +47,8 @@ REMOTE_DB_NAME="yourdbname"
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
 | Variable              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|-----------|-------------------------------------------------------------|
-| `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|---------------|---------------------------------------------------------|
+| `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `ROUTINES=list(load = TRUE, proc = TRUE, dedupe = TRUE)`, `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `REFRESH`             | Default: `TRUE`If `TRUE`, datasets will be reingested regardless of whether results already exist in the database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `PUSH_REMOTE`         | Default: `list(load = FALSE, proc = FALSE, dedupe = FALSE)` Any of these that are set to `TRUE` will have their results pushed to a second database, allowing you to separate a local from a remote environment, or a development from a production environment. **Requires that you set additional `.Renviron` parameters (see section 'Setting Up `.Renviron`' above).**                                                                                                                                                                                                                                                                                    |
 | `ROUTINES`            | Default: `list(load = TRUE, proc = TRUE, dedupe = TRUE)` Allows the user to run individual subroutines (i.e., load, process, deduplicate). The subroutines are not totally indepdent, but each will run in a simplified manner when it is set to `FALSE` here, returning only results needed by subsequent subroutines.                                                                                                                                                                                                                                                                                                                                       |
@@ -90,28 +90,29 @@ In addition, the script pulls in data from a range of sources to enrich our data
 
 -   MassGIS. 2023. [Geographic Placenames](https://www.mass.gov/info-details/massgis-data-geographic-place-names). October.
 
-    -   This is used to standardize municipality names. Placenames are tied to places using a spatial join. (I.e., Roxbury > Boston). A simplified and transformed version of this is written to the database and is an intermediate output from `loaders.R`.
-    
+    -   This is used to standardize municipality names. Placenames are tied to places using a spatial join. (I.e., Roxbury \> Boston). A simplified and transformed version of this is written to the database and is an intermediate output from `loaders.R`.
+
 -   MassGIS. 2024. [Municipalities](https://www.mass.gov/info-details/massgis-data-municipalities).
 
-    -   This is used to standardize municipality names  (i.e., Roxbury > Boston). Placenames are tied to places using a spatial join. This is written to the database and is an intermediate output from `loaders.R`.
-    
--  US Census Bureau TIGER/Line. ZIP Code Tabulation Areas. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+    -   This is used to standardize municipality names (i.e., Roxbury \> Boston). Placenames are tied to places using a spatial join. This is written to the database and is an intermediate output from `loaders.R`.
+
+-   US Census Bureau TIGER/Line. ZIP Code Tabulation Areas. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
 
     -   These are used to both attach ZIP codes to parcels whose site locations are missing them and to perform a range of address standardizations (for example, many ZIP codes lie within one municipality, meaning that we can assign a municipality when one is missing assuming that it has an unambiguous ZIP code).
-    
--  US Census Bureau TIGER/Line. States and Equivalent Entities. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+
+-   US Census Bureau TIGER/Line. States and Equivalent Entities. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
 
     -   Used to tie ZIP codes to states. (This is useful because many, though not all ZIP codes lie within a single state, so a ZIP code can be used to assign a state when one is missing in many cases.)
-    
--  US Census Bureau TIGER/Line. Census Tracts and Block Groups. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+
+-   US Census Bureau TIGER/Line. Census Tracts and Block Groups. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
 
     -   Used to locate parcels for subsequent analysis.
-    
--   MassGIS. 2024. [Master Address Data](https://www.mass.gov/info-details/massgis-data-master-address-data).
--   City of Boston. 2024. [Boston Live Street Address Management System (SAM) Addresses ](https://bostonopendata-boston.opendata.arcgis.com/datasets/b6bffcace320448d96bb84eabb8a075f/explore).
 
-    -   We use these geolocated addresses for three primary purposes: linking MA owner addresses to locations, identifying unique addresses which are treated as network entities, and, estimating unit counts for properties missing them (following, largely, a method provided by the (Metropolitan Area Planning Council)[https://www.mapc.org/]).
+-   MassGIS. 2024. [Master Address Data](https://www.mass.gov/info-details/massgis-data-master-address-data).
+
+-   City of Boston. 2024. [Boston Live Street Address Management System (SAM) Addresses](https://bostonopendata-boston.opendata.arcgis.com/datasets/b6bffcace320448d96bb84eabb8a075f/explore).
+
+    -   We use these geolocated addresses for three primary purposes: linking MA owner addresses to locations, identifying unique addresses which are treated as network entities, and, estimating unit counts for properties missing them (following, largely, a method provided by the (Metropolitan Area Planning Council)[<https://www.mapc.org/>]).
 
 ## Acknowledgements
 
@@ -120,7 +121,7 @@ This work received grant support from the Conservation Law Foundation and was de
 ## References
 
 -   Henry Gomory. 2022. "The Social and Institutional Contexts Underlying Landlords’ Eviction Practices." *Social Forces* 100 (4): 1774-805. <https://doi.org/10.1093/sf/soab063>.
--   Forrest Hangen and Daniel T. O’Brien. 2024 (Online First). "Linking Landlords to Uncover Ownership Obscurity." _Housing Studies_. 1–26. <https://doi.org/10.1080/02673037.2024.2325508>.
--   Dan Immergluck, Jeff Ernsthausen, Stephanie Earl, and Allison Powell. 2020. "Evictions, Large Owners, and Serial Filings: Findings from Atlanta." _Housing Studies_ 35 (5): 903–24. https://doi.org/10.1080/02673037.2019.1639635.
+-   Forrest Hangen and Daniel T. O’Brien. 2024 (Online First). "Linking Landlords to Uncover Ownership Obscurity." *Housing Studies*. 1–26. <https://doi.org/10.1080/02673037.2024.2325508>.
+-   Dan Immergluck, Jeff Ernsthausen, Stephanie Earl, and Allison Powell. 2020. "Evictions, Large Owners, and Serial Filings: Findings from Atlanta." *Housing Studies* 35 (5): 903–24. <https://doi.org/10.1080/02673037.2019.1639635>.
 -   Erin McElroy and Azad Amir-Ghassemi. 2020. “Evictor Structures: Erin McElroy and Azad Amir-Ghassemi on Fighting Displacement.” *Logic Magazine*, 2020. <https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/>.
 -   Benjamin Preis. 2024 (Online First). “Where the Landlords Are: A Network Approach to Landlord-Rental Locations.” *Annals of the American Association of Geographers*. 1–12.<https://doi.org/10.1080/24694452.2023.2277810>.

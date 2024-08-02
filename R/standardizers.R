@@ -1003,11 +1003,24 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
       sf::st_drop_geometry()
   }
   
+  addresses <- addresses |>
+    dplyr::group_by(loc_id) |>
+    dplyr::mutate(
+      all_addr = sum(.data[[count_col]], na.rm=TRUE)
+    ) |>
+    dplyr::ungroup()
+  
   df <- df |>
     dplyr::left_join(
       addresses |>
         dplyr::select(c(loc_id, body, even, muni, postal, dplyr::all_of(count_col))),
       by = dplyr::join_by(loc_id, body, even, muni, postal)
+    ) |>
+    dplyr::left_join(
+      addresses |>
+        dplyr::select(c(loc_id, all_addr)),
+      by = dplyr::join_by(loc_id),
+      multiple = "any"
     ) |>
     dplyr::mutate(
       units_by_area = ceiling(res_area / est_size)
@@ -1052,7 +1065,7 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
         # 4-8 Unit
         # ===
         .data[[luc_col]] == '111' & dplyr::between(.data[[count_col]], 4, 8) ~
-          .data[[count_col]],
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '111' & dplyr::between(units_by_area, 4, 8) ~
           units_by_area,
         .data[[luc_col]] == '111' ~
@@ -1060,27 +1073,35 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
         # 112: >8 Unit
         # ===
         .data[[luc_col]] == '112' & .data[[count_col]] > 8 ~
-          .data[[count_col]],
+          .data[[count_col]] - 1,
         .data[[luc_col]] == '112' & units_by_area > 8 ~
           units_by_area,
         .data[[luc_col]] == '112' ~
           9,
         .default = .data[[col]]
-      )
+      ),
     )
   
   nonboston |>
     dplyr::bind_rows(boston) |>
+    dplyr::group_by(loc_id) |>
+    dplyr::mutate(
+      total_units = sum(.data[[col]], na.rm=TRUE),
+      total_missing = sum(.data[[col]] == 0, na.rm=TRUE)
+    ) |>
+    dplyr::ungroup() |>
     dplyr::mutate(
       !!col := dplyr::case_when(
         res & .data[[col]] == 0  & !is.na(.data[[count_col]]) ~
           .data[[count_col]],
+        res & .data[[col]] == 0 & !is.na(all_addr) & (((all_addr - total_units - 1) / total_missing) >= 1) ~
+          (all_addr - total_units - 1) / total_missing,
         res & .data[[col]] == 0 & units_by_area > 0 ~
           units_by_area,
         .default = .data[[col]]
       )
     ) |>
-    dplyr::select(-c(units_by_area, addr_count))
+    dplyr::select(-c(units_by_area, addr_count, all_addr, total_units, total_missing))
 }
 
 # Address Refinement/Completion ====
