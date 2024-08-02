@@ -15,4 +15,9 @@ if (COMPLETE_RUN) {
   REFRESH <- TRUE
   COMPANY_TEST <- FALSE
   MUNI_IDS <- NULL
+  ROUTINES <- list(
+    load = TRUE,
+    proc = TRUE,
+    dedupe = TRUE
+  )
 }

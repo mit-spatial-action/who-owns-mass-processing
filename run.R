@@ -91,7 +91,7 @@ run <- function(data_path=DATA_PATH,
       quiet=quiet,
       company_test_count=company_test_count,
       # Don't refresh if load tables exist and user has specified a subroutine.
-      refresh=refresh & !(tables_exist$load & (routines$proc | routines$dedupe)),
+      refresh=refresh & !(tables_exist$load & !routines$load & (routines$proc | routines$dedupe)),
       remote_db=push_remote$load
     ) |>
       wrapr::unpack(
@@ -135,7 +135,7 @@ run <- function(data_path=DATA_PATH,
       tables_exist=tables_exist$proc,
       quiet=quiet,
       # Don't refresh if tables exist and user has specified a subroutine.
-      refresh=refresh & !(tables_exist$proc & routines$dedupe),
+      refresh=refresh & !(tables_exist$proc & !routines$proc & routines$dedupe),
       remote_db=push_remote$proc
     ) |>
       wrapr::unpack(
