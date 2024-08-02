@@ -70,7 +70,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
     )
   
   df <- df  |>
-    flow_address_to_address_seq(
+    proc_address_to_address_seq(
       sites, 
       addresses
       ) |>
@@ -460,6 +460,7 @@ dedupe_all <- function(
     addresses,
     thresh,
     inds_thresh,
+    remote_db=FALSE,
     refresh=FALSE,
     quiet=FALSE) {
   
@@ -467,7 +468,7 @@ dedupe_all <- function(
     util_log_message("BEGINNING DEDUPLICATION SEQUENCE", header=TRUE)
   }
   
-  conn <- load_conn()
+  conn <- util_conn(remote_db)
   on.exit(DBI::dbDisconnect(conn))
   
   tables <- list(
@@ -479,7 +480,7 @@ dedupe_all <- function(
     addresses = "dedupe_addresses"
   )
   
-  tables_exist <- load_check_for_tables(
+  tables_exist <- util_check_for_tables(
     conn, 
     unlist(unname(tables))
     )

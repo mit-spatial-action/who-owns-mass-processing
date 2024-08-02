@@ -4,7 +4,7 @@ source("R/utilities.R")
 
 # Helpers ====
 
-flow_add_to_col_list <- function(col_list, prefixes, new_cols) {
+proc_add_to_col_list <- function(col_list, prefixes, new_cols) {
   for (prefix in prefixes) {
     cols <- as.list(paste(prefix, new_cols, sep="_"))
     names(cols) <- new_cols
@@ -13,7 +13,7 @@ flow_add_to_col_list <- function(col_list, prefixes, new_cols) {
   col_list
 }
 
-flow_cols_to_list <- function(df, prefix) {
+proc_cols_to_list <- function(df, prefix) {
   cols <- df |> 
     dplyr::select(dplyr::starts_with(prefix)) |>
     names() |>
@@ -22,23 +22,23 @@ flow_cols_to_list <- function(df, prefix) {
   cols
 }
 
-flow_assess_cols <- function(
+proc_assess_cols <- function(
     df,
     site_prefix = NULL, 
     own_prefix = NULL) {
   l <- list()
   if (!is.null(site_prefix)) {
-    l[[site_prefix]] = flow_cols_to_list(df, site_prefix)
+    l[[site_prefix]] = proc_cols_to_list(df, site_prefix)
   }
   if (!is.null(own_prefix)) {
-    l[[own_prefix]] = flow_cols_to_list(df, own_prefix)
+    l[[own_prefix]] = proc_cols_to_list(df, own_prefix)
   }
   l
 }
 
 # Addresses ====
 
-flow_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {
+proc_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {
   df <- df |>
     std_street_types(cols) |>
     std_directions(cols) |>
@@ -57,7 +57,7 @@ flow_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {
     std_squish(cols)
 }
 
-flow_address_addr2 <- function(df, cols, prefixes=c(), po_pmb = FALSE) {
+proc_address_addr2 <- function(df, cols, prefixes=c(), po_pmb = FALSE) {
   
   if (po_pmb) {
     df <- df |> 
@@ -79,7 +79,7 @@ flow_address_addr2 <- function(df, cols, prefixes=c(), po_pmb = FALSE) {
     std_col_prefixes(prefixes, parsed_cols=c("po", "pmb", "addr2"))
 }
 
-flow_address_to_range <- function(df, cols, prefixes=c()) {
+proc_address_to_range <- function(df, cols, prefixes=c()) {
   
   df <- df |>
     dplyr::mutate(
@@ -148,7 +148,7 @@ flow_address_to_range <- function(df, cols, prefixes=c()) {
     std_col_prefixes(prefixes=prefixes, parsed_cols=c("start", "end", "body", "even"))
 }
 
-flow_address_match_simp <- function(df, cols) {
+proc_address_match_simp <- function(df, cols) {
   #' Standardize street types.
   #'
   #' @param df A dataframe.
@@ -178,7 +178,7 @@ flow_address_match_simp <- function(df, cols) {
     dplyr::select(-paste0(cols, "_simp"))
 }
 
-flow_address_postal <- function(df, col, state_col, muni_col, zips, state_constraint = "") {
+proc_address_postal <- function(df, col, state_col, muni_col, zips, state_constraint = "") {
   if (state_constraint != "") {
     df <- df |>
       dplyr::filter(.data[[state_col]] == state_constraint) |>
@@ -224,7 +224,7 @@ flow_address_postal <- function(df, col, state_col, muni_col, zips, state_constr
     )
 }
 
-flow_address_muni <- function(df,
+proc_address_muni <- function(df,
                       col, 
                       state_col,
                       postal_col,
@@ -281,7 +281,7 @@ flow_address_muni <- function(df,
     dplyr::select(-state_unmatched)
 }
 
-flow_address_to_address_seq <- function(a1, sites, addresses) {
+proc_address_to_address_seq <- function(a1, sites, addresses) {
   if ("sf" %in% class(sites)) {
     sites <- sites |>
       sf::st_drop_geometry()
@@ -339,22 +339,22 @@ flow_address_to_address_seq <- function(a1, sites, addresses) {
     dplyr::select(-body_simp)
 }
 
-flow_address <- function(df, col, postal_col, muni_col, state_col, zips, places, po_pmb = FALSE, state_constraint = "") {
+proc_address <- function(df, col, postal_col, muni_col, state_col, zips, places, po_pmb = FALSE, state_constraint = "") {
   df |>
-    flow_address_text(col) |>
-    flow_address_addr2(
+    proc_address_text(col) |>
+    proc_address_addr2(
       col, 
       po_pmb=po_pmb
     ) |>
-    flow_address_to_range(col) |>
-    flow_address_postal(
+    proc_address_to_range(col) |>
+    proc_address_postal(
       postal_col, 
       state_col=state_col, 
       muni_col=muni_col,
       zips, 
       state_constraint
     ) |>
-    flow_address_muni(
+    proc_address_muni(
       muni_col, 
       state_col=state_col, 
       postal_col=postal_col,
@@ -364,7 +364,7 @@ flow_address <- function(df, col, postal_col, muni_col, state_col, zips, places,
 
 # Names ====
 
-flow_name <- function(df, col, multiname = TRUE, type="") {
+proc_name <- function(df, col, multiname = TRUE, type="") {
   df <- df |>
     std_trailing_leading(c(col)) |>
     std_street_types(c(col)) |>
@@ -414,7 +414,7 @@ flow_name <- function(df, col, multiname = TRUE, type="") {
     std_squish(c(col))
 }
 
-flow_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain = TRUE) {
+proc_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain = TRUE) {
   df |>
     std_separate_and_label(
       col = col,
@@ -452,7 +452,7 @@ flow_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain = TR
 
 # OpenCorporates ====
 
-flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
+proc_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
   if(!quiet) {
     util_log_message(glue::glue("PROCESSING: Parsing {type} C/O, DBA, ATTN:, etc."))
   }
@@ -460,12 +460,12 @@ flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
     dplyr::mutate(
       type = type
     ) |>
-    flow_name_co_dba_attn(
+    proc_name_co_dba_attn(
       "addr",
       "name",
       retain = retain
     ) |>
-    flow_name_co_dba_attn(
+    proc_name_co_dba_attn(
       "name",
       "name",
       retain = retain
@@ -474,8 +474,8 @@ flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
   if (retain) {
     df <- df |>
       dplyr::filter(type == "co")  |>
-      flow_address_text("name") |>
-      flow_address_addr2("name", po_pmb=TRUE) |>
+      proc_address_text("name") |>
+      proc_address_addr2("name", po_pmb=TRUE) |>
       std_extract_address(
         col="name",
         target_col="addr"
@@ -493,7 +493,7 @@ flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
   }
   df <- df |>
     dplyr::filter(!is.na(addr)) |>
-    flow_address(
+    proc_address(
       "addr",
       postal_col="postal",
       muni_col="muni",
@@ -516,7 +516,7 @@ flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
   
   df |>
     dplyr::filter(!is.na(name)) |>
-    flow_name(
+    proc_name(
       "name",
       multiname = FALSE,
       type=type
@@ -528,12 +528,12 @@ flow_oc_generic <- function(df, zips, places, type, retain= TRUE, quiet=FALSE) {
     tibble::rowid_to_column("id")
 }
 
-flow_oc_officers <- function(df, zips, places, type_name="officer", quiet = FALSE) {
+proc_oc_officers <- function(df, zips, places, type_name="officer", quiet = FALSE) {
   if(!quiet) {
     util_log_message("BEGIN OPENCORPORATES OFFICERS SEQUENCE", header=TRUE)
   }
   df <- df |>
-    flow_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet) |>
+    proc_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet) |>
     dplyr::filter(!is.na(name)) |>
     dplyr::distinct(dplyr::pick(-c(id, type)), .keep_all = TRUE) |>
     dplyr::mutate(
@@ -546,20 +546,20 @@ flow_oc_officers <- function(df, zips, places, type_name="officer", quiet = FALS
     dplyr::select(-id)
 }
 
-flow_oc_companies <- function(df, zips, places, type_name="company", quiet = FALSE) {
+proc_oc_companies <- function(df, zips, places, type_name="company", quiet = FALSE) {
   if(!quiet) {
     util_log_message("BEGIN OPENCORPORATES COMPANIES SEQUENCE", header=TRUE)
   }
   
   df |>
-    flow_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet, retain = FALSE) |>
+    proc_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet, retain = FALSE) |>
     dplyr::filter(!is.na(name)) |>
     dplyr::select(-id)
 }
 
 # Assessors-Specific Workflows ====
 
-flow_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
+proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   if(!quiet) {
     util_log_message("PROCESSING: Splitting assessors table into sites and owners.")
   }
@@ -604,7 +604,7 @@ flow_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   )
 }
 
-flow_assess_sites_condos <- function(df, luc_col, id_cols, units_col) {
+proc_assess_sites_condos <- function(df, luc_col, id_cols, units_col) {
   df <- df |>
     std_flag_condos(
       luc_col,
@@ -625,7 +625,7 @@ flow_assess_sites_condos <- function(df, luc_col, id_cols, units_col) {
     )
 }
 
-flow_assess_sites_units <- function(df, luc_col, addresses) {
+proc_assess_sites_units <- function(df, luc_col, addresses) {
   # Identify unit counts for unambiguous cases where there is one property
   # on a parcel and that property is single-, two-, or three-family.
   
@@ -657,23 +657,23 @@ flow_assess_sites_units <- function(df, luc_col, addresses) {
     dplyr::select(-c(units_valid))
 }
 
-flow_assess_sites <- function(df, addresses, quiet=FALSE) {
+proc_assess_sites <- function(df, addresses, quiet=FALSE) {
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing land uses and estimating unit counts.")
   }
   df |>
-    flow_assess_sites_condos(
+    proc_assess_sites_condos(
       luc_col="luc", 
       id_cols=c("loc_id", "body"), 
       units_col="units"
       ) |>
-    flow_assess_sites_units(
+    proc_assess_sites_units(
       "luc",
       addresses
     )
 }
 
-flow_assess_owners <- function(df, name_col, address_col, type = "owners", quiet=FALSE) {
+proc_assess_owners <- function(df, name_col, address_col, type = "owners", quiet=FALSE) {
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing owner names and addresses.")
   }
@@ -683,19 +683,19 @@ flow_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
       type = type
     )
   df <- df |>
-    flow_name_co_dba_attn(
+    proc_name_co_dba_attn(
       address_col,
       target=name_col,
       retain=FALSE
     )
   df <- df |>
-    flow_name_co_dba_attn(
+    proc_name_co_dba_attn(
       name_col,
       target=name_col,
       retain=FALSE
     )
   df <- df |>
-    flow_name(
+    proc_name(
       col=name_col
     )
   df |>
@@ -703,13 +703,13 @@ flow_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
     dplyr::select(-c(addr2, po, pmb))
 }
 
-flow_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE) {
+proc_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing address text.")
   }
   
-  cols <- flow_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
+  cols <- proc_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
   
   cols$own$loc_id <- stringr::str_replace(cols$site$loc_id, site_prefix, own_prefix)
   
@@ -723,12 +723,12 @@ flow_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE)
   
   matched <- df |>
     dplyr::filter(!is.na(get(cols$own$loc_id))) |>
-    flow_address_text(cols$site$addr)
+    proc_address_text(cols$site$addr)
   
   
   df |>
     dplyr::filter(is.na(get(cols$own$loc_id))) |>
-    flow_address_text(c(cols$site$addr, cols$own$addr)) |>
+    proc_address_text(c(cols$site$addr, cols$own$addr)) |>
     dplyr::mutate(
       !!cols$own$loc_id := dplyr::case_when(
         get(cols$site$addr) == get(cols$own$addr) ~ get(cols$site$loc_id),
@@ -738,17 +738,17 @@ flow_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE)
     dplyr::bind_rows(matched)
 }
 
-flow_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE) {
+proc_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing address second lines and PO Boxes.")
   }
   
-  cols <- flow_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
+  cols <- proc_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
   
   matched <- df |>
     dplyr::filter(!is.na(get(cols$own$loc_id))) |>
-    flow_address_addr2(
+    proc_address_addr2(
       cols$site$addr, 
       po_pmb = FALSE, 
       prefixes=c(site_prefix)
@@ -756,12 +756,12 @@ flow_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE
   
   df |>
     dplyr::filter(is.na(get(cols$own$loc_id))) |>
-    flow_address_addr2(
+    proc_address_addr2(
       c(cols$site$addr, cols$own$addr),
       prefixes=c(site_prefix, own_prefix),
       po_pmb = TRUE
       ) |>
-    flow_address_match_simp(c(cols$site$addr, cols$own$addr)) |>
+    proc_address_match_simp(c(cols$site$addr, cols$own$addr)) |>
     dplyr::mutate(
       !!cols$own$loc_id := dplyr::case_when(
         get(cols$site$addr) == get(cols$own$addr) ~ get(cols$site$loc_id),
@@ -772,24 +772,24 @@ flow_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE
 }
 
 
-flow_assess_address_to_range <- function(df, site_prefix, own_prefix, quiet = FALSE) {
+proc_assess_address_to_range <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Parsing address ranges.")
   }
   
-  cols <- flow_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
+  cols <- proc_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
   
   new_cols <- c("start", "end", "body", "even")
-  cols <- flow_add_to_col_list(cols,  c(own_prefix, site_prefix), c("start", "end", "body", "even"))
+  cols <- proc_add_to_col_list(cols,  c(own_prefix, site_prefix), c("start", "end", "body", "even"))
   
   matched <- df |>
     dplyr::filter(!is.na(.data[[cols$own$loc_id]])) |>
-    flow_address_to_range(cols$site$addr, prefix=site_prefix)
+    proc_address_to_range(cols$site$addr, prefix=site_prefix)
   
   df |>
     dplyr::filter(is.na(.data[[cols$own$loc_id]])) |>
-    flow_address_to_range(c(cols$site$addr, cols$own$addr), prefixes=c(site_prefix, own_prefix)) |>
+    proc_address_to_range(c(cols$site$addr, cols$own$addr), prefixes=c(site_prefix, own_prefix)) |>
     dplyr::mutate(
       !!cols$own$loc_id := dplyr::case_when(
         (get(cols$site$body) == get(cols$own$body)) &
@@ -803,16 +803,16 @@ flow_assess_address_to_range <- function(df, site_prefix, own_prefix, quiet = FA
     dplyr::bind_rows(matched)
 }
 
-flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcels, state_constraint = "MA", quiet = FALSE) {
+proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcels, state_constraint = "MA", quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing postal codes.")
   }
   
-  cols <- flow_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
+  cols <- proc_assess_cols(df, site_prefix = site_prefix, own_prefix = own_prefix)
   
   df <- df |>
-    flow_address_postal(
+    proc_address_postal(
       cols$site$postal,
       state_col=cols$site$state, 
       muni_col=cols$site$muni, 
@@ -827,7 +827,7 @@ flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
         .default = get(cols$own$state)
       )
     ) |>
-    flow_address_postal(
+    proc_address_postal(
       cols$own$postal,
       state_col=cols$own$state, 
       muni_col=cols$own$muni, 
@@ -862,15 +862,15 @@ flow_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
     )
 }
 
-flow_assess_address_muni <- function(df, own_prefix, places, zips, quiet = FALSE) {
+proc_assess_address_muni <- function(df, own_prefix, places, zips, quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing municipality names.")
   }
   
-  cols <- flow_assess_cols(df, own_prefix = own_prefix)
+  cols <- proc_assess_cols(df, own_prefix = own_prefix)
   df |> 
-    flow_address_muni(
+    proc_address_muni(
       col = cols$own$muni,
       state_col = cols$own$state,
       postal_col = cols$own$postal,
@@ -878,7 +878,7 @@ flow_assess_address_muni <- function(df, own_prefix, places, zips, quiet = FALSE
     )
 }
 
-flow_assess_luc <- function(df, quiet = FALSE, path=DATA_PATH) {
+proc_assess_luc <- function(df, quiet = FALSE, path=DATA_PATH) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing land use codes.")
@@ -896,7 +896,7 @@ flow_assess_luc <- function(df, quiet = FALSE, path=DATA_PATH) {
       name="site_res")
 }
 
-flow_assess <- function(df, 
+proc_assess <- function(df, 
                         site_prefix,
                         own_prefix,
                         zips,
@@ -908,28 +908,28 @@ flow_assess <- function(df,
     util_log_message("BEGIN ASSESSORS TABLE SEQUENCE", header=TRUE)
   }
   df <- df |>
-    flow_assess_address_text(
+    proc_assess_address_text(
       site_prefix = site_prefix,
       own_prefix = own_prefix,
       quiet=quiet
     )
   
   df <- df |>
-    flow_assess_address_addr2(
+    proc_assess_address_addr2(
       site_prefix = site_prefix,
       own_prefix = own_prefix,
       quiet=quiet
     )
   
   df <- df |>
-    flow_assess_address_to_range(
+    proc_assess_address_to_range(
       site_prefix = site_prefix,
       own_prefix = own_prefix,
       quiet=quiet
     )
   
   df <- df |>
-    flow_assess_address_postal(
+    proc_assess_address_postal(
       site_prefix=site_prefix,
       own_prefix=own_prefix,
       zips=zips,
@@ -939,7 +939,7 @@ flow_assess <- function(df,
     )
   
   df <- df |>
-    flow_assess_address_muni(
+    proc_assess_address_muni(
       own_prefix=own_prefix,
       places=places,
       zips=zips,
@@ -947,99 +947,123 @@ flow_assess <- function(df,
     )
   
   df |>
-    flow_assess_luc(quiet=quiet)
+    proc_assess_luc(quiet=quiet)
 }
 
 # Omnibus Data Process ====
 
-flow_process_all <- function(assess,
-                             companies,
-                             officers,
-                             addresses,
-                             zips,
-                             parcels,
-                             places,
-                             refresh = FALSE,
-                             quiet = FALSE) {
+proc_all <- function(assess,
+                     companies,
+                     officers,
+                     addresses,
+                     zips,
+                     parcels,
+                     places,
+                     tables,
+                     tables_exist,
+                     remote_db = FALSE,
+                     refresh = FALSE,
+                     quiet = FALSE
+                     ) {
   if(!quiet) {
     util_log_message("BEGINNING DATA PROCESSING SEQUENCE", header=TRUE)
   }
   
-  assess <- load_read_write(
-    load_conn(),
-    "proc_assess",
-    loader=flow_assess(
-      assess,
-      site_prefix="site",
-      own_prefix="own",
-      zips=zips,
-      parcels=parcels,
-      places=places,
-      quiet=quiet,
-      state_constraint="MA"
-    ),
-    refresh=refresh
+  if ("proc_assess" %in% tables | !tables_exist) {
+    assess <- load_read_write(
+      util_conn(remote_db),
+      "proc_assess",
+      loader=proc_assess(
+        assess,
+        site_prefix="site",
+        own_prefix="own",
+        zips=zips,
+        parcels=parcels,
+        places=places,
+        quiet=quiet,
+        state_constraint="MA"
+      ),
+      refresh=refresh
     )
+    
+    assess |>
+      proc_assess_split(
+        site_prefix="site",
+        own_prefix="own",
+        quiet=quiet
+      ) |>
+      wrapr::unpack(
+        sites <- sites,
+        owners <- owners
+      )
+  } else {
+    asses <- list(NULL)
+  }
   
-  assess |>
-    flow_assess_split(
-      site_prefix="site",
-      own_prefix="own",
-      quiet=quiet
-    ) |>
-    wrapr::unpack(
-      sites <- sites,
-      owners <- owners
-    )
-  
-  sites <- load_read_write(
-    load_conn(),
-    "proc_sites",
-    loader=flow_assess_sites(
-      sites,
-      addresses=addresses,
-      quiet=quiet
-    ),
-    refresh=refresh
-    )
+  if ("proc_sites" %in% tables | !tables_exist) {
+    sites <- load_read_write(
+      util_conn(remote_db),
+      "proc_sites",
+      loader=proc_assess_sites(
+        sites,
+        addresses=addresses,
+        quiet=quiet
+      ),
+      refresh=refresh
+      )
+  } else {
+    sites <- list(NULL)
+  }
   
   rm(addresses)
   
-  owners <- load_read_write(
-    load_conn(),
-    "proc_owners",
-    loader=flow_assess_owners(
-      owners,
-      name_col="name",
-      address_col="addr",
-      quiet=quiet
-    ),
-    refresh=refresh
-  )
+  if("proc_owners" %in% tables | !tables_exist) {
+    owners <- load_read_write(
+      util_conn(remote_db),
+      "proc_owners",
+      loader=proc_assess_owners(
+        owners,
+        name_col="name",
+        address_col="addr",
+        quiet=quiet
+      ),
+      refresh=refresh
+    )
+  } else {
+    owners <- list(NULL)
+  }
   
-  companies <- load_read_write(
-    load_conn(),
-    "proc_companies",
-    loader=flow_oc_companies(
-      companies,
-      zips=zips,
-      places=places,
-      quiet=quiet
-    ),
-    refresh=refresh
-  )
+  if("proc_companies" %in% tables | !tables_exist) {
+    companies <- load_read_write(
+      util_conn(remote_db),
+      "proc_companies",
+      loader=proc_oc_companies(
+        companies,
+        zips=zips,
+        places=places,
+        quiet=quiet
+      ),
+      refresh=refresh
+    )
+  } else {
+    companies <- list(NULL)
+  }
   
-  officers <- load_read_write(
-    load_conn(),
-    "proc_officers",
-    loader=flow_oc_officers(
-      officers,
-      zips=zips,
-      places=places,
-      quiet=quiet
-    ),
-    refresh=refresh
-  )
+  if("proc_officers" %in% tables | !tables_exist) {
+    officers <- load_read_write(
+      util_conn(remote_db),
+      "proc_officers",
+      loader=proc_oc_officers(
+        officers,
+        zips=zips,
+        places=places,
+        quiet=quiet
+      ),
+      refresh=refresh
+    )
+  } else {
+    officers <- list(NULL)
+  }
 
   list(
     assess = assess,

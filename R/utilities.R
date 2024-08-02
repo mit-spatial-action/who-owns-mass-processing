@@ -23,3 +23,147 @@ util_log_message <- function(status, header=FALSE, timestamp=TRUE) {
     message(status)
   }
 }
+
+util_muni_table <- function(path, file="muni_ids.csv") { 
+  readr::read_csv(
+    file.path(path, file), 
+    progress=TRUE,
+    show_col_types = FALSE)
+}
+
+util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
+  #' Test Validity of Muni IDs and Pad
+  #' 
+  #' Tests whether provided municipality ids are valid (`stop()` if they are 
+  #' not) and pads them out to three characters with zeroes to the left.
+  #'
+  #' If need to create file...
+  #' MUNIS |> 
+  #'     sf::st_drop_geometry() |> 
+  #'     dplyr::select(muni_id, muni) |>
+  #'     readr::write_csv("data/muni_ids.csv")
+  #'
+  #' @param muni_ids Vector of municipality IDs.
+  #' @param path Path to data directory.
+  #' @param file CSV file containing municipality IDs.
+  #' 
+  #' @return A transformed vector of municipality IDs.
+  #' 
+  #' @export
+  ids <- util_muni_table(path)  |>
+    dplyr::pull(muni_id)
+  if (is.null(muni_ids)) {
+    muni_ids <- std_pad_muni_ids(ids)
+  } else if (all(muni_ids == "hns")) {
+    muni_ids <- c("163", "057", "044", "095", "035", "201", "274", "049")
+  } else {
+    if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
+      stop("VALIDATION: Provided invalid test municipality ids. ❌❌❌")
+    } else {
+      if(!quiet) {
+        util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
+      }
+    }
+    muni_ids <- std_pad_muni_ids(muni_ids)
+  }
+  muni_ids
+}
+
+util_conn <- function(remote=FALSE) {
+  #' Load DBMS Connection
+  #' 
+  #' Creates connection to remote or local PostGIS connection. Requires a
+  #' variables to be set in `.Renviron`.
+  #'
+  #' @param remote If `TRUE`, creates connection to remote db. If `FALSE`,
+  #'    creates connection to local PostGIS instance.
+  #' 
+  #' @return dbConnect() returns an S4 object that inherits from DBIConnection.
+  #'    This object is used to communicate with the database engine.
+  #' 
+  #' @export
+  
+  if (remote) {
+    dbname <- "REMOTE_DB_NAME"
+    host <- "REMOTE_DB_HOST"
+    port <- "REMOTE_DB_PORT"
+    user <- "REMOTE_DB_USER"
+    password <- "REMOTE_DB_PASS"
+  } else {
+    dbname <- "DB_NAME"
+    host <- "DB_HOST"
+    port <- "DB_PORT"
+    user <- "DB_USER"
+    password <- "DB_PASS"
+  }
+  DBI::dbConnect(
+    RPostgres::Postgres(),
+    dbname = Sys.getenv(dbname),
+    host = Sys.getenv(host),
+    port = Sys.getenv(port),
+    user = Sys.getenv(user),
+    password = Sys.getenv(password),
+    sslmode = "allow"
+  )
+}
+
+util_check_for_tables <- function(conn, table_names) {
+  #' Check Whether Database Table Exists
+  #' 
+  #' Checks whether a specified table exists in a PostGIS database.
+  #'
+  #' @param conn A `DBIConnection`.
+  #' @param table_name Name of table to check for existence of.
+  #' 
+  #' @return `TRUE` if table exists, `FALSE` if it does not.
+  #' 
+  #' @export
+  
+  all(table_names %in% DBI::dbListTables(conn))
+}
+
+util_run_tables_exist <- function(tables, push_remote) {
+  l <- util_conn(push_remote$load)
+  p <- util_conn(push_remote$proc)
+  tables_exist <- list(
+    load = util_check_for_tables(
+      l,
+      tables$load
+    ),
+    proc = util_check_for_tables(
+      p,
+      tables$proc
+    )
+  )
+  DBI::dbDisconnect(l)
+  DBI::dbDisconnect(p)
+  tables_exist
+}
+
+util_run_which_tables <- function(routines, push_remote) {
+  load_tables <- c()
+  proc_tables <- c()
+  if (routines$proc) {
+    load_tables <- c(
+      load_tables, 
+      c("zips", "places", "init_assess", "parcels",
+        "init_addresses", "init_companies", "init_officers")
+    )
+    proc_tables <- c(
+      proc_tables, 
+      c("proc_assess", "proc_sites", "proc_owners", 
+        "proc_companies", "proc_officers")
+    )
+  }
+  if (routines$load) {
+    load_tables <- tables <- c(
+      load_tables,
+      "munis", "zips", "places", "init_assess", "init_addresses", 
+      "init_companies", "init_officers", "parcels"
+    )
+  }
+  list(
+    load = unique(load_tables),
+    proc = unique(proc_tables)
+  )
+}

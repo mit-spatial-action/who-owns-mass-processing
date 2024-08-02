@@ -1,8 +1,8 @@
 # Who Owns Massachusetts Processing and Deduplication
 
-This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and legal entity data sourced from [OpenCorporates](https://opencorporates.com/) under their ['public-benefic project' program](https://opencorporates.com/plug-in-our-data/). The process builds on [Hangen and O'Brien's methods (2022, in preprint)](https://osf.io/preprints/socarxiv/anvke/), which are themselves similar (though not identical) to methods used by Henry Gomory (2021) and the Anti-Eviction Mapping Project's Evictorbook (see e.g., McElroy and Amir-Ghassemi 2021).
+This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and legal entity data sourced from [OpenCorporates](https://opencorporates.com/) under their ['public-benefic project' program](https://opencorporates.com/plug-in-our-data/). The process builds on [Hangen and O'Brien's methods (2024)](https://www.tandfonline.com/doi/full/10.1080/02673037.2024.2325508), which are themselves similar (though not identical) to methods used by Henry Gomory (2021) and the Anti-Eviction Mapping Project's Evictorbook (see e.g., McElroy and Amir-Ghassemi 2021). It also builds on Eric's experience leading development of a tool called TenantPower with Mutual Aid Medford and Somerville in 2020, which used the [`dedupe` Python package](https://github.com/dedupeio/dedupe) in a manner similar to [Immergluck et al. (2020)](https://www.tandfonline.com/doi/full/10.1080/02673037.2019.1639635).
 
-While we share large parts of their approach (i.e., relying on community detection on company-officer relationships, following cosine-similarity deduplication of names), we believe that our results are more robust for several reasons. Primarily, we expend a great deal of effort on address standardization so that we can use addresses themselves as network entities (prior approaches, to our knowledge, have just concatenated addresses and names prior to deduplication). This is a substantial change: "similar" addresses, by whatever measure, can still be very different addresses. By relying on standardized unique addresses, we believe that we are substantially reducing our false positive rate.
+While we share large parts of their approach (i.e., relying on community detection on company-officer relationships, following cosine-similarity deduplication of names), we believe that our results are more robust for several reasons. Inspired, in part, by [Preis (2024)](https://doi.org/10.1080/24694452.2023.2277810), we expend a great deal of effort on address standardization so that we can use addresses themselves as network entities (prior approaches, with the exception of Preis, have just concatenated addresses and names prior to deduplication). This is a substantial change: "similar" addresses, by whatever measure, can still be very different addresses. By relying on standardized unique addresses, we believe that we are substantially reducing our false positive rate.
 
 Community detection---based on both network analysis and cosine similarity---is accomplished using the `igraph` implementation of the fast greedy modularity optimization algorithm.
 
@@ -24,9 +24,20 @@ The scripts expect to find your PostgreSQL credentials, host, port, etc. in an `
 DB_HOST="yourhost"
 DB_USER="yourusername"
 DB_PASS="yourpassword"
-# Or whatever your port name
+# Or whatever your port
 DB_PORT=5432
 DB_NAME="yourdbname"
+```
+
+Optionally, you can use the `PUSH_REMOTE` configuration parameter to specify if you'd like to push results for a particular subprocess to a second database, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to define...
+
+``` r
+REMOTE_DB_HOST="yourhost"
+REMOTE_DB_USER="yourusername"
+REMOTE_DB_PASS="yourpassword"
+# Or whatever your port
+REMOTE_DB_PORT=5432
+REMOTE_DB_NAME="yourdbname"
 ```
 
 `.Renviron` is in `.gitignore` to ensure that you don't commit your credentials.
@@ -39,6 +50,8 @@ We expose a large number of configuration variables in `config.R`, which is sour
 |-----------|-------------------------------------------------------------|
 | `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `REFRESH`             | Default: `TRUE`If `TRUE`, datasets will be reingested regardless of whether results already exist in the database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `PUSH_REMOTE`         | Default: `list(load = FALSE, proc = FALSE, dedupe = FALSE)` Any of these that are set to `TRUE` will have their results pushed to a second database, allowing you to separate a local from a remote environment, or a development from a production environment. **Requires that you set additional `.Renviron` parameters (see section 'Setting Up `.Renviron`' above).**                                                                                                                                                                                                                                                                                    |
+| `ROUTINES`            | Default: `list(load = TRUE, proc = TRUE, dedupe = TRUE)` Allows the user to run individual subroutines (i.e., load, process, deduplicate). The subroutines are not totally indepdent, but each will run in a simplified manner when it is set to `FALSE` here, returning only results needed by subsequent subroutines.                                                                                                                                                                                                                                                                                                                                       |
 | `MUNI_IDS`            | Default: `c(274, 49, 35)`If `NULL`, runs process for all municipalities in Massachusetts. If `"hns"`, runs process for Healthy Neighborhoods Study Municipalities (minus Everett because they don't make owner names consistently available). Otherwise, a vector of numbers or strings, but must match municipality IDs used by the state. (Consult `muni_ids.csv` for these.) If numbers, they will be 0-padded.                                                                                                                                                                                                                                            |
 | `COMPANY_TEST_COUNT`  | Default: `50000`The OpenCorporates datasets are big. For that reason, during development it's useful to read in test subsets. This is the number of companies to read in when `COMPANY_TEST` is `TRUE`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `COMPANY_TEST`        | Default: `TRUE`If `TRUE`, reads in only `COMPANY_TEST_COUNT` companies and any officers associated with those companies. (Usually on the order of 4x the number of companies.)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -53,26 +66,61 @@ We expose a large number of configuration variables in `config.R`, which is sour
 
 ### Running the Script
 
-We provide an onmibus `run()` function in `run.R`. It triggers three sequences: a data ingestion sequence (`load_read_write_all()`), a data processing sequence (`flow_process_all()`) and a deduplication sequence (`dedupe_all()`).
+We provide an onmibus `run()` function in `run.R`. It triggers three sequences: a data ingestion sequence (`load_read_write_all()`, see `R/loaders.R`), a data processing sequence (`proc_all()`, see `R/processors.R`) and a deduplication sequence (`dedupe_all()`, see `R/deduplicators.R`).
 
-This function automatically outputs results to objects that will be visible in an RStudio environment using `wrapr::unpack()`. It also writes final results to `.csv` and `.Rda` files in `/results`.
+This function automatically outputs results to objects that will be visible in an RStudio environment using `wrapr::unpack()`. It also writes results to `.csv` and `.Rda` files in `/results`, but doesn't ever try to read these---the PostgreSQL database is the only output location that is subsequently referenced.
 
 ## Data
 
-The two databases necessary for this analysis are...
+### Required External Data
+
+Successful execution of this script requires that you source the following datasets:
 
 -   MassGIS. "Property Tax Parcels." <https://www.mass.gov/info-details/massgis-data-property-tax-parcels>.
 
--   OpenCorporates. [Bulk Data Product](https://opencorporates.com/plug-in-our-data/).
+    -   You should be able to use either the 'all vintages' data product (which is packaged as many geodatabases) or the 'most recent' geodatabase (which is a single GDB). If the former, pass the name of the folder to the `GDB_PATH` config parameter. If the latter, pass the geodatabase filename.
 
-    -   Unfortunately, we can't provide a copy of this due to our licensing agreement.
+-   OpenCorporates. [Bulk Data Product](https://opencorporates.com/plug-in-our-data/). Massachusetts extract.
+
+    -   Unfortunately, we can't provide a copy of this due to our licensing agreement, but OpenCorporates has a 'public-benefit project' program that might be worth looking into.
+
+### Additional Sources Consulted
+
+In addition, the script pulls in data from a range of sources to enrich our datasets (all via API access).
+
+-   MassGIS. 2023. [Geographic Placenames](https://www.mass.gov/info-details/massgis-data-geographic-place-names). October.
+
+    -   This is used to standardize municipality names. Placenames are tied to places using a spatial join. (I.e., Roxbury > Boston). A simplified and transformed version of this is written to the database and is an intermediate output from `loaders.R`.
+    
+-   MassGIS. 2024. [Municipalities](https://www.mass.gov/info-details/massgis-data-municipalities).
+
+    -   This is used to standardize municipality names  (i.e., Roxbury > Boston). Placenames are tied to places using a spatial join. This is written to the database and is an intermediate output from `loaders.R`.
+    
+-  US Census Bureau TIGER/Line. ZIP Code Tabulation Areas. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+
+    -   These are used to both attach ZIP codes to parcels whose site locations are missing them and to perform a range of address standardizations (for example, many ZIP codes lie within one municipality, meaning that we can assign a municipality when one is missing assuming that it has an unambiguous ZIP code).
+    
+-  US Census Bureau TIGER/Line. States and Equivalent Entities. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+
+    -   Used to tie ZIP codes to states. (This is useful because many, though not all ZIP codes lie within a single state, so a ZIP code can be used to assign a state when one is missing in many cases.)
+    
+-  US Census Bureau TIGER/Line. Census Tracts and Block Groups. 2022. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
+
+    -   Used to locate parcels for subsequent analysis.
+    
+-   MassGIS. 2024. [Master Address Data](https://www.mass.gov/info-details/massgis-data-master-address-data).
+-   City of Boston. 2024. [Boston Live Street Address Management System (SAM) Addresses ](https://bostonopendata-boston.opendata.arcgis.com/datasets/b6bffcace320448d96bb84eabb8a075f/explore).
+
+    -   We use these geolocated addresses for three primary purposes: linking MA owner addresses to locations, identifying unique addresses which are treated as network entities, and, estimating unit counts for properties missing them (following, largely, a method provided by the (Metropolitan Area Planning Council)[https://www.mapc.org/]).
 
 ## Acknowledgements
 
-This work received grant support from the Conservation Law Foundation and was developed under the auspices of the [Healthy Neighborhoods Study](https://hns.mit.edu/) in the [Department of Urban Studies and Planning](https://dusp.mit.edu/) at MIT with input from the [Metropolitan Area Planning Council](https://www.mapc.org/).
+This work received grant support from the Conservation Law Foundation and was developed under the auspices of the [Healthy Neighborhoods Study](https://hns.mit.edu/) in the [Department of Urban Studies and Planning](https://dusp.mit.edu/) at MIT with input from the [Metropolitan Area Planning Council](https://www.mapc.org/). OpenCorporates has also been a supportive data partner.
 
 ## References
 
--   Henry Gomory. 2021. “The Social and Institutional Contexts Underlying Landlords’ Eviction Practices.” *Social Forces*. <https://doi.org/10.1093/sf/soab063>.
--   Forrest Hangen and Daniel T. O’Brien. 2022. “Linking Landlords to Uncover Ownership Obscurity.” SocArXiv. <https://doi.org/10.31235/osf.io/anvke>.
+-   Henry Gomory. 2022. "The Social and Institutional Contexts Underlying Landlords’ Eviction Practices." *Social Forces* 100 (4): 1774-805. <https://doi.org/10.1093/sf/soab063>.
+-   Forrest Hangen and Daniel T. O’Brien. 2024 (Online First). "Linking Landlords to Uncover Ownership Obscurity." _Housing Studies_. 1–26. <https://doi.org/10.1080/02673037.2024.2325508>.
+-   Dan Immergluck, Jeff Ernsthausen, Stephanie Earl, and Allison Powell. 2020. "Evictions, Large Owners, and Serial Filings: Findings from Atlanta." _Housing Studies_ 35 (5): 903–24. https://doi.org/10.1080/02673037.2019.1639635.
 -   Erin McElroy and Azad Amir-Ghassemi. 2020. “Evictor Structures: Erin McElroy and Azad Amir-Ghassemi on Fighting Displacement.” *Logic Magazine*, 2020. <https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/>.
+-   Benjamin Preis. 2024 (Online First). “Where the Landlords Are: A Network Approach to Landlord-Rental Locations.” *Annals of the American Association of Geographers*. 1–12.<https://doi.org/10.1080/24694452.2023.2277810>.
