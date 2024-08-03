@@ -219,10 +219,24 @@ load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALS
   #' @return Unmodified data frame.
   #' 
   #' @export
+  path <- stringr::str_c(dir, table_name, sep="/")
+  csv_file <- stringr::str_c(path, "csv", sep=".")
+  gpkg_file <- stringr::str_c(glue::glue("{dir}/{dir}"), "gpkg", sep=".")
+  r_file <- stringr::str_c(path, "Rda", sep=".")
   if(!quiet) {
+    addl_f <- ""
+    if ("csv" %in% other_formats) {
+      addl_f <- stringr::str_c(addl_f, glue::glue(", {csv_file}"))
+    }
+    if ("gpkg" %in% other_formats) {
+      addl_f <- stringr::str_c(addl_f, glue::glue(", to layer '{table_name}' of {gpkg_file}"))
+    }
+    if ("r" %in% other_formats) {
+      addl_f <- stringr::str_c(addl_f, glue::glue(", and to {r_file}"))
+    }
     util_log_message(
       glue::glue(
-        "INPUT/OUTPUT: Writing table '{table_name}' to PostGIS database."
+        "INPUT/OUTPUT: Writing table '{table_name}' to PostGIS database{addl_f}."
       )
     )
   }
@@ -241,39 +255,14 @@ load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALS
       overwrite=overwrite
     )
   }
-  path <- stringr::str_c(dir, table_name, sep="/")
   if ("csv" %in% other_formats) {
-    file <- stringr::str_c(path, "csv", sep=".")
-    if(!quiet) {
-      util_log_message(
-        glue::glue(
-          "INPUT/OUTPUT: Writing '{table_name}' to {file} as well."
-        )
-      )
-    }
-    readr::write_csv(df, file, append=!overwrite)
+    readr::write_csv(df, csv_file, append=!overwrite)
   }
   if ("gpkg" %in% other_formats) {
-    file <- stringr::str_c(glue::glue("{dir}/{dir}"), "gpkg", sep=".")
-    if(!quiet) {
-      util_log_message(
-        glue::glue(
-          "INPUT/OUTPUT: Writing '{table_name}' to layer '{table_name}' in {file} as well."
-        )
-      )
-    }
-    sf::st_write(df, file, layer=table_name, delete_layer=overwrite)
+    sf::st_write(df, gpkg_file, layer=table_name, delete_layer=overwrite)
   }
   if ("r" %in% other_formats) {
-    file <- stringr::str_c(path, "Rda", sep=".")
-    if(!quiet) {
-      util_log_message(
-        glue::glue(
-          "INPUT/OUTPUT: Writing '{table_name}' to to {file} as well."
-        )
-      )
-    }
-    save(df, file=file)
+    save(df, file=r_file)
   }
   df
 }

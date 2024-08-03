@@ -549,7 +549,7 @@ dedupe_all <- function(
         )
 
       if(!quiet) {
-        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine similarity-deduplicating owners."))
+        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine-similarity-deduplicating owners."))
       }
 
       owners <- owners |>
@@ -590,7 +590,7 @@ dedupe_all <- function(
       
 
       if(!quiet) {
-        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine similarity-deduplicating companies."))
+        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine-similarity-deduplicating companies."))
       }
 
       companies <- companies |>
@@ -638,7 +638,7 @@ dedupe_all <- function(
         dplyr::mutate(type="owner")
 
       if(!quiet) {
-        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine similarity-deduplicating officers."))
+        util_log_message(glue::glue("DEDUPLICATING: Naive- and cosine-similarity-deduplicating officers."))
       }
 
       officers <- officers |>
@@ -686,7 +686,7 @@ dedupe_all <- function(
         dplyr::group_by(company_group, naive) |>
         dplyr::mutate(
           group = dplyr::case_when(
-            is.na(group) & !is.na(company_group) ~ stringr::str_c("company-naive-", dplyr::cur_group_id()),
+            is.na(group) & !is.na(company_group) ~ stringr::str_c("officers-naive-", dplyr::cur_group_id()),
             .default = group
           )
         ) |>
@@ -740,7 +740,7 @@ dedupe_all <- function(
           owners |>
             dplyr::filter(is.na(group))
         ) |>
-        dplyr::select(-network)
+        dplyr::select(-c(network, naive, naive_bound, cosine, cosine_bound, cosine_filled))
       
       if(!quiet) {
         util_log_message(glue::glue("DEDUPLICATING: Removing all companies and officers whose networks don't meet property records."))
@@ -759,7 +759,7 @@ dedupe_all <- function(
         tidyr::fill(match) |>
         dplyr::ungroup() |>
         dplyr::filter(match) |>
-        dplyr::select(-match)
+        dplyr::select(-c(match, naive, naive_bound, company_group, cosine, cosine_bound, cosine_filled))
       
       matched_officers <- officers |> 
         dplyr::filter(!is.na(company_id)) |>
@@ -774,13 +774,13 @@ dedupe_all <- function(
         tidyr::fill(match) |>
         dplyr::ungroup() |>
         dplyr::filter(match) |>
-        dplyr::select(-match) |>
         dplyr::left_join(
           officers |>
             dplyr::select(company_id, network),
           by=dplyr::join_by(id == company_id),
           multiple = "any"
-        )
+        )  |>
+        dplyr::select(-c(match, naive, naive_bound, cosine, cosine_bound, cosine_filled, inst, trust, trustees))
       
       if(!quiet) {
         util_log_message(glue::glue("DEDUPLICATING: Identifying provisional metacorps."))
