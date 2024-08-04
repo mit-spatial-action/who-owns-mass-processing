@@ -1,9 +1,3 @@
-# Name of directory where (some) source data is located.
-DATA_PATH <- "data"
-
-# Name of directory in which results are written.
-RESULTS_PATH <- "results"
-
 # Use cached tigris geographies.
 options(tigris_use_cache = TRUE)
 

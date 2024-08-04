@@ -533,6 +533,7 @@ proc_oc_officers <- function(df, zips, places, type_name="officer", quiet = FALS
     util_log_message("BEGIN OPENCORPORATES OFFICERS SEQUENCE", header=TRUE)
   }
   df <- df |>
+    dplyr::select(-id) |>
     proc_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet) |>
     dplyr::filter(!is.na(name)) |>
     dplyr::distinct(dplyr::pick(-c(id, type)), .keep_all = TRUE) |>
@@ -543,7 +544,8 @@ proc_oc_officers <- function(df, zips, places, type_name="officer", quiet = FALS
       ),
       type = type_name
     ) |>
-    dplyr::select(-id)
+    dplyr::select(-id) |>
+    tibble::rowid_to_column("id")
 }
 
 proc_oc_companies <- function(df, zips, places, type_name="company", quiet = FALSE) {
@@ -554,10 +556,59 @@ proc_oc_companies <- function(df, zips, places, type_name="company", quiet = FAL
   df |>
     proc_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet, retain = FALSE) |>
     dplyr::filter(!is.na(name)) |>
-    dplyr::select(-id)
+    dplyr::select(-id) |>
+    tibble::rowid_to_column("id")
 }
 
-# Assessors-Specific Workflows ====
+# Parcels ====
+
+proc_parcels_to_dry_points <- function(parcels, hydro, crs, quiet = FALSE) {
+  
+  if(!quiet) {
+    util_log_message("PROCESSING: Relocating points that lie within water bodies.")
+  }
+  
+  if(missing(hydro)) {
+    hydro <- load_ma_hydro(crs, quiet=quiet)
+  }
+  
+  points <- parcels |>
+    sf::st_set_agr("constant") |>
+    sf::st_point_on_surface()
+  
+  wet_points <- points |>
+    sf::st_filter(hydro, .predicate = sf::st_intersects)
+  
+  wet_polys <- parcels |>
+    dplyr::mutate(
+      wet = loc_id %in% wet_points$loc_id
+    ) |>
+    dplyr::filter(wet)
+  
+  dry_points <- wet_polys |>
+    sf::st_set_agr("constant") |>
+    sf::st_difference(
+      hydro |>
+        sf::st_set_agr("constant") |>
+        sf::st_union()
+      ) |>
+    sf::st_set_agr("constant") |>
+    sf::st_point_on_surface()
+  
+  points |>
+    dplyr::filter(
+      !(loc_id %in% wet_points$loc_id)
+    ) |>
+    dplyr::bind_rows(
+      dry_points,
+      wet_points |>
+        dplyr::filter(!(loc_id %in% dry_points$loc_id))
+    )
+}
+
+
+
+# Assessor's Database ====
 
 proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   if(!quiet) {
@@ -698,7 +749,8 @@ proc_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
     )
   df |>
     std_assemble_addr() |>
-    dplyr::select(-c(addr2, po, pmb))
+    dplyr::select(-c(addr2, po, pmb)) |>
+    tibble::rowid_to_column("id")
 }
 
 proc_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE) {
@@ -801,7 +853,7 @@ proc_assess_address_to_range <- function(df, site_prefix, own_prefix, quiet = FA
     dplyr::bind_rows(matched)
 }
 
-proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcels, state_constraint = "MA", quiet = FALSE) {
+proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcels_point, state_constraint = "MA", quiet = FALSE) {
   
   if(!quiet) {
     util_log_message("PROCESSING: Standardizing postal codes.")
@@ -851,7 +903,7 @@ proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
       col=cols$site$postal,
       site_loc_id=cols$site$loc_id,
       site_muni_id=cols$site$muni_id,
-      parcels=parcels,
+      parcels_point=parcels_point,
       zips=zips
     ) |>
     dplyr::bind_rows(
@@ -898,13 +950,17 @@ proc_assess <- function(df,
                         site_prefix,
                         own_prefix,
                         zips,
-                        parcels,
+                        parcels_point,
                         places,
                         state_constraint,
                         quiet = FALSE) {
   if(!quiet) {
     util_log_message("BEGIN ASSESSORS TABLE SEQUENCE", header=TRUE)
   }
+  
+  places <- places |>
+    dplyr::select(-id)
+  
   df <- df |>
     proc_assess_address_text(
       site_prefix = site_prefix,
@@ -931,7 +987,7 @@ proc_assess <- function(df,
       site_prefix=site_prefix,
       own_prefix=own_prefix,
       zips=zips,
-      parcels=parcels,
+      parcels_point=parcels_point,
       state_constraint=state_constraint,
       quiet=quiet
     )
@@ -958,7 +1014,7 @@ proc_all <- function(assess,
                      parcels,
                      places,
                      tables,
-                     tables_exist,
+                     crs,
                      remote_db = FALSE,
                      refresh = FALSE,
                      quiet = FALSE
@@ -967,7 +1023,29 @@ proc_all <- function(assess,
     util_log_message("BEGINNING DATA PROCESSING SEQUENCE", header=TRUE)
   }
   
-  if ("proc_assess" %in% tables | !tables_exist) {
+  conn <- util_conn(remote_db)
+  all_tables_exist <- util_check_for_tables(conn, tables)
+  DBI::dbDisconnect(conn)
+  
+  if ("parcels_point" %in% tables | !all_tables_exist) {
+    parcels_point <- load_read_write(
+      util_conn(remote_db),
+      "parcels_point",
+      loader=proc_parcels_to_dry_points(
+        parcels, 
+        crs=crs
+        ),
+      id_col="loc_id",
+      refresh=refresh
+    )
+    # load_add_fk(util_conn(remote_db), "parcels_point", "block_groups", "block_group_id", "id")
+    # load_add_fk(util_conn(remote_db), "parcels_point", "tracts", "tract_id", "id")
+    # load_add_fk(util_conn(remote_db), "parcels_point", "munis", "muni_id", "muni_id")
+  } else {
+    parcels_point <- list(NULL)
+  }
+  
+  if ("proc_assess" %in% tables | !all_tables_exist) {
     assess <- load_read_write(
       util_conn(remote_db),
       "proc_assess",
@@ -976,29 +1054,35 @@ proc_all <- function(assess,
         site_prefix="site",
         own_prefix="own",
         zips=zips,
-        parcels=parcels,
+        parcels_point=parcels_point,
         places=places,
         quiet=quiet,
         state_constraint="MA"
       ),
+      id_col=c("site_id", "site_muni_id"),
       refresh=refresh
     )
     
-    assess |>
-      proc_assess_split(
-        site_prefix="site",
-        own_prefix="own",
-        quiet=quiet
-      ) |>
-      wrapr::unpack(
-        sites <- sites,
-        owners <- owners
-      )
+    # load_add_fk(util_conn(remote_db), "proc_assess", "munis", "site_muni_id", "muni_id")
+    # load_add_fk(util_conn(remote_db), "proc_assess", "parcels_point", "site_loc_id", "loc_id")
+    
+    if (!all_tables_exist | refresh) {
+      assess |>
+        proc_assess_split(
+          site_prefix="site",
+          own_prefix="own",
+          quiet=quiet
+        ) |>
+        wrapr::unpack(
+          sites <- sites,
+          owners <- owners
+        )
+    }
   } else {
     assess <- list(NULL)
   }
   
-  if ("proc_sites" %in% tables | !tables_exist) {
+  if ("proc_sites" %in% tables | !all_tables_exist) {
     sites <- load_read_write(
       util_conn(remote_db),
       "proc_sites",
@@ -1007,15 +1091,20 @@ proc_all <- function(assess,
         addresses=addresses,
         quiet=quiet
       ),
+      id_col=c("id", "muni_id"),
       refresh=refresh
       )
+    
+    # load_add_fk(util_conn(remote_db), "proc_sites", "munis", "muni_id", "muni_id")
+    # load_add_fk(util_conn(remote_db), "proc_sites", "parcels_point", "loc_id", "loc_id")
+    
   } else {
     sites <- list(NULL)
   }
   
   rm(addresses)
   
-  if("proc_owners" %in% tables | !tables_exist) {
+  if("proc_owners" %in% tables | !all_tables_exist) {
     owners <- load_read_write(
       util_conn(remote_db),
       "proc_owners",
@@ -1025,13 +1114,19 @@ proc_all <- function(assess,
         address_col="addr",
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
+    
+    # load_add_fk(util_conn(remote_db), "proc_owners", "munis", "site_muni_id", "muni_id")
+    # load_add_fk(util_conn(remote_db), "proc_owners", "parcels_point", "loc_id", "loc_id")
+    # load_add_fk(util_conn(remote_db), "proc_owners", "proc_sites", c("site_id", "site_muni_id"), c("id", "muni_id"))
+    
   } else {
     owners <- list(NULL)
   }
   
-  if("proc_companies" %in% tables | !tables_exist) {
+  if("proc_companies" %in% tables | !all_tables_exist) {
     companies <- load_read_write(
       util_conn(remote_db),
       "proc_companies",
@@ -1041,13 +1136,15 @@ proc_all <- function(assess,
         places=places,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
+    
   } else {
     companies <- list(NULL)
   }
   
-  if("proc_officers" %in% tables | !tables_exist) {
+  if("proc_officers" %in% tables | !all_tables_exist) {
     officers <- load_read_write(
       util_conn(remote_db),
       "proc_officers",
@@ -1057,13 +1154,16 @@ proc_all <- function(assess,
         places=places,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
+    # load_add_fk(util_conn(remote_db), "proc_officers", "proc_companies", "company_id", "company_id")
   } else {
     officers <- list(NULL)
   }
 
   list(
+    parcels_point = parcels_point,
     assess = assess,
     sites = sites,
     owners = owners,

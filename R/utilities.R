@@ -18,10 +18,57 @@ util_log_message <- function(status, header=FALSE, timestamp=TRUE) {
     )
   }
   if(logr::log_status() == "open") {
-    logr::log_print(status, hide_notes = TRUE)
+    logr::log_print(status, hide_notes = TRUE, console=FALSE)
+    message(status)
   } else {
     message(status)
   }
+}
+
+util_print_splash <- function() {
+  body <- c(
+    "",
+    "WHO OWNS MASSACHUSETTS?",
+    "====================",
+    "Assessor's database enrichment and property owner deduplication workflow ",
+    "https://github.com/mit-spatial-action/who-owns-mass-processing",
+    "",
+    "A project of the...",
+    "====================",
+    "MIT DUSP Spatial Action & Analysis Research Group",
+    "MIT DUSP Healthy Neighborhoods Study",
+    "",
+    "Primary Contributors",
+    "====================",
+    "Eric Robsky Huntley, PhD (ehuntley@mit.edu)",
+    "Asya Aizman (aizman@mit.edu)",
+    "",
+    "(c) 2024 Eric Robsky Huntley. Made available under an MIT License",
+    ""
+  )
+  
+  length <- ceiling(max(nchar(body)) / 2) * 2
+  body <- stringr::str_pad(body, width=length, side="both")
+  
+  util_log_message(
+    stringr::str_c(
+      stringr::str_c(
+        stringr::str_c(
+          "# ",
+          c(
+            strrep("# ", length / 2), 
+            body, 
+            strrep("# ", length / 2)
+          ),
+          "#"
+        ),
+        collapse = "\n"
+      ),
+      "\n\n",
+      sep=""
+    ),
+    timestamp = FALSE
+  )
 }
 
 util_muni_table <- function(path, file="muni_ids.csv") { 
@@ -159,14 +206,14 @@ util_run_which_tables <- function(routines, push_remote) {
     proc_tables <- c(
       proc_tables, 
       c("proc_assess", "proc_sites", "proc_owners", 
-        "proc_companies", "proc_officers")
+        "proc_companies", "proc_officers", "parcels_point")
     )
   }
   if (routines$load) {
     load_tables <- tables <- c(
       load_tables,
-      "munis", "zips", "places", "init_assess", "init_addresses", 
-      "init_companies", "init_officers", "parcels", "block_groups", "tracts"
+      "munis", "zips", "places", "init_assess", "init_addresses",
+      "init_companies", "init_officers", "parcels", "block_groups", "tracts", "hydro"
     )
   }
   if (routines$dedupe) {
@@ -177,7 +224,7 @@ util_run_which_tables <- function(routines, push_remote) {
     proc_tables <- tables <- c(
       proc_tables,
       c("proc_sites", "proc_owners", 
-        "proc_companies", "proc_officers")
+        "proc_companies", "proc_officers", "parcels_point")
     )
   }
   list(
@@ -202,12 +249,12 @@ util_prompt_check <- function(prompt) {
   } else {
     if (r %in% c("Y", "y")) {
       util_log_message(
-        glue::glue("VALIDATION: You answered '{r}'---got it! Beginning process.")
+        glue::glue("VALIDATION: You answered '{r}'! Moving right along.")
       )
       return(TRUE)
     } else if (r %in% c("N", "n")) {
       util_log_message(
-        glue::glue("VALIDATION: You answered '{r}'---got it! Stopping. Change your settings in config.R.")
+        glue::glue("VALIDATION: You answered '{r}'! Stopping.")
       )
       return(FALSE)
     }
@@ -236,4 +283,55 @@ util_prompts <- function(refresh, muni_ids, company_test) {
     return(continue)
   }
   return(TRUE)
+}
+
+util_what_should_run <- function(routines, tables_exist, refresh) {
+  load_init <- routines$load
+  if (((routines$proc & tables_exist$proc) | (routines$dedupe & tables_exist$dedupe)) & !routines$load & !refresh) {
+    routines$load <- FALSE
+  } else if (routines$proc | routines$dedupe) {
+    routines$load <- TRUE
+  }
+  proc_init <- routines$proc
+  if (routines$dedupe & tables_exist$dedupe & !routines$proc & !refresh) {
+    routines$proc <- FALSE
+  } else if (routines$dedupe) {
+    routines$proc <- TRUE
+  }
+  list(
+    # load = routines$load,
+    # proc = routines$proc,
+    routines = routines,
+    load_init = load_init,
+    proc_init = proc_init
+  )
+}
+
+util_table_list <- function() {
+  list(
+    munis = NULL,
+    zips = NULL,
+    places = NULL,
+    block_groups = NULL,
+    tracts = NULL,
+    hydro = NULL,
+    parcels = NULL,
+    parcels_point = NULL,
+    init_assess = NULL,
+    init_addresses = NULL,
+    init_companies = NULL,
+    init_officers = NULL,
+    proc_assess = NULL,
+    proc_sites = NULL,
+    proc_owners = NULL,
+    proc_companies = NULL,
+    proc_officers = NULL,
+    dedupe_owners = NULL,
+    dedupe_companies = NULL,
+    dedupe_officers = NULL,
+    dedupe_sites = NULL,
+    dedupe_sites_to_owners = NULL,
+    dedupe_addresses = NULL,
+    dedupe_metacorps = NULL
+  )
 }

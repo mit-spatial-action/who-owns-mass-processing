@@ -2037,7 +2037,7 @@ std_flag_lawyers <- function(df, cols) {
 
 # Spatial Joiners ====
 
-std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips) {
+std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels_point, zips) {
   ma_zips <- zips |>
     dplyr::filter(state == "MA") |>
     dplyr::group_by(zip) |>
@@ -2046,9 +2046,7 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels, zips
   
   df <- df |> 
     dplyr::left_join(
-      parcels |>
-        sf::st_set_agr("constant") |>
-        sf::st_point_on_surface(), 
+      parcels_point,
       by=dplyr::join_by(
         !!site_loc_id == loc_id,
         !!site_muni_id == muni_id

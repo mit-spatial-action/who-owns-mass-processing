@@ -207,7 +207,25 @@ load_check_for_muni_ids <- function(conn, table_name, muni_ids) {
   result
 }
 
-load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALSE, quiet=FALSE, dir=RESULTS_PATH) {
+load_add_fk <- function(conn, table1, table2, table1_col, table2_col) {
+  on.exit(DBI::dbDisconnect(conn))
+  DBI::dbExecute(
+    conn,
+    statement=glue::glue("ALTER TABLE {table1} 
+                         DROP CONSTRAINT IF EXISTS {table1}_{table2}_fk;")
+  ) |>
+    suppressMessages()
+  DBI::dbExecute(
+    conn,
+    statement=glue::glue("ALTER TABLE {table1} 
+                         ADD CONSTRAINT {table1}_{table2}_fk
+                         FOREIGN KEY ({stringr::str_c(table1_col, collapse=', ')})
+                         REFERENCES {table2} ({stringr::str_c(table2_col, collapse=', ')})
+                         ON DELETE CASCADE;")
+  )
+}
+
+load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), overwrite=FALSE, quiet=FALSE, dir=RESULTS_PATH) {
   #' Write Table to PostGIS
   #' 
   #' Writes table to PostGIS.
@@ -240,6 +258,10 @@ load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALS
       )
     )
   }
+  if(is.null(id_col)) {
+    df <- df |>
+      tibble::rowid_to_column("id")
+  }
   if ("sf" %in% class(df)) {
     sf::st_write(
       df, 
@@ -253,6 +275,17 @@ load_write <- function(df, conn, table_name, other_formats = c(), overwrite=FALS
       name=table_name,
       value=df,
       overwrite=overwrite
+    )
+  }
+  if(!is.null(id_col)) {
+    DBI::dbExecute(
+      conn,
+      statement=glue::glue("ALTER TABLE {table_name} ADD PRIMARY KEY ({stringr::str_c(id_col, collapse=', ')});")
+    )
+  } else {
+    DBI::dbExecute(
+      conn,
+      statement=glue::glue("ALTER TABLE {table_name} ADD PRIMARY KEY (id);")
     )
   }
   if ("csv" %in% other_formats) {
@@ -309,7 +342,7 @@ load_postgis_read <- function(conn, table_name, muni_ids = NULL) {
   }
 }
 
-load_read_write <- function(conn, table_name, loader, muni_ids=NULL, refresh=FALSE, quiet=FALSE) {
+load_read_write <- function(conn, table_name, loader, id_col=NULL, muni_ids=NULL, refresh=FALSE, quiet=FALSE) {
   #' Ingest table to or read table from PostGIS.
   #' 
   #' Either writes or reads a table, depending on parameter settings and table
@@ -351,7 +384,7 @@ load_read_write <- function(conn, table_name, loader, muni_ids=NULL, refresh=FAL
       }
     }
     df <- loader |>
-      load_write(conn, table_name=table_name, overwrite=refresh, quiet=quiet)
+      load_write(conn, table_name=table_name, id_col=id_col, overwrite=refresh, quiet=quiet)
   } else if (muni_ids_exist) {
     if(!quiet) {
       util_log_message(
@@ -370,7 +403,7 @@ load_read_write <- function(conn, table_name, loader, muni_ids=NULL, refresh=FAL
       )
     }
     df <- loader |>
-      load_write(conn, table_name=table_name, overwrite=TRUE, quiet=quiet)
+      load_write(conn, table_name=table_name, id_col=id_col, overwrite=TRUE, quiet=quiet)
   }
   df
 }
@@ -742,6 +775,7 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     df <- dplyr::bind_rows(all)
     rm(all)
   }
+  
   df <- df |>
     dplyr::rename_with(stringr::str_to_lower) |>
     dplyr::semi_join(assess, by=dplyr::join_by(loc_id==site_loc_id))
@@ -754,6 +788,10 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
       muni_id = std_pad_muni_ids(muni_id),
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
+  
+  not_in_parcels <- assess |> 
+    dplyr::anti_join(df, by=dplyr::join_by(site_loc_id==loc_id)) |>
+    dplyr::select(loc_id = site_loc_id, muni_id = site_muni_id)
 
   df |>
     dplyr::mutate(
@@ -768,7 +806,8 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     dplyr::select(-point) |>
     dplyr::mutate(
       tract_id = stringr::str_sub(block_group_id, start = 1L, end = 11L)
-    )
+    ) |>
+    dplyr::bind_rows(not_in_parcels)
 }
 
 load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
@@ -1008,7 +1047,8 @@ load_places <- function(munis, zips, crs, quiet=FALSE) {
       ),
       name_fuzzy = std_fuzzify_string(tmp)
     ) |>
-    dplyr::select(-tmp)
+    dplyr::select(-tmp) |>
+    tibble::rowid_to_column("id")
 }
 
 load_munis <- function(crs, quiet=FALSE) {
@@ -1046,6 +1086,39 @@ load_munis <- function(crs, quiet=FALSE) {
       muni = stringr::str_replace(muni, "BORO$", "BOROUGH")
     ) |>
     std_flag_hns("muni")
+}
+
+load_ma_hydro <- function(crs, thresh = 0.98, quiet=FALSE) {
+  if(!quiet) {
+    util_log_message("INPUT/OUTPUT: Downloading and processing Massachusetts Hydrology...")
+  }
+  df <- load_shp_from_remote_zip(
+    "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/hydro25k.zip",
+    shpfile = "HYDRO25K_POLY.shp",
+    crs = crs
+  ) 
+  
+  ocean <- df |> 
+    dplyr::filter(poly_code == 8)
+  
+  rivers_lakes <- df |> 
+    dplyr::filter(poly_code == 6)
+  
+  union <- rivers_lakes |>
+    sf::st_union() |>
+    sf::st_cast("POLYGON") |>
+    sf::st_as_sf() |>
+    sf::st_set_geometry("geometry") |>
+    dplyr::mutate(
+      area = sf::st_area(geometry)
+    ) |>
+    dplyr::filter(area > quantile(area, 0.98))
+  
+  rivers_lakes |>
+    sf::st_filter(union, .predicate = sf::st_intersects) |>
+    dplyr::bind_rows(
+      ocean
+    )
 }
 
 load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
@@ -1126,7 +1199,9 @@ load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
         munis |> 
           sf::st_union() |>
           sf::st_as_sf() |>
-          dplyr::select(), "constant")
+          dplyr::select(), 
+        "constant"
+        )
     )
   
   if (thresh == 1) {
@@ -1136,7 +1211,7 @@ load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
     ma_unambig_zip_from_muni <- munis |>
       sf::st_join(
         zips_ma, 
-        join = sf::st_contains_properly, 
+        join = sf::st_contains, 
         left = FALSE
         ) |>
       sf::st_drop_geometry()
@@ -1146,7 +1221,7 @@ load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
     ma_unambig_muni_from_zip <- zips_ma |>
       sf::st_join(
         munis, 
-        join = sf::st_contains_properly, 
+        join = sf::st_contains, 
         left = FALSE
       ) |>
       sf::st_drop_geometry()
@@ -1183,7 +1258,8 @@ load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
       by=dplyr::join_by(zip)
     ) |>
     sf::st_as_sf() |>
-    sf::st_transform(crs)
+    sf::st_transform(crs) |>
+    dplyr::filter(!is.na(state))
 }
 
 load_oc_companies <- function(path, gdb_path, test_count=NULL, quiet=FALSE, filename = "companies.csv") {
@@ -1336,7 +1412,8 @@ load_oc_officers <- function(path, companies, quiet=FALSE, filename = "officers.
     dplyr::filter(!is.na(name)) |>
     load_oc_officer_fix_addresses(quiet=quiet) |>
     std_replace_blank(c("addr", "muni", "state", "postal")) |>
-    suppressWarnings()
+    suppressWarnings() |>
+    tibble::rowid_to_column("id")
 }
 
 # Omnibus Ingestor/Loader ====
@@ -1349,8 +1426,7 @@ load_read_write_all <- function(
     crs,
     zip_int_thresh,
     refresh,
-    tables=c(),
-    tables_exist,
+    tables,
     company_test_count=NULL,
     quiet=FALSE,
     remote_db=FALSE
@@ -1376,8 +1452,12 @@ load_read_write_all <- function(
     util_log_message("BEGINNING DATA LOADING SEQUENCE", header=TRUE)
   }
   
+  conn <- util_conn(remote_db)
+  all_tables_exist <- util_check_for_tables(conn, tables)
+  DBI::dbDisconnect(conn)
+  
   # Read Municipalities
-  if ("munis" %in% tables | !tables_exist) {
+  if ("munis" %in% tables | !all_tables_exist) {
     munis <- load_read_write(
       util_conn(remote_db),
       "munis",
@@ -1385,6 +1465,7 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col="muni_id",
       refresh=refresh,
       quiet=quiet
     )
@@ -1393,7 +1474,7 @@ load_read_write_all <- function(
   }
 
   # Read ZIPs
-  if ("zips" %in% tables | !tables_exist) {
+  if ("zips" %in% tables | !all_tables_exist) {
     zips <- load_read_write(
       util_conn(remote_db),
       "zips",
@@ -1403,6 +1484,7 @@ load_read_write_all <- function(
         thresh=zip_int_thresh,
         quiet=quiet
       ),
+      id_col=c("zip", "state"),
       refresh=refresh,
       quiet=quiet
     )
@@ -1411,7 +1493,7 @@ load_read_write_all <- function(
   }
 
   # Read Places
-  if ("places" %in% tables | !tables_exist) {
+  if ("places" %in% tables | !all_tables_exist) {
     places <- load_read_write(
       util_conn(remote_db),
       "places",
@@ -1421,6 +1503,7 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col = "id",
       refresh=refresh,
       quiet=quiet
     )
@@ -1429,7 +1512,7 @@ load_read_write_all <- function(
   }
 
   # Read Assessors Tables
-  if ("init_assess" %in% tables | !tables_exist) {
+  if ("init_assess" %in% tables | !all_tables_exist) {
     assess <- load_read_write(
       util_conn(remote_db),
       "init_assess",
@@ -1439,16 +1522,18 @@ load_read_write_all <- function(
         muni_ids=muni_ids,
         quiet=quiet
       ),
+      id_col=c("site_id", "site_muni_id"),
       refresh=refresh,
       muni_ids=muni_ids,
       quiet=quiet
     )
+    # load_add_fk(util_conn(remote_db), "init_assess", "munis", "site_muni_id", "muni_id")
   } else {
     assess <- list(NULL)
   }
   
   # Read Census Tracts
-  if ("tracts" %in% tables | !tables_exist) {
+  if ("tracts" %in% tables | !all_tables_exist) {
     tracts <- load_read_write(
       util_conn(remote_db),
       "tracts",
@@ -1457,6 +1542,7 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
   } else {
@@ -1464,7 +1550,7 @@ load_read_write_all <- function(
   }
 
   # Read Block Groups
-  if ("block_groups" %in% tables | !tables_exist) {
+  if ("block_groups" %in% tables | !all_tables_exist) {
     block_groups <- load_read_write(
       util_conn(remote_db),
       "block_groups",
@@ -1473,6 +1559,7 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
   } else {
@@ -1480,7 +1567,7 @@ load_read_write_all <- function(
   }
 
   # Read Parcels
-  if ("parcels" %in% tables | !tables_exist) {
+  if ("parcels" %in% tables | !all_tables_exist) {
     parcels <- load_read_write(
       util_conn(remote_db),
       "parcels",
@@ -1492,15 +1579,20 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col="loc_id",
       refresh=refresh,
       muni_ids=muni_ids
     )
+    # load_add_fk(util_conn(remote_db), "init_assess", "parcels", "site_loc_id", "loc_id")
+    # load_add_fk(util_conn(remote_db), "parcels", "block_groups", "block_group_id", "id")
+    # load_add_fk(util_conn(remote_db), "parcels", "tracts", "tract_id", "id")
+    # load_add_fk(util_conn(remote_db), "parcels", "munis", "muni_id", "muni_id")
   } else {
     parcels <- list(NULL)
   }
   
   # Read Master Address File
-  if ("init_addresses" %in% tables | !tables_exist) {
+  if ("init_addresses" %in% tables | !all_tables_exist) {
     addresses <- load_read_write(
       util_conn(remote_db),
       "init_addresses",
@@ -1511,15 +1603,18 @@ load_read_write_all <- function(
         crs=crs,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh,
       muni_ids=muni_ids
     )
+    # load_add_fk(util_conn(remote_db), "init_addresses", "munis", "muni_id", "muni_id")
+    # load_add_fk(util_conn(remote_db), "init_addresses", "parcels", "loc_id", "loc_id")
   } else {
     addresses <- list(NULL)
   }
   
   # Read OpenCorpoates Companies
-  if ("init_companies" %in% tables | !tables_exist) {
+  if ("init_companies" %in% tables | !all_tables_exist) {
     companies <- load_read_write(
       util_conn(remote_db),
       "init_companies",
@@ -1529,6 +1624,7 @@ load_read_write_all <- function(
         quiet=quiet,
         test_count=company_test_count
       ),
+      id_col="company_id",
       refresh=refresh
     )
   } else {
@@ -1536,7 +1632,7 @@ load_read_write_all <- function(
   }
 
   # Read OpenCorporates Officers
-  if ("init_officers" %in% tables | !tables_exist) {
+  if ("init_officers" %in% tables | !all_tables_exist) {
     officers <- load_read_write(
       util_conn(remote_db),
       "init_officers",
@@ -1545,6 +1641,7 @@ load_read_write_all <- function(
         companies=companies,
         quiet=quiet
       ),
+      id_col="id",
       refresh=refresh
     )
   } else {

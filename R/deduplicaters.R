@@ -23,8 +23,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
   
   companies <- companies |>
     dplyr::rename(old_company_id = company_id) |>
-    dplyr::mutate(table="companies") |>
-    tibble::rowid_to_column("id")
+    dplyr::mutate(table="companies")
   
   owners <- owners |>
     dplyr::mutate(table="owners") |>
@@ -36,8 +35,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
       dplyr::join_by(old_site_id == old_site_id, site_muni_id == muni_id),
       na_matches="never"
     ) |>
-    dplyr::select(-old_site_id) |>
-    tibble::rowid_to_column("id")
+    dplyr::select(-old_site_id)
   
   sites <- sites |>
     dplyr::select(-old_site_id)
@@ -52,8 +50,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
       dplyr::join_by(old_company_id == old_company_id),
       multiple="any",
       na_matches="never"
-    ) |>
-    tibble::rowid_to_column("id")
+    )
   
   companies <- companies |>
     dplyr::select(-old_company_id)
@@ -476,7 +473,8 @@ dedupe_all <- function(
     owners = "dedupe_owners",
     companies = "dedupe_companies",
     officers = "dedupe_officers",
-    metacorps = "dedupe_metacorps",
+    metacorps_cosine = "dedupe_metacorps_cosine",
+    metacorps_network = "dedupe_metacorps_network",
     sites = "dedupe_sites",
     addresses = "dedupe_addresses",
     sites_to_owners = "sites_to_owners"
@@ -535,7 +533,8 @@ dedupe_all <- function(
         dplyr::ungroup()
       
       sites_to_owners <- sites_to_owners |>
-        dplyr::select(site_id, owner_id)
+        dplyr::select(site_id, owner_id) |>
+        tibble::rowid_to_column("id")
 
       owners <- owners |>
         dplyr::filter(type != "co") |>
@@ -731,7 +730,7 @@ dedupe_all <- function(
         tidyr::fill(network, .direction="downup") |>
         dplyr::ungroup() |>
         dplyr::mutate(
-          group = dplyr::case_when(
+          network_group = dplyr::case_when(
             !is.na(network) ~ network,
             .default = group
           )
@@ -740,7 +739,10 @@ dedupe_all <- function(
           owners |>
             dplyr::filter(is.na(group))
         ) |>
-        dplyr::select(-c(network, naive, naive_bound, cosine, cosine_bound, cosine_filled))
+        dplyr::rename(
+          cosine_group = group
+        ) |>
+        dplyr::select(c(id, name, inst, trust, trustees, addr_id, company_id, cosine_group, network_group))
       
       if(!quiet) {
         util_log_message(glue::glue("DEDUPLICATING: Removing all companies and officers whose networks don't meet property records."))
@@ -755,11 +757,15 @@ dedupe_all <- function(
         dplyr::mutate(
           match = company_id %in% matched_companies
         ) |>
-        dplyr::group_by(network) |>
+        dplyr::rename(network_id = network) |>
+        dplyr::group_by(network_id) |>
         tidyr::fill(match) |>
         dplyr::ungroup() |>
         dplyr::filter(match) |>
-        dplyr::select(-c(match, naive, naive_bound, company_group, cosine, cosine_bound, cosine_filled))
+        dplyr::select(
+          c(name, inst, positions, company_id, addr_id, network_id)
+          ) |>
+        tibble::rowid_to_column("id")
       
       matched_officers <- officers |> 
         dplyr::filter(!is.na(company_id)) |>
@@ -776,21 +782,29 @@ dedupe_all <- function(
         dplyr::filter(match) |>
         dplyr::left_join(
           officers |>
-            dplyr::select(company_id, network),
+            dplyr::select(company_id, network_id),
           by=dplyr::join_by(id == company_id),
           multiple = "any"
         )  |>
-        dplyr::select(-c(match, naive, naive_bound, cosine, cosine_bound, cosine_filled, inst, trust, trustees))
+        dplyr::select(c(id, name, company_type, addr_id, network_id))
       
       if(!quiet) {
         util_log_message(glue::glue("DEDUPLICATING: Identifying provisional metacorps."))
       }
 
-      metacorps <- companies |>
+      metacorps_network <- owners |>
         dedupe_text_mode(
-          group_col="network",
+          group_col="network_group",
           cols = "name"
-        )
+        ) |>
+        dplyr::rename(id = network_group)
+      
+      metacorps_cosine <- owners |>
+        dedupe_text_mode(
+          group_col="cosine_group",
+          cols = "name"
+        ) |>
+        dplyr::rename(id = cosine_group)
       
       if(!quiet) {
         util_log_message(glue::glue("INPUT/OUTPUT: Writing Results."))
@@ -801,6 +815,7 @@ dedupe_all <- function(
           get(t),
           conn=conn,
           table_name=tables[[t]],
+          id_col="id",
           other_formats=c("csv", "r"),
           overwrite=TRUE,
           quiet=quiet
@@ -813,7 +828,8 @@ dedupe_all <- function(
     companies = companies,
     sites_to_owners = sites_to_owners,
     officers = officers,
-    metacorps = metacorps,
+    metacorps_network = metacorps_network,
+    metacorps_cosine = metacorps_cosine,
     sites = sites,
     addresses = addresses
   )
