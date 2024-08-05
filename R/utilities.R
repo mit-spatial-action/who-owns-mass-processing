@@ -235,7 +235,11 @@ util_run_which_tables <- function(routines, push_remote) {
 
 util_prompt_check <- function(prompt) {
   util_log_message(prompt)
-  r <- readline()
+  if (interactive()) {
+    r <- readline()
+  } else {
+    r <- readLines("stdin",n=1);
+  }
   if (r %in% c("Y", "y", "N", "n")) {
     check <- TRUE
   } else {
