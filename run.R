@@ -4,8 +4,17 @@ source('R/deduplicaters.R')
 source("R/processors.R")
 source("R/utilities.R")
 source("config.R")
-# Important that this sits below config.
-source("R/globals.R")
+
+if (COMPLETE_RUN) {
+  REFRESH <- TRUE
+  COMPANY_TEST <- FALSE
+  MUNI_IDS <- NULL
+  ROUTINES <- list(
+    load = TRUE,
+    proc = TRUE,
+    dedupe = TRUE
+  )
+}
 
 run <- function(data_path=DATA_PATH,
                 muni_ids=MUNI_IDS,

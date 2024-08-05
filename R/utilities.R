@@ -266,23 +266,29 @@ util_prompts <- function(refresh, muni_ids, company_test) {
     continue <- util_prompt_check(
       "VALIDATION: REFRESH is TRUE. Any explictly identified subroutines will rerun. Continue? (Y/N) "
     )
-    return(continue)
+    if (!continue) {
+      return(continue)
+    }
   }
   
   if (is.null(muni_ids)) {
     continue <- util_prompt_check(
       "VALIDATION: MUNI_IDS is set to NULL. This will run the process for the whole state, which will take a long time. Continue? (Y/N) "
     ) 
-    return(continue)
+    if (!continue) {
+      return(continue)
+    }
   }
   
   if (!company_test) {
     continue <- util_prompt_check(
       "VALIDATION: COMPANY_TEST is FALSE. This will run the process for all companies, which will take a long time. Continue? (Y/N) "
     ) 
-    return(continue)
+    if (!continue) {
+      return(continue)
+    }
   }
-  return(TRUE)
+  continue
 }
 
 util_what_should_run <- function(routines, tables_exist, refresh) {
