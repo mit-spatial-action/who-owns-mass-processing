@@ -258,10 +258,6 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
       )
     )
   }
-  if(is.null(id_col)) {
-    df <- df |>
-      tibble::rowid_to_column("id")
-  }
   if ("sf" %in% class(df)) {
     sf::st_write(
       df, 
@@ -790,8 +786,9 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     )
   
   not_in_parcels <- assess |> 
-    dplyr::anti_join(df, by=dplyr::join_by(site_loc_id==loc_id)) |>
-    dplyr::select(loc_id = site_loc_id, muni_id = site_muni_id)
+    dplyr::anti_join(df, by=dplyr::join_by(site_loc_id==loc_id, site_muni_id==muni_id)) |>
+    dplyr::select(loc_id = site_loc_id, muni_id = site_muni_id) |>
+    dplyr::distinct()
 
   df |>
     dplyr::mutate(
@@ -807,7 +804,8 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     dplyr::mutate(
       tract_id = stringr::str_sub(block_group_id, start = 1L, end = 11L)
     ) |>
-    dplyr::bind_rows(not_in_parcels)
+    dplyr::bind_rows(not_in_parcels) |>
+    dplyr::distinct(loc_id, muni_id, .keep_all = TRUE)
 }
 
 load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {

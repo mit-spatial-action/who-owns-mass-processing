@@ -2050,7 +2050,9 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels_point
       by=dplyr::join_by(
         !!site_loc_id == loc_id,
         !!site_muni_id == muni_id
-        )
+        ),
+      na_matches="never",
+      multiple="any"
       ) |>
     sf::st_as_sf() |>
     sf::st_join(

@@ -33,7 +33,8 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
         dplyr::select(old_site_id, site_id = id, muni_id) |>
         dplyr::distinct(),
       dplyr::join_by(old_site_id == old_site_id, site_muni_id == muni_id),
-      na_matches="never"
+      na_matches="never",
+      multiple="any"
     ) |>
     dplyr::select(-old_site_id)
   

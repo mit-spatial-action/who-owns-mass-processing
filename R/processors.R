@@ -642,6 +642,7 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
       sites |>
         dplyr::select(id, muni_id, addr, start, end, body, even, muni, postal, state),
       by = dplyr::join_by(site_id == id, site_muni_id == muni_id),
+      multiple="any",
       na_matches="never"
     ) |>
     dplyr::bind_rows(
