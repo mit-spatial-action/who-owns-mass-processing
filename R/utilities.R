@@ -97,27 +97,38 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #' @return A transformed vector of municipality IDs.
   #' 
   #' @export
-  ids <- util_muni_table(path)  |>
+  muni_table <- util_muni_table(path) 
+  ids <- muni_table |>
     dplyr::pull(muni_id)
   if (is.null(muni_ids)) {
-    muni_ids <- std_pad_muni_ids(ids)
+    muni_ids <- std_pad_muni_ids(ids) |>
+      unique()
   } else if (all(muni_ids == "hns")) {
-    muni_ids <- c("163", "057", "044", "095", "035", "201", "274", "049")
+    muni_ids <- muni_table |>
+      dplyr::filter(hns) |> 
+      dplyr::pull(muni_id) |>
+      unique()
+  } else if (all(muni_ids == "mapc")) {
+    muni_ids <- muni_table |>
+      dplyr::filter(mapc) |> 
+      dplyr::pull(muni_id) |>
+      unique()
   } else {
-    if(!all(std_pad_muni_ids(muni_ids) %in% ids)) {
-      util_log_message("VALIDATION: Got it! Check your config.R.")
-      tryCatch(stop(), error = function(e) {})
-    } else {
-      if(!quiet) {
-        util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
-      }
-    }
     muni_ids <- std_pad_muni_ids(muni_ids)
+  }
+  if(all(muni_ids %in% ids)) {
+    if(!quiet) {
+      util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
+    }
+  } else {
+    if(!quiet) {
+      stop("VALIDATION: Invalid municipality IDs provided.")
+    }
   }
   muni_ids
 }
 
-util_conn <- function(remote=FALSE) {
+util_conn <- function(prefix=NULL) {
   #' Load DBMS Connection
   #' 
   #' Creates connection to remote or local PostGIS connection. Requires a
@@ -130,20 +141,16 @@ util_conn <- function(remote=FALSE) {
   #'    This object is used to communicate with the database engine.
   #' 
   #' @export
-  
-  if (remote) {
-    dbname <- "REMOTE_DB_NAME"
-    host <- "REMOTE_DB_HOST"
-    port <- "REMOTE_DB_PORT"
-    user <- "REMOTE_DB_USER"
-    password <- "REMOTE_DB_PASS"
+  if (!is.null(prefix)) {
+    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
   } else {
-    dbname <- "DB_NAME"
-    host <- "DB_HOST"
-    port <- "DB_PORT"
-    user <- "DB_USER"
-    password <- "DB_PASS"
+    prefix <- "DB"
   }
+  dbname <- stringr::str_c(prefix, "NAME", sep="_")
+  host <- stringr::str_c(prefix, "HOST", sep="_")
+  port <- stringr::str_c(prefix, "PORT", sep="_")
+  user <- stringr::str_c(prefix, "USER", sep="_")
+  password <- stringr::str_c(prefix, "PASS", sep="_")
   DBI::dbConnect(
     RPostgres::Postgres(),
     dbname = Sys.getenv(dbname),
@@ -170,10 +177,10 @@ util_check_for_tables <- function(conn, table_names) {
   all(table_names %in% DBI::dbListTables(conn))
 }
 
-util_run_tables_exist <- function(tables, push_remote) {
-  l <- util_conn(push_remote$load)
-  p <- util_conn(push_remote$proc)
-  d <- util_conn(push_remote$dedupe)
+util_run_tables_exist <- function(tables, push_dbs) {
+  l <- util_conn(push_dbs$load)
+  p <- util_conn(push_dbs$proc)
+  d <- util_conn(push_dbs$dedupe)
   tables_exist <- list(
     load = util_check_for_tables(
       l,
@@ -194,9 +201,10 @@ util_run_tables_exist <- function(tables, push_remote) {
   tables_exist
 }
 
-util_run_which_tables <- function(routines, push_remote) {
+util_run_which_tables <- function(routines) {
   load_tables <- c()
   proc_tables <- c()
+  dedupe_tables <- c()
   if (routines$proc) {
     load_tables <- c(
       load_tables, 
@@ -212,8 +220,8 @@ util_run_which_tables <- function(routines, push_remote) {
   if (routines$load) {
     load_tables <- tables <- c(
       load_tables,
-      "munis", "zips", "places", "init_assess", "init_addresses",
-      "init_companies", "init_officers", "parcels", "block_groups", "tracts", "hydro"
+      c("munis", "zips", "places", "init_assess", "init_addresses",
+      "init_companies", "init_officers", "parcels", "block_groups", "tracts")
     )
   }
   if (routines$dedupe) {
@@ -221,15 +229,22 @@ util_run_which_tables <- function(routines, push_remote) {
       load_tables, 
       c("init_addresses")
     )
-    proc_tables <- tables <- c(
+    proc_tables <- c(
       proc_tables,
       c("proc_sites", "proc_owners", 
         "proc_companies", "proc_officers", "parcels_point")
     )
+    dedupe_tables <- c(
+      dedupe_tables,
+      c("sites_to_owners", 'owners', 'companies', 'officers',
+        "sites", 'metacorps_network', 'metacorps_cosine',
+        'addresses')
+    )
   }
   list(
     load = unique(load_tables),
-    proc = unique(proc_tables)
+    proc = unique(proc_tables),
+    dedupe = unique(dedupe_tables)
   )
 }
 
@@ -292,30 +307,28 @@ util_prompts <- function(refresh, muni_ids, company_test) {
       return(continue)
     }
   }
-  continue
+  TRUE
 }
 
-util_what_should_run <- function(routines, tables_exist, refresh) {
-  load_init <- routines$load
-  if (((routines$proc & tables_exist$proc) | (routines$dedupe & tables_exist$dedupe)) & !routines$load & !refresh) {
-    routines$load <- FALSE
-  } else if (routines$proc | routines$dedupe) {
-    routines$load <- TRUE
-  }
-  proc_init <- routines$proc
-  if (routines$dedupe & tables_exist$dedupe & !routines$proc & !refresh) {
-    routines$proc <- FALSE
-  } else if (routines$dedupe) {
-    routines$proc <- TRUE
-  }
-  list(
-    # load = routines$load,
-    # proc = routines$proc,
-    routines = routines,
-    load_init = load_init,
-    proc_init = proc_init
-  )
-}
+# util_what_should_run <- function(routines, tables_exist, refresh) {
+#   load_init <- routines$load
+#   if (((routines$proc & tables_exist$proc) | (routines$dedupe & tables_exist$dedupe)) & !routines$load & !refresh) {
+#     routines$load <- FALSE
+#   } else if (routines$proc | routines$dedupe) {
+#     routines$load <- TRUE
+#   }
+#   proc_init <- routines$proc
+#   if (routines$dedupe & tables_exist$dedupe & !routines$proc & !refresh) {
+#     routines$proc <- FALSE
+#   } else if (routines$dedupe) {
+#     routines$proc <- TRUE
+#   }
+#   list(
+#     routines = routines,
+#     load_init = load_init,
+#     proc_init = proc_init
+#   )
+# }
 
 util_table_list <- function() {
   list(

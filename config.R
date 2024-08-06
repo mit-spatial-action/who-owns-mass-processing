@@ -4,10 +4,10 @@ COMPLETE_RUN <- FALSE
 
 REFRESH <- TRUE
 
-PUSH_REMOTE <- list(
-  load = FALSE,
-  proc = FALSE,
-  dedupe = FALSE
+PUSH_DBS <- list(
+  load = NULL,
+  proc = NULL,
+  dedupe = NULL
 )
 
 ROUTINES <- list(
@@ -17,6 +17,8 @@ ROUTINES <- list(
 )
 
 MUNI_IDS <- c(274, 49, 35)
+
+RETURN_INTERMEDIATE <- FALSE
 
 COMPANY_TEST_COUNT <- 50000
 COMPANY_TEST <- TRUE

@@ -28,7 +28,8 @@ run <- function(data_path=DATA_PATH,
                 routines=ROUTINES,
                 company_test=COMPANY_TEST,
                 company_test_count=COMPANY_TEST_COUNT,
-                push_remote=PUSH_REMOTE,
+                push_dbs=PUSH_DBS,
+                return_intermediate=RETURN_INTERMEDIATE,
                 quiet=QUIET) {
   
   # Open Log
@@ -68,38 +69,24 @@ run <- function(data_path=DATA_PATH,
   
   # Check for Existence of Tables Needed for Each Subroutine
   # ===
-  
-  tables <- util_run_which_tables(routines, push_remote)
-  tables_exist <- util_run_tables_exist(tables, push_remote)
-  
-  # Check for Existence of Tables Needed for Each Subroutine
-  # ===
+  tables <- util_run_which_tables(routines)
+  tables_exist <- util_run_tables_exist(tables, push_dbs)
   
   if (!company_test) {
     company_test_count <- NULL
   }
   
-  # Build list of output tables
-  # ===
+  if (interactive()) {
+    out <- list()
+  } else {
+    out <- NULL
+  }
   
-  out <- util_table_list()
-  for(i in 1:length(out)) assign(names(out)[i], out[[i]])
-  
-  util_what_should_run(
-    routines, 
-    tables_exist, 
-    refresh
-  ) |>
-    wrapr::unpack(
-      routines,
-      load_init,
-      proc_init
-    )
-
   # Ingest or Load Data
   # ===
-  
-  if (routines$load) {
+  if (routines$load | 
+      ((routines$proc & refresh) | (routines$proc & !tables_exist$proc)) | 
+      ((routines$dedupe & refresh) | (routines$dedupe & !tables_exist$dedupe))) {
     load_read_write_all(
       data_path=data_path,
       muni_ids=muni_ids,
@@ -111,8 +98,8 @@ run <- function(data_path=DATA_PATH,
       quiet=quiet,
       company_test_count=company_test_count,
       # Don't refresh if load tables exist and user has specified a subroutine.
-      refresh=refresh & load_init,
-      remote_db=push_remote$load
+      refresh=refresh & routines$load,
+      push_db=push_dbs$load
     ) |>
       wrapr::unpack(
         munis,
@@ -121,22 +108,41 @@ run <- function(data_path=DATA_PATH,
         tracts,
         places,
         parcels,
-        init_assess = assess,
-        init_addresses = addresses,
-        init_companies = companies,
-        init_officers = officers
+        assess,
+        addresses,
+        companies,
+        officers
       )
+    
+    if ((return_intermediate | (routines$load & (!routines$dedupe & !routines$proc))) & interactive()) {
+      out[['init_assess']] <- assess
+      out[['init_addresses']] <- addresses
+      out[['init_companies']] <- companies
+      out[['init_officers']] <- officers
+      out[['places']] <- places
+    }
+    
+    if (interactive()) {
+      out[['parcels']] <- parcels
+      out[['munis']] <- munis
+      out[['zips']] <- zips
+      out[['block_groups']] <- block_groups
+      out[['tracts']] <- tracts
+    }
+    
+    rm(block_groups, tracts, munis) |> suppressWarnings()
+    invisible(gc())
   }
   
   # Process All Input Tables
   # ===
-  
-  if (routines$proc) {
+  if (routines$proc | 
+      ((routines$dedupe & refresh) | (routines$dedupe & !tables_exist$dedupe))) {
     proc_all(
-      assess=init_assess,
-      companies=init_companies,
-      officers=init_officers,
-      addresses=init_addresses,
+      assess=assess,
+      companies=companies,
+      officers=officers,
+      addresses=addresses,
       zips=zips,
       parcels=parcels,
       places=places,
@@ -144,49 +150,75 @@ run <- function(data_path=DATA_PATH,
       tables=tables$proc,
       quiet=quiet,
       # Don't refresh if tables exist and user has specified a subroutine.
-      refresh=refresh & proc_init,
-      remote_db=push_remote$proc
+      refresh=refresh & routines$proc,
+      push_db=push_dbs$proc
     ) |>
       wrapr::unpack(
         parcels_point,
-        proc_assess = assess,
-        proc_sites = sites,
-        proc_owners = owners,
-        proc_companies = companies,
-        proc_officers = officers
+        assess,
+        sites,
+        owners,
+        companies,
+        officers
       )
+    
+    rm(parcels, zips, places) |> suppressWarnings()
+    
+    if (interactive()) {
+      out[['parcels_point']] <- parcels_point
+    }
+    
+    rm(parcels_point) |> suppressWarnings()
+    
+    if ((return_intermediate | (routines$proc & !routines$dedupe)) & interactive()) {
+      out[['proc_assess']] <- assess
+      out[['proc_sites']] <- sites
+      out[['proc_owners']] <- owners
+      out[['proc_companies']] <- companies
+      out[['proc_officers']] <- officers
+    }
+    
+    rm(assess) |> suppressWarnings()
+    invisible(gc())
   }
 
   # De-duplicate!
   # ===
-  
   if (routines$dedupe) {
     dedupe_all(
-      owners=proc_owners,
-      companies=proc_companies,
-      officers=proc_officers,
-      sites=proc_sites,
-      addresses=init_addresses,
+      owners=owners,
+      companies=companies,
+      officers=officers,
+      sites=sites,
+      addresses=addresses,
       thresh=thresh,
       inds_thresh=inds_thresh,
+      tables=tables$dedupe,
       quiet=quiet,
-      refresh=refresh,
-      remote_db=push_remote$dedupe
+      refresh=refresh & routines$dedupe,
+      push_db=push_dbs$dedupe
     ) |>
       wrapr::unpack(
-        dedupe_sites_to_owners = sites_to_owners,
-        dedupe_owners = owners,
-        dedupe_companies = companies,
-        dedupe_officers = officers,
-        dedupe_sites = sites,
-        dedupe_metacorps_network = metacorps_network,
-        dedupe_metacorps_cosine = metacorps_cosine,
-        dedupe_addresses = addresses
+        sites_to_owners,
+        owners,
+        companies,
+        officers,
+        sites,
+        metacorps_network,
+        metacorps_cosine,
+        addresses
       )
-  }
-  
-  for (output in names(out)) {
-    out[[output]] <- get(output)
+    
+    if (interactive()) {
+      out[['sites_to_owners']] <- sites_to_owners
+      out[['owners']] <- owners
+      out[['companies']] <- companies
+      out[['officers']] <- officers
+      out[['sites']] <- sites
+      out[['metacorps_network']] <- metacorps_network
+      out[['metacorps_cosine']] <- metacorps_cosine
+      out[['addresses']] <- addresses
+    }
   }
   
   util_log_message(
@@ -194,15 +226,14 @@ run <- function(data_path=DATA_PATH,
     header = TRUE
   )
   
+  invisible(gc())
   return(out)
 }
 
 # This is like if __name__ == "__main__" in python.
 if (!interactive()) {
-  run()
+  invisible(run())
 } else {
   out <- run()
-  if(!is.null(out)) {
-    for(i in 1:length(out)) assign(names(out)[i], out[[i]])
-  }
+  for(i in 1:length(out)) assign(names(out)[i], out[[i]])
 }

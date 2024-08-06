@@ -357,6 +357,7 @@ load_read_write <- function(conn, table_name, loader, id_col=NULL, muni_ids=NULL
   on.exit(DBI::dbDisconnect(conn))
   
   table_exists <- util_check_for_tables(conn, table_name)
+  
   if (!is.null(muni_ids) & table_exists) {
     muni_ids_exist <- load_check_for_muni_ids(conn, table_name, muni_ids)
   } else {
@@ -1420,7 +1421,7 @@ load_read_write_all <- function(
     tables,
     company_test_count=NULL,
     quiet=FALSE,
-    remote_db=FALSE
+    push_db=NULL
     ) {
   #' Ingests/Read All Layers
   #' 
@@ -1439,18 +1440,33 @@ load_read_write_all <- function(
   #' 
   #' @export
   
-  if(!quiet) {
-    util_log_message("BEGINNING DATA LOADING SEQUENCE", header=TRUE)
+  if (is.null(tables)) {
+    if (!quiet) {
+      util_log_message("NO LOADER TABLES REQUESTED. SKIPPING SUBROUTINE.", header=TRUE)
+    }
+  } else {
+    if (!quiet) {
+      util_log_message("BEGINNING DATA LOADING SUBROUTINE.", header=TRUE)
+    }
   }
   
-  conn <- util_conn(remote_db)
-  all_tables_exist <- util_check_for_tables(conn, tables)
-  DBI::dbDisconnect(conn)
+  out <- list(
+    munis = NULL,
+    zips = NULL,
+    block_groups = NULL,
+    tracts = NULL,
+    places = NULL,
+    parcels = NULL,
+    assess = NULL,
+    addresses = NULL,
+    companies = NULL,
+    officers = NULL
+  )
   
   # Read Municipalities
-  if ("munis" %in% tables | !all_tables_exist) {
+  if ("munis" %in% tables) {
     munis <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "munis",
       loader=load_munis(
         crs=crs,
@@ -1460,14 +1476,13 @@ load_read_write_all <- function(
       refresh=refresh,
       quiet=quiet
     )
-  } else {
-    munis <- list(NULL)
+    out[['munis']] <- munis
   }
 
   # Read ZIPs
-  if ("zips" %in% tables | !all_tables_exist) {
+  if ("zips" %in% tables) {
     zips <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "zips",
       load_zips(
         munis=munis,
@@ -1479,14 +1494,13 @@ load_read_write_all <- function(
       refresh=refresh,
       quiet=quiet
     )
-  } else {
-    zips <- list(NULL)
+    out[['zips']] <- zips
   }
 
   # Read Places
-  if ("places" %in% tables | !all_tables_exist) {
+  if ("places" %in% tables) {
     places <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "places",
       load_places(
         munis=munis,
@@ -1498,14 +1512,49 @@ load_read_write_all <- function(
       refresh=refresh,
       quiet=quiet
     )
-  } else {
-    places <- list(NULL)
+    out[['places']] <- places
+    
   }
+  rm(places, zips, munis) |> suppressWarnings()
+  
+  # Read Census Tracts
+  if ("tracts" %in% tables) {
+    tracts <- load_read_write(
+      util_conn(push_db),
+      "tracts",
+      load_tracts(
+        state="MA",
+        crs=crs,
+        quiet=quiet
+      ),
+      id_col="id",
+      refresh=refresh
+    )
+    out[['tracts']] <- tracts
+  }
+  rm(tracts) |> suppressWarnings()
+  
+  # Read Block Groups
+  if ("block_groups" %in% tables) {
+    block_groups <- load_read_write(
+      util_conn(push_db),
+      "block_groups",
+      loader=load_block_groups(
+        state="MA",
+        crs=crs,
+        quiet=quiet
+      ),
+      id_col="id",
+      refresh=refresh
+    )
+    out[['block_groups']] <- block_groups
+  }
+  
 
   # Read Assessors Tables
-  if ("init_assess" %in% tables | !all_tables_exist) {
+  if ("init_assess" %in% tables) {
     assess <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "init_assess",
       load_assess(
         path=data_path,
@@ -1518,49 +1567,14 @@ load_read_write_all <- function(
       muni_ids=muni_ids,
       quiet=quiet
     )
-    # load_add_fk(util_conn(remote_db), "init_assess", "munis", "site_muni_id", "muni_id")
-  } else {
-    assess <- list(NULL)
-  }
-  
-  # Read Census Tracts
-  if ("tracts" %in% tables | !all_tables_exist) {
-    tracts <- load_read_write(
-      util_conn(remote_db),
-      "tracts",
-      load_tracts(
-        state="MA",
-        crs=crs,
-        quiet=quiet
-      ),
-      id_col="id",
-      refresh=refresh
-    )
-  } else {
-    tracts <- list(NULL)
-  }
-
-  # Read Block Groups
-  if ("block_groups" %in% tables | !all_tables_exist) {
-    block_groups <- load_read_write(
-      util_conn(remote_db),
-      "block_groups",
-      loader=load_block_groups(
-        state="MA",
-        crs=crs,
-        quiet=quiet
-      ),
-      id_col="id",
-      refresh=refresh
-    )
-  } else {
-    block_groups <- list(NULL)
+    # load_add_fk(util_conn(push_db), "init_assess", "munis", "site_muni_id", "muni_id")
+    out[['assess']] <- assess
   }
 
   # Read Parcels
-  if ("parcels" %in% tables | !all_tables_exist) {
+  if ("parcels" %in% tables) {
     parcels <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "parcels",
       loader=load_parcels(
         gdb_path=file.path(data_path, gdb_path),
@@ -1574,18 +1588,18 @@ load_read_write_all <- function(
       refresh=refresh,
       muni_ids=muni_ids
     )
-    # load_add_fk(util_conn(remote_db), "init_assess", "parcels", "site_loc_id", "loc_id")
-    # load_add_fk(util_conn(remote_db), "parcels", "block_groups", "block_group_id", "id")
-    # load_add_fk(util_conn(remote_db), "parcels", "tracts", "tract_id", "id")
-    # load_add_fk(util_conn(remote_db), "parcels", "munis", "muni_id", "muni_id")
-  } else {
-    parcels <- list(NULL)
+    out[['parcels']] <- parcels
+    # load_add_fk(util_conn(push_db), "init_assess", "parcels", "site_loc_id", "loc_id")
+    # load_add_fk(util_conn(push_db), "parcels", "block_groups", "block_group_id", "id")
+    # load_add_fk(util_conn(push_db), "parcels", "tracts", "tract_id", "id")
+    # load_add_fk(util_conn(push_db), "parcels", "munis", "muni_id", "muni_id")
   }
+  rm(assess, block_groups) |> suppressWarnings()
   
   # Read Master Address File
-  if ("init_addresses" %in% tables | !all_tables_exist) {
+  if ("init_addresses" %in% tables) {
     addresses <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "init_addresses",
       load_addresses(
         path=data_path,
@@ -1598,16 +1612,16 @@ load_read_write_all <- function(
       refresh=refresh,
       muni_ids=muni_ids
     )
-    # load_add_fk(util_conn(remote_db), "init_addresses", "munis", "muni_id", "muni_id")
-    # load_add_fk(util_conn(remote_db), "init_addresses", "parcels", "loc_id", "loc_id")
-  } else {
-    addresses <- list(NULL)
+    out[['addresses']] <- addresses
+    # load_add_fk(util_conn(push_db), "init_addresses", "munis", "muni_id", "muni_id")
+    # load_add_fk(util_conn(push_db), "init_addresses", "parcels", "loc_id", "loc_id")
   }
+  rm(addresses, parcels) |> suppressWarnings()
   
   # Read OpenCorpoates Companies
-  if ("init_companies" %in% tables | !all_tables_exist) {
+  if ("init_companies" %in% tables) {
     companies <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "init_companies",
       load_oc_companies(
         path=file.path(data_path, oc_path),
@@ -1618,14 +1632,13 @@ load_read_write_all <- function(
       id_col="company_id",
       refresh=refresh
     )
-  } else {
-    companies <- list(NULL)
+    out[['companies']] <- companies
   }
 
   # Read OpenCorporates Officers
-  if ("init_officers" %in% tables | !all_tables_exist) {
+  if ("init_officers" %in% tables) {
     officers <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "init_officers",
       load_oc_officers(
         path=file.path(data_path, oc_path),
@@ -1635,22 +1648,11 @@ load_read_write_all <- function(
       id_col="id",
       refresh=refresh
     )
-  } else {
-    officers <- list(NULL)
+    out[['officers']] <- officers
   }
+  rm(officers, companies) |> suppressWarnings()
   
-  list(
-    munis = munis,
-    zips = zips,
-    places = places,
-    tracts = tracts,
-    block_groups = block_groups,
-    assess = assess,
-    parcels = parcels,
-    addresses = addresses,
-    companies = companies,
-    officers = officers
-  )
+  out
 }
 
 # Needs rework ====

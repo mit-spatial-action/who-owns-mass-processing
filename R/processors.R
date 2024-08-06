@@ -1016,21 +1016,33 @@ proc_all <- function(assess,
                      places,
                      tables,
                      crs,
-                     remote_db = FALSE,
+                     push_db = NULL,
                      refresh = FALSE,
                      quiet = FALSE
                      ) {
-  if(!quiet) {
-    util_log_message("BEGINNING DATA PROCESSING SEQUENCE", header=TRUE)
+  
+  if (is.null(tables)) {
+    if (!quiet) {
+      util_log_message("NO PROCESSING TABLES REQUESTED. SKIPPING SUBROUTINE.", header=TRUE)
+    }
+  } else {
+    if (!quiet) {
+      util_log_message("BEGINNING DATA PROCESSING SUBROUTINE.", header=TRUE)
+    }
   }
   
-  conn <- util_conn(remote_db)
-  all_tables_exist <- util_check_for_tables(conn, tables)
-  DBI::dbDisconnect(conn)
+  out <- list(
+    parcels_point = NULL,
+    assess = NULL,
+    sites = NULL,
+    owners = NULL,
+    companies = NULL,
+    officers = NULL
+  )
   
-  if ("parcels_point" %in% tables | !all_tables_exist) {
+  if ("parcels_point" %in% tables) {
     parcels_point <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "parcels_point",
       loader=proc_parcels_to_dry_points(
         parcels, 
@@ -1039,16 +1051,16 @@ proc_all <- function(assess,
       id_col="loc_id",
       refresh=refresh
     )
-    # load_add_fk(util_conn(remote_db), "parcels_point", "block_groups", "block_group_id", "id")
-    # load_add_fk(util_conn(remote_db), "parcels_point", "tracts", "tract_id", "id")
-    # load_add_fk(util_conn(remote_db), "parcels_point", "munis", "muni_id", "muni_id")
-  } else {
-    parcels_point <- list(NULL)
+    # load_add_fk(util_conn(push_db), "parcels_point", "block_groups", "block_group_id", "id")
+    # load_add_fk(util_conn(push_db), "parcels_point", "tracts", "tract_id", "id")
+    # load_add_fk(util_conn(push_db), "parcels_point", "munis", "muni_id", "muni_id")
+    out[['parcels_point']] <- parcels_point
   }
   
-  if ("proc_assess" %in% tables | !all_tables_exist) {
+  
+  if ("proc_assess" %in% tables) {
     assess <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "proc_assess",
       loader=proc_assess(
         assess,
@@ -1063,11 +1075,12 @@ proc_all <- function(assess,
       id_col=c("site_id", "site_muni_id"),
       refresh=refresh
     )
+    # load_add_fk(util_conn(push_db), "proc_assess", "munis", "site_muni_id", "muni_id")
+    # load_add_fk(util_conn(push_db), "proc_assess", "parcels_point", "site_loc_id", "loc_id")
     
-    # load_add_fk(util_conn(remote_db), "proc_assess", "munis", "site_muni_id", "muni_id")
-    # load_add_fk(util_conn(remote_db), "proc_assess", "parcels_point", "site_loc_id", "loc_id")
+    out[['assess']] <- assess
     
-    if (!all_tables_exist | refresh) {
+    if (refresh) {
       assess |>
         proc_assess_split(
           site_prefix="site",
@@ -1079,13 +1092,13 @@ proc_all <- function(assess,
           owners <- owners
         )
     }
-  } else {
-    assess <- list(NULL)
   }
   
-  if ("proc_sites" %in% tables | !all_tables_exist) {
+  rm(assess, parcels_point) |> suppressWarnings()
+  
+  if ("proc_sites" %in% tables) {
     sites <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "proc_sites",
       loader=proc_assess_sites(
         sites,
@@ -1096,18 +1109,16 @@ proc_all <- function(assess,
       refresh=refresh
       )
     
-    # load_add_fk(util_conn(remote_db), "proc_sites", "munis", "muni_id", "muni_id")
-    # load_add_fk(util_conn(remote_db), "proc_sites", "parcels_point", "loc_id", "loc_id")
-    
-  } else {
-    sites <- list(NULL)
+    # load_add_fk(util_conn(push_db), "proc_sites", "munis", "muni_id", "muni_id")
+    # load_add_fk(util_conn(push_db), "proc_sites", "parcels_point", "loc_id", "loc_id")
+    out[['sites']] <- sites
   }
   
-  rm(addresses)
+  rm(sites) |> suppressWarnings()
   
-  if("proc_owners" %in% tables | !all_tables_exist) {
+  if("proc_owners" %in% tables) {
     owners <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "proc_owners",
       loader=proc_assess_owners(
         owners,
@@ -1119,17 +1130,17 @@ proc_all <- function(assess,
       refresh=refresh
     )
     
-    # load_add_fk(util_conn(remote_db), "proc_owners", "munis", "site_muni_id", "muni_id")
-    # load_add_fk(util_conn(remote_db), "proc_owners", "parcels_point", "loc_id", "loc_id")
-    # load_add_fk(util_conn(remote_db), "proc_owners", "proc_sites", c("site_id", "site_muni_id"), c("id", "muni_id"))
-    
-  } else {
-    owners <- list(NULL)
+    # load_add_fk(util_conn(push_db), "proc_owners", "munis", "site_muni_id", "muni_id")
+    # load_add_fk(util_conn(push_db), "proc_owners", "parcels_point", "loc_id", "loc_id")
+    # load_add_fk(util_conn(push_db), "proc_owners", "proc_sites", c("site_id", "site_muni_id"), c("id", "muni_id"))
+    out[['owners']] <- owners
   }
   
-  if("proc_companies" %in% tables | !all_tables_exist) {
+  rm(owners) |> suppressWarnings()
+  
+  if("proc_companies" %in% tables) {
     companies <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "proc_companies",
       loader=proc_oc_companies(
         companies,
@@ -1140,14 +1151,14 @@ proc_all <- function(assess,
       id_col="id",
       refresh=refresh
     )
-    
-  } else {
-    companies <- list(NULL)
+    out[['companies']] <- companies
   }
   
-  if("proc_officers" %in% tables | !all_tables_exist) {
+  rm(companies) |> suppressWarnings()
+  
+  if("proc_officers" %in% tables) {
     officers <- load_read_write(
-      util_conn(remote_db),
+      util_conn(push_db),
       "proc_officers",
       loader=proc_oc_officers(
         officers,
@@ -1158,17 +1169,10 @@ proc_all <- function(assess,
       id_col="id",
       refresh=refresh
     )
-    # load_add_fk(util_conn(remote_db), "proc_officers", "proc_companies", "company_id", "company_id")
-  } else {
-    officers <- list(NULL)
+    # load_add_fk(util_conn(push_db), "proc_officers", "proc_companies", "company_id", "company_id")
+    out[['officers']] <- officers
   }
-
-  list(
-    parcels_point = parcels_point,
-    assess = assess,
-    sites = sites,
-    owners = owners,
-    companies = companies,
-    officers = officers
-  )
+  
+  rm(officers) |> suppressWarnings()
+  out
 }
