@@ -784,11 +784,6 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
       muni_id = std_pad_muni_ids(muni_id),
       geometry = sf::st_cast(geometry, "MULTIPOLYGON")
     )
-  
-  not_in_parcels <- assess |> 
-    dplyr::anti_join(df, by=dplyr::join_by(site_loc_id==loc_id, site_muni_id==muni_id)) |>
-    dplyr::select(loc_id = site_loc_id, muni_id = site_muni_id) |>
-    dplyr::distinct()
 
   df |>
     dplyr::mutate(
@@ -803,9 +798,7 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     dplyr::select(-point) |>
     dplyr::mutate(
       tract_id = stringr::str_sub(block_group_id, start = 1L, end = 11L)
-    ) |>
-    dplyr::bind_rows(not_in_parcels) |>
-    dplyr::distinct(loc_id, muni_id, .keep_all = TRUE)
+    )
 }
 
 load_addresses <- function(path, parcels, crs, muni_ids=NULL, quiet=FALSE) {
