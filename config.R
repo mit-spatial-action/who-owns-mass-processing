@@ -2,12 +2,12 @@
 
 COMPLETE_RUN <- FALSE
 
-REFRESH <- TRUE
+REFRESH <- FALSE
 
 PUSH_DBS <- list(
-  load = NULL,
-  proc = NULL,
-  dedupe = NULL
+  load = "",
+  proc = "",
+  dedupe = "prod"
 )
 
 ROUTINES <- list(

@@ -468,7 +468,7 @@ dedupe_all <- function(
     inds_thresh,
     tables,
     formats=c("csv", "r"),
-    push_db=NULL,
+    push_db="",
     refresh=FALSE,
     quiet=FALSE) {
   

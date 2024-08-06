@@ -128,7 +128,7 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   muni_ids
 }
 
-util_conn <- function(prefix=NULL) {
+util_conn <- function(prefix="") {
   #' Load DBMS Connection
   #' 
   #' Creates connection to remote or local PostGIS connection. Requires a
@@ -141,10 +141,10 @@ util_conn <- function(prefix=NULL) {
   #'    This object is used to communicate with the database engine.
   #' 
   #' @export
-  if (!is.null(prefix)) {
-    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
-  } else {
+  if (prefix=="") {
     prefix <- "DB"
+  } else {
+    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
   }
   dbname <- stringr::str_c(prefix, "NAME", sep="_")
   host <- stringr::str_c(prefix, "HOST", sep="_")
@@ -191,8 +191,8 @@ util_run_tables_exist <- function(tables, push_dbs) {
       tables$proc
     ),
     dedupe = util_check_for_tables(
-      p,
-      tables$proc
+      d,
+      tables$dedupe
     )
   )
   DBI::dbDisconnect(l)
@@ -201,7 +201,7 @@ util_run_tables_exist <- function(tables, push_dbs) {
   tables_exist
 }
 
-util_run_which_tables <- function(routines) {
+util_run_which_tables <- function(routines, push_dbs) {
   load_tables <- c()
   proc_tables <- c()
   dedupe_tables <- c()
@@ -229,6 +229,12 @@ util_run_which_tables <- function(routines) {
       load_tables, 
       c("init_addresses")
     )
+    if (push_dbs$load != push_dbs$dedupe) {
+      load_tables  <- c(
+        load_tables, 
+        c("munis", "zips", "block_groups", "tracts")
+      )
+    }
     proc_tables <- c(
       proc_tables,
       c("proc_sites", "proc_owners", 

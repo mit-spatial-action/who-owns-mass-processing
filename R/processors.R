@@ -1016,7 +1016,7 @@ proc_all <- function(assess,
                      places,
                      tables,
                      crs,
-                     push_db = NULL,
+                     push_db = "",
                      refresh = FALSE,
                      quiet = FALSE
                      ) {
@@ -1080,18 +1080,16 @@ proc_all <- function(assess,
     
     out[['assess']] <- assess
     
-    if (refresh) {
-      assess |>
-        proc_assess_split(
-          site_prefix="site",
-          own_prefix="own",
-          quiet=quiet
-        ) |>
-        wrapr::unpack(
-          sites <- sites,
-          owners <- owners
-        )
-    }
+    assess |>
+      proc_assess_split(
+        site_prefix="site",
+        own_prefix="own",
+        quiet=quiet
+      ) |>
+      wrapr::unpack(
+        sites <- sites,
+        owners <- owners
+      )
   }
   
   rm(assess, parcels_point) |> suppressWarnings()

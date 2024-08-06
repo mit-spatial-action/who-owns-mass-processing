@@ -278,11 +278,6 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
       conn,
       statement=glue::glue("ALTER TABLE {table_name} ADD PRIMARY KEY ({stringr::str_c(id_col, collapse=', ')});")
     )
-  } else {
-    DBI::dbExecute(
-      conn,
-      statement=glue::glue("ALTER TABLE {table_name} ADD PRIMARY KEY (id);")
-    )
   }
   if ("csv" %in% other_formats) {
     readr::write_csv(df, csv_file, append=!overwrite)
@@ -1421,7 +1416,7 @@ load_read_write_all <- function(
     tables,
     company_test_count=NULL,
     quiet=FALSE,
-    push_db=NULL
+    push_db=""
     ) {
   #' Ingests/Read All Layers
   #' 
