@@ -14,30 +14,15 @@ run <- function(data_path,
                 return_intermediate,
                 quiet) {
   
-  # Open Log
+  # Test DB Connections
   # ===
   
-  lf <- logr::log_open(
-    format(Sys.time(), "%Y-%m-%d_%H%M%S"),
-    logdir = TRUE
-  )
-  
-  on.exit(logr::log_close())
-  
-  # Print splash screen to log.
-  # ===
-  
-  util_print_splash()
-  
-  if(!util_prompt_check("VALIDATION: Are you ready to begin the process? (Y/N)")) {
-    return(invisible(NULL))
+  for (db in unlist(unname(PUSH_DBS)) |> unique()) {
+    util_test_conn(db)
   }
   
-  # Confirm With User if More Intensive Config Options are Set
-  # ===
-  
-  if(!util_prompts(refresh, muni_ids, company_test)) {
-    return(invisible(NULL))
+  if (!company_test) {
+    company_test_count <- NULL
   }
   
   # Test Validity of (and Zero-Pad) Municipality IDs
@@ -53,10 +38,6 @@ run <- function(data_path,
   # ===
   tables <- util_run_which_tables(routines, push_dbs)
   tables_exist <- util_run_tables_exist(tables, push_dbs)
-  
-  if (!company_test) {
-    company_test_count <- NULL
-  }
   
   if (interactive()) {
     out <- list()
@@ -118,7 +99,8 @@ run <- function(data_path,
       )
       conn <- util_conn(push_dbs$dedupe)
       
-      if (!util_check_for_tables(conn, c("munis", "zips", "tracts", "block_groups"))) {
+      if (
+        !util_check_for_tables(conn, c("munis", "zips", "tracts", "block_groups")) | refresh) {
         util_log_message(
           "Writing load tables to prod.",
           header = TRUE
@@ -126,6 +108,7 @@ run <- function(data_path,
         munis |>
           load_write(conn, "munis", id_col="muni_id", overwrite=TRUE)
         zips |>
+          dplyr::filter(state == "MA") |>
           load_write(conn, "zips", id_col=c("zip", "state"), overwrite=TRUE)
         block_groups |>
           load_write(conn, "block_groups", id_col="id", overwrite=TRUE)
@@ -179,7 +162,7 @@ run <- function(data_path,
     
     if (push_dbs$proc != push_dbs$dedupe) {
       conn <- util_conn(push_dbs$dedupe)
-      if (!util_check_for_tables(conn, "parcels_point")) {
+      if (!util_check_for_tables(conn, "parcels_point") | refresh) {
         util_log_message(
           "Deduplication database different than processing. Writing select results.",
         )

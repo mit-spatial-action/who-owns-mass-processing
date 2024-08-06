@@ -128,6 +128,51 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   muni_ids
 }
 
+util_test_conn <- function(prefix="") {
+  #' Load DBMS Connection
+  #' 
+  #' Creates connection to remote or local PostGIS connection. Requires a
+  #' variables to be set in `.Renviron`.
+  #'
+  #' @param remote If `TRUE`, creates connection to remote db. If `FALSE`,
+  #'    creates connection to local PostGIS instance.
+  #' 
+  #' @return dbConnect() returns an S4 object that inherits from DBIConnection.
+  #'    This object is used to communicate with the database engine.
+  #' 
+  #' @export
+  if (prefix=="") {
+    prefix <- "DB"
+  } else {
+    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
+  }
+  dbname <- Sys.getenv(stringr::str_c(prefix, "NAME", sep="_"))
+  host <- Sys.getenv(stringr::str_c(prefix, "HOST", sep="_"))
+  port <- Sys.getenv(stringr::str_c(prefix, "PORT", sep="_"))
+  user <- Sys.getenv(stringr::str_c(prefix, "USER", sep="_"))
+  pass <- Sys.getenv(stringr::str_c(prefix, "PASS", sep="_"))
+  ssl <- Sys.getenv(stringr::str_c(prefix, "SSL", sep="_"))
+  if (any(c(dbname, host, port, user) == "")) {
+    stop(glue::glue("Can't find {prefix} credentials in .Renviron!!"))
+  } 
+  test_connect <- DBI::dbCanConnect(
+      RPostgres::Postgres(),
+      dbname = dbname,
+      host = host,
+      port = port,
+      user = user,
+      password = pass,
+      sslmode = ssl
+    )
+  if(!test_connect) {
+    stop(glue::glue("Couldn't make connection to {prefix} database."))
+  } else {
+    util_log_message(
+      glue::glue("Successfully tested connection to {prefix} database.")
+      )
+  }
+}
+
 util_conn <- function(prefix="") {
   #' Load DBMS Connection
   #' 
@@ -146,19 +191,20 @@ util_conn <- function(prefix="") {
   } else {
     prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
   }
-  dbname <- stringr::str_c(prefix, "NAME", sep="_")
-  host <- stringr::str_c(prefix, "HOST", sep="_")
-  port <- stringr::str_c(prefix, "PORT", sep="_")
-  user <- stringr::str_c(prefix, "USER", sep="_")
-  password <- stringr::str_c(prefix, "PASS", sep="_")
+  dbname <- Sys.getenv(stringr::str_c(prefix, "NAME", sep="_"))
+  host <- Sys.getenv(stringr::str_c(prefix, "HOST", sep="_"))
+  port <- Sys.getenv(stringr::str_c(prefix, "PORT", sep="_"))
+  user <- Sys.getenv(stringr::str_c(prefix, "USER", sep="_"))
+  pass <- Sys.getenv(stringr::str_c(prefix, "PASS", sep="_"))
+  ssl <- Sys.getenv(stringr::str_c(prefix, "SSL", sep="_"))
   DBI::dbConnect(
     RPostgres::Postgres(),
-    dbname = Sys.getenv(dbname),
-    host = Sys.getenv(host),
-    port = Sys.getenv(port),
-    user = Sys.getenv(user),
-    password = Sys.getenv(password),
-    sslmode = "allow"
+    dbname = dbname,
+    host = host,
+    port = port,
+    user = user,
+    password = pass,
+    sslmode = ssl
   )
 }
 

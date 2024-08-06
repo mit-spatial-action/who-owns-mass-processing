@@ -199,7 +199,8 @@ load_check_for_muni_ids <- function(conn, table_name, muni_ids) {
         glue::glue("SELECT DISTINCT {col} AS m FROM {table_name}")
       ) |>
       dplyr::pull(m)
-    
+    print(muni_ids[!(muni_ids %in% muni_ids_present)])
+    stop()
     result <- all(muni_ids %in% muni_ids_present)
   } else {
     result <- FALSE
@@ -409,7 +410,7 @@ load_generic_preprocess <- function(df, cols, id_cols) {
         dplyr::if_all({{id_cols}}, ~ !is.na(.))
       ) |>
       dplyr::group_by(dplyr::across(dplyr::all_of(id_cols))) |>
-      dplyr::filter(dplyr::n() == 1) |>
+      dplyr::slice_head(n=1) |>
       dplyr::ungroup()
   }
   df |>
@@ -564,7 +565,8 @@ load_assess_preprocess <- function(df, path) {
       site_country = "US"
     ) |>
     dplyr::left_join(
-      util_muni_table(path) |> dplyr::rename(site_muni = muni),
+      util_muni_table(path) |> 
+        dplyr::select(muni_id, site_muni = muni),
       by = dplyr::join_by(site_muni_id == muni_id)
     )  |>
     load_generic_preprocess(
@@ -578,8 +580,9 @@ load_assess_preprocess <- function(df, path) {
     tidyr::fill(
       site_loc_id
     ) |>
-    dplyr::ungroup() |>
-    dplyr::filter(!is.na(site_loc_id))
+    dplyr::ungroup() 
+  # |>
+  #   dplyr::filter(!is.na(site_loc_id))
 }
 
 # Load Layers from Source ====
@@ -604,7 +607,7 @@ load_tracts <- function(state, crs, year=NULL, quiet=FALSE) {
     suppressMessages()
 }
 
-load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
+load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, quiet=FALSE) {
   #' Load Assessors' Tables from MassGIS Parcel GDB(s)
   #' 
   #' Load assessing table from MassGIS tax parcel collection, presented either
@@ -667,12 +670,20 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
     if (!quiet) {
       util_log_message(glue::glue("INPUT/OUTPUT: Reading from collection of GDBs.")) 
     }
-    
-    vintages <- load_vintage_select(gdb_path, muni_ids)
+    if (is.null(fy) & is.null(cy)) {
+      vintages <- load_vintage_select(gdb_path, muni_ids)
+    } else {
+      vintages <- data.frame(
+        muni_id = muni_ids
+      ) |>
+        dplyr::mutate(
+          fy = fy,
+          cy = cy
+        )
+    }
     
     all <- list()
     for (row in 1:nrow(vintages)) {
-      
       muni_id <- vintages[[row, 'muni_id']]
       cy <- vintages[[row, 'cy']] - 2000
       fy <- vintages[[row, 'fy']] - 2000
@@ -682,6 +693,7 @@ load_assess <- function(path, gdb_path, muni_ids=NULL, quiet=FALSE) {
       }
       
       file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
+      print(file)
       if (!file.exists(file.path(gdb_path, file))) {
         stop("You've passed an invalid GDB directory.")
       }

@@ -494,7 +494,6 @@ dedupe_all <- function(
     }
     conn <- util_conn(push_db)
     all_tables_exist <- util_check_for_tables(conn, tables)
-    out <- list()
     if(!all_tables_exist) {
       if(!quiet) {
         util_log_message("INPUT/OUTPUT: Deduplicaton results not found in database. Running process.")
