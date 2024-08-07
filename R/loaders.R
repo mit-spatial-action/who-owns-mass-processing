@@ -199,8 +199,6 @@ load_check_for_muni_ids <- function(conn, table_name, muni_ids) {
         glue::glue("SELECT DISTINCT {col} AS m FROM {table_name}")
       ) |>
       dplyr::pull(m)
-    print(muni_ids[!(muni_ids %in% muni_ids_present)])
-    stop()
     result <- all(muni_ids %in% muni_ids_present)
   } else {
     result <- FALSE
@@ -693,10 +691,10 @@ load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, qui
       }
       
       file <- glue::glue("M{muni_id}_parcels_CY{cy}_FY{fy}_sde.gdb")
-      print(file)
       if (!file.exists(file.path(gdb_path, file))) {
         stop("You've passed an invalid GDB directory.")
       }
+      
       q <- stringr::str_c("SELECT", cols, glue::glue("FROM M{muni_id}Assess"), sep = " ")
       
       all[[muni_id]] <- sf::st_read(

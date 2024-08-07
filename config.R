@@ -1,8 +1,8 @@
 # See README.md for definitions.
 
-COMPLETE_RUN <- FALSE
+COMPLETE_RUN <- TRUE
 
-REFRESH <- FALSE
+REFRESH <- TRUE
 
 PUSH_DBS <- list(
   load = "",
@@ -11,8 +11,8 @@ PUSH_DBS <- list(
 )
 
 ROUTINES <- list(
-  load = TRUE,
-  proc = TRUE,
+  load = FALSE,
+  proc = FALSE,
   dedupe = TRUE
 )
 

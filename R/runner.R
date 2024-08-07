@@ -93,14 +93,13 @@ run <- function(data_path,
       out[['tracts']] <- tracts
     }
     
-    if (push_dbs$load != push_dbs$dedupe) {
+    if (push_dbs$load != push_dbs$dedupe & routines$dedupe) {
       util_log_message(
         "Deduplication database different than load. Writing select results"
       )
       conn <- util_conn(push_dbs$dedupe)
       
-      if (
-        !util_check_for_tables(conn, c("munis", "zips", "tracts", "block_groups")) | refresh) {
+      if (!util_check_for_tables(conn, c("munis", "zips", "tracts", "block_groups")) | refresh) {
         util_log_message(
           "Writing load tables to prod.",
           header = TRUE
@@ -160,7 +159,7 @@ run <- function(data_path,
       out[['parcels_point']] <- parcels_point
     }
     
-    if (push_dbs$proc != push_dbs$dedupe) {
+    if (push_dbs$proc != push_dbs$dedupe & routines$dedupe) {
       conn <- util_conn(push_dbs$dedupe)
       if (!util_check_for_tables(conn, "parcels_point") | refresh) {
         util_log_message(

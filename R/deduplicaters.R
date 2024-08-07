@@ -7,6 +7,65 @@ dedupe_address_to_id <- function(df, df2) {
     )
 }
 
+dedupe_address_to_address_seq <- function(a1, sites, addresses) {
+  if ("sf" %in% class(sites)) {
+    sites <- sites |>
+      sf::st_drop_geometry()
+  }
+  
+  if ("sf" %in% class(addresses)) {
+    addresses <- addresses |>
+      sf::st_drop_geometry()
+  }
+  
+  if (!("loc_id" %in% names(a1))) {
+    a1 <- a1 |>
+      dplyr::mutate(
+        loc_id = NA_character_
+      )
+  }
+  
+  a1 |>
+    std_match_address_to_address(
+      sites,
+      fill_col="loc_id",
+      body, muni, postal
+    )  |>
+    std_match_address_to_address(
+      addresses,
+      fill_col="loc_id",
+      body, muni, postal
+    )  |>
+    std_match_address_to_address(
+      addresses,
+      fill_col="loc_id",
+      body, muni, postal
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_muni),
+      fill_col=c("loc_id", "postal"),
+      body, muni
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_postal),
+      fill_col=c("loc_id", "muni"),
+      body, postal
+    ) |>
+    std_simp_street("body") |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_muni_simp),
+      fill_col=c("loc_id", "postal", "body"),
+      body_simp, muni
+    ) |>
+    std_match_address_to_address(
+      addresses |> dplyr::filter(unique_in_postal_simp),
+      fill_col=c("loc_id", "postal", "body"),
+      body_simp, postal
+    ) |>
+    dplyr::select(-body_simp)
+}
+
+
 dedupe_unique_addresses <- function(owners, officers, companies, sites, addresses, quiet=FALSE) {
   if(!quiet) {
     util_log_message(glue::glue("DEDUPLICATING: Creating table of unique addresses."))
@@ -68,7 +127,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
     )
   
   df <- df  |>
-    proc_address_to_address_seq(
+    dedupe_address_to_address_seq(
       sites, 
       addresses
       ) |>
@@ -76,9 +135,31 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
       addresses,
       sites
     ) |>
-    dplyr::select(id, addr, start, end, body, even, muni, postal, state, loc_id, table) |>
-    dplyr::filter(!is.na(addr)) |>
-    dplyr::group_by(addr, start, end, body, even, muni, postal, state, loc_id) |>
+    dplyr::select(id, addr, start, end, body, even, muni, muni_id, postal, state, loc_id, table) |>
+    dplyr::filter(!is.na(addr))
+  
+  df <- df |>
+    dplyr::filter(!is.na(state)) |>
+    dplyr::group_by(muni, state) |>
+    tidyr::fill(muni_id, .direction="downup") |>
+    dplyr::ungroup() |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(is.na(state))
+    )
+  
+  df <- df |>
+    dplyr::filter(!is.na(postal)) |>
+    dplyr::group_by(muni, postal) |>
+    tidyr::fill(muni_id, .direction="downup") |>
+    dplyr::ungroup()  |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(is.na(postal))
+    )
+  
+  df <- df |>
+    dplyr::group_by(addr, start, end, body, even, muni, muni_id, postal, state, loc_id) |>
     dplyr::mutate(
       addr_id =  dplyr::cur_group_id()
     ) |>
@@ -88,7 +169,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
   addresses <- df |> 
     dplyr::select(-c(id, table)) |> 
     dplyr::rename(id = addr_id) |> 
-    dplyr::distinct(id, addr, start, end, body, even, muni, postal, state, loc_id)
+    dplyr::distinct(id, addr, start, end, body, even, muni, muni_id, postal, state, loc_id)
   
   results <- purrr::map(
     list(
@@ -110,7 +191,7 @@ dedupe_unique_addresses <- function(owners, officers, companies, sites, addresse
   
   results[['officers']] <- results[['officers']] |>
     dplyr::group_by(name, old_company_id) |>
-    tidyr::fill(addr_id) |>
+    tidyr::fill(addr_id, .direction="downup") |>
     dplyr::ungroup() |>
     dplyr::select(-old_company_id)
   results
@@ -330,10 +411,10 @@ dedupe_cosine_join <- function(owners, companies) {
       )
     ) |>
     dplyr::group_by(cosine_bound) |>
-    tidyr::fill(company_id) |>
+    tidyr::fill(company_id, .direction="downup") |>
     dplyr::ungroup() |>
     dplyr::group_by(cosine_bound) |>
-    tidyr::fill(naive) |>
+    tidyr::fill(naive, .direction="downup") |>
     dplyr::ungroup() |>
     dplyr::bind_rows(
       owners |>
@@ -676,7 +757,7 @@ dedupe_all <- function(
         by = dplyr::join_by(owner_id==id)
       ) |>
       dplyr::group_by(site_id) |>
-      tidyr::fill(company_id) |>
+      tidyr::fill(company_id, .direction="downup") |>
       dplyr::ungroup() |>
       dplyr::mutate(
         type = "officer",
@@ -727,7 +808,7 @@ dedupe_all <- function(
         na_matches="never"
       ) |>
       dplyr::group_by(company_group, name) |>
-      tidyr::fill(addr_id) |>
+      tidyr::fill(addr_id, .direction="downup") |>
       dplyr::ungroup()
       
     
@@ -830,7 +911,7 @@ dedupe_all <- function(
       ) |>
       dplyr::rename(network_id = network) |>
       dplyr::group_by(network_id) |>
-      tidyr::fill(match) |>
+      tidyr::fill(match, .direction="downup") |>
       dplyr::ungroup() |>
       dplyr::filter(match) |>
       dplyr::select(
@@ -862,7 +943,7 @@ dedupe_all <- function(
     conn <- util_conn(push_db)
     companies <- companies |>
       dplyr::group_by(group) |>
-      tidyr::fill(match) |>
+      tidyr::fill(match, .direction="downup") |>
       dplyr::ungroup() |>
       dplyr::filter(match) |>
       dplyr::left_join(
