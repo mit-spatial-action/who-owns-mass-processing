@@ -1,6 +1,6 @@
 # Load Helpers ====
 
-load_vintage_select <- function(gdb_path, muni_ids=NULL, recent = 3) {
+load_vintage_select <- function(gdb_path, most_recent = FALSE, muni_ids=NULL, recent = 3) {
   #' Select Parcel Vintage
   #' 
   #' Decide which vintage to use per MA municipality based on a simple 
@@ -27,6 +27,15 @@ load_vintage_select <- function(gdb_path, muni_ids=NULL, recent = 3) {
       dplyr::filter(muni_id %in% muni_ids)
   }
   
+  if (most_recent) {
+    vintages <- vintages |>
+      dplyr::group_by(muni_id) |>
+      dplyr::arrange(muni_id, dplyr::desc(fy), dplyr::desc(cy)) |>
+      dplyr::slice_head(n=1) |>
+      dplyr::ungroup()
+    return(vintages)
+  }
+
   most_complete_recent <- vintages |>
     dplyr::filter(fy > lubridate::year(Sys.Date()) - recent) |>
     dplyr::group_by(fy) |>
@@ -59,7 +68,7 @@ load_vintage_select <- function(gdb_path, muni_ids=NULL, recent = 3) {
 
   unmatched <- vintages |>
     dplyr::filter(!load & min(year_diff) > 0)
-  
+
   if (nrow(unmatched) > 0) {
     unmatched <- unmatched |>
       dplyr::mutate(
@@ -605,7 +614,7 @@ load_tracts <- function(state, crs, year=NULL, quiet=FALSE) {
     suppressMessages()
 }
 
-load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, quiet=FALSE) {
+load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, most_recent=FALSE, quiet=FALSE) {
   #' Load Assessors' Tables from MassGIS Parcel GDB(s)
   #' 
   #' Load assessing table from MassGIS tax parcel collection, presented either
@@ -669,7 +678,7 @@ load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, qui
       util_log_message(glue::glue("INPUT/OUTPUT: Reading from collection of GDBs.")) 
     }
     if (is.null(fy) & is.null(cy)) {
-      vintages <- load_vintage_select(gdb_path, muni_ids)
+      vintages <- load_vintage_select(gdb_path, muni_ids, most_recent=most_recent)
     } else {
       vintages <- data.frame(
         muni_id = muni_ids
@@ -710,7 +719,7 @@ load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, qui
     load_assess_preprocess(path)
 }
 
-load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, quiet=FALSE) {
+load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, most_recent = FALSE, quiet=FALSE) {
   #' Load Parcels from MassGIS Parcel GDB(s)
   #' 
   #' Load parcels from MassGIS tax parcel collection, presented either
@@ -749,7 +758,7 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, qui
     
     sf::st_read(gdb_path, query = q, quiet = TRUE)
   } else {
-    vintages <- load_vintage_select(gdb_path, muni_ids)
+    vintages <- load_vintage_select(gdb_path, muni_ids, most_recent=most_recent)
     
     all <- list()
     for (row in 1:nrow(vintages)) {
@@ -1259,7 +1268,7 @@ load_zips <- function(munis, crs, thresh = 0.95, quiet=FALSE) {
     dplyr::filter(!is.na(state))
 }
 
-load_oc_companies <- function(path, gdb_path, test_count=NULL, quiet=FALSE, filename = "companies.csv") {
+load_oc_companies <- function(path, gdb_path, muni_ids, test_count=NULL, quiet=FALSE, most_recent=FALSE, filename = "companies.csv") {
   #' Load OpenCorporates Companies
   #' 
   #' Load OpenCorporates companies.
@@ -1277,7 +1286,7 @@ load_oc_companies <- function(path, gdb_path, test_count=NULL, quiet=FALSE, file
     util_log_message(glue::glue("INPUT/OUTPUT: Loading companies from {path}/{filename}."))
   }
   
-  min_year <- load_vintage_select(gdb_path) |>
+  min_year <- load_vintage_select(gdb_path, muni_ids, most_recent=most_recent) |>
     dplyr::pull(cy) |>
     min()
   
@@ -1422,6 +1431,7 @@ load_read_write_all <- function(
     oc_path,
     crs,
     zip_int_thresh,
+    most_recent,
     refresh,
     tables,
     company_test_count=NULL,
@@ -1565,6 +1575,7 @@ load_read_write_all <- function(
         path=data_path,
         gdb_path=file.path(data_path, gdb_path),
         muni_ids=muni_ids,
+        most_recent=most_recent,
         quiet=quiet
       ),
       id_col=c("site_id", "site_muni_id"),
@@ -1587,6 +1598,7 @@ load_read_write_all <- function(
         assess=assess,
         block_groups=block_groups,
         crs=crs,
+        most_recent=most_recent,
         quiet=quiet
       ),
       id_col="loc_id",
@@ -1631,6 +1643,8 @@ load_read_write_all <- function(
       load_oc_companies(
         path=file.path(data_path, oc_path),
         gdb_path=file.path(data_path, gdb_path),
+        muni_ids=muni_ids,
+        most_recent=most_recent,
         quiet=quiet,
         test_count=company_test_count
       ),

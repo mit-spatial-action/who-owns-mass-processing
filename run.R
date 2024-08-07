@@ -129,17 +129,17 @@ manage_run <- function() {
   
   rm(as_folder)
   
-  # Quick confirmation.
-  # ===
-  
-  if(!util_prompt_check("VALIDATION: Are you ready to begin the process? (Y/N)")) {
-    return(invisible(NULL))
-  }
-  
   # Confirm With User if More Intensive Config Options are Set
   # ===
   
   if(!util_prompts(REFRESH, MUNI_IDS, COMPANY_TEST)) {
+    return(invisible(NULL))
+  }
+  
+  # Quick confirmation.
+  # ===
+  
+  if(!util_prompt_check("VALIDATION: Preflight complete! Are you ready to begin the process? (Y/N)")) {
     return(invisible(NULL))
   }
   
@@ -150,6 +150,7 @@ manage_run <- function() {
     crs=CRS,
     gdb_path=GDB_PATH,
     oc_path=OC_PATH,
+    most_recent=MOST_RECENT,
     thresh=COSINE_THRESH,
     inds_thresh=INDS_THRESH,
     zip_int_thresh=ZIP_INT_THRESH,
