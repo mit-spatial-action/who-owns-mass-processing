@@ -1,24 +1,24 @@
 # See README.md for definitions.
 
-COMPLETE_RUN <- TRUE
+COMPLETE_RUN <- FALSE
 
 REFRESH <- TRUE
 
 PUSH_DBS <- list(
   load = "",
   proc = "",
-  dedupe = "prod"
+  dedupe = ""
 )
 
 ROUTINES <- list(
-  load = FALSE,
-  proc = FALSE,
+  load = TRUE,
+  proc = TRUE,
   dedupe = TRUE
 )
 
 MUNI_IDS <- c(274, 49, 35)
 
-MOST_RECENT <- TRUE
+MOST_RECENT <- FALSE
 
 RETURN_INTERMEDIATE <- FALSE
 
