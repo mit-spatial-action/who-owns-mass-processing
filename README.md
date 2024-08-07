@@ -6,6 +6,8 @@ While we share large parts of their approach (i.e., relying on community detecti
 
 Community detection---based on both network analysis and cosine similarity---is accomplished using the `igraph` implementation of the fast greedy modularity optimization algorithm.
 
+While the full process requires that you source OpenCorporates data, you can run the cosine-similarity-based deduplication process using only the assessors tables. (See the documentation for the `OC_PATH` configuration variable.)
+
 ## Getting Started
 
 ### renv
@@ -47,7 +49,7 @@ YOURSTRING_DB_NAME="yourdbname"
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
 | Variable              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|-------------------|-----------------------------------------------------|
+|---------------------|---------------------------------------------------|
 | `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `ROUTINES=list(load = TRUE, proc = TRUE, dedupe = TRUE)`, `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `REFRESH`             | Default: `TRUE`If `TRUE`, datasets will be reingested regardless of whether results already exist in the database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `PUSH_DBS`            | Default: `list(load = "", proc = "", dedupe = "")` Named list with string values. If `""`, looks for `.Renviron` database connection parameters of the format `"DB_NAME"`. If string passed, looks for parameters of the format `"YOURSTRING_DB_NAME"` where `YOURSTRING` can be passed upper or lower case, though parameters must be all uppercase. **Note that whatever `dedupe` is set to is treated as "production", meaning that select intermediate tables from previous subroutines are pushed there as well. Requires that you set `.Renviron` parameters (see section 'Setting Up `.Renviron`' above).**                                            |
@@ -63,7 +65,7 @@ We expose a large number of configuration variables in `config.R`, which is sour
 | `CRS`                 | Default: `2249`EPSG code for coordinate reference system of spatial outputs and *almost* any spatial analysis in the workflow. `2249` is NAD83 / Massachusetts Mainland in US feet. (The *almost* is because ZIPS are processed nationwide using NAD 83 / Conus Albers, AKA EPSG `5070`. We don't expose this.)                                                                                                                                                                                                                                                                                                                                               |
 | `DATA_PATH`           | Default: `"data"` This is the folder where input datasets (i.e., OpenCorporates data and MassGIS parcel databases) are located. **Do not change unless you also plan on moving `luc_crosswalk.csv` and `muni_ids.csv`.**                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `RESULTS_PATH`        | Default: `"results"` This is the folder where resulting `.csv` and `.Rda` files will be written. Note that tables will always be written to the PostGIS database, so this is for backup/uncredentialed result transfer only.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `OC_PATH`             | Default: `"2024-04-12"`This is the name of the folder (within `/data`) that contains the OpenCorporates bulk data. Scripts depend on `companies.csv` and `officers.csv`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `OC_PATH`             | Default: `"2024-04-12"` Either the name of the folder (within `/data`) that contains the OpenCorporates bulk data or `NULL`. Scripts depend on `companies.csv` and `officers.csv`. If `NULL`, a simplified cosine-similarity deduplication routine will run, returning a simpler set of tables.                                                                                                                                                                                                                                                                                                                                                               |
 | `GDB_PATH`            | Default: `"L3_AGGREGATE_FGDB_20240703"`This is either a folder (within `/data`) containing all the vintages of the MassGIS parcel data *or* a single most recent vintage geodatabase (in `/data`).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ### Running the Script
@@ -76,7 +78,7 @@ This function automatically outputs results to objects that will be visible in a
 
 ### Required External Data
 
-Successful execution of this script requires that you source the following datasets:
+Successful execution of all features of this software requires that you source the following datasets:
 
 -   MassGIS. "Property Tax Parcels." <https://www.mass.gov/info-details/massgis-data-property-tax-parcels>.
 
@@ -84,9 +86,9 @@ Successful execution of this script requires that you source the following datas
 
 -   OpenCorporates. [Bulk Data Product](https://opencorporates.com/plug-in-our-data/). Massachusetts extract.
 
-    -   Unfortunately, we can't provide a copy of this due to our licensing agreement, but OpenCorporates has a 'public-benefit project' program that might be worth looking into.
+    -   Unfortunately, we can't provide a copy of this due to our licensing agreement, but OpenCorporates has a 'public-benefit project' program that might be worth looking into. Also, you can run a simpler cosine similarity deduplication process if you set `OC_PATH` to `NULL` in `config.R`.
 
-### Additional Sources Consulted
+### Additional Data Sources
 
 In addition, the script pulls in data from a range of sources to enrich our datasets. All of these are ingested from API and web sources by the script, so there is no need to source them independently.
 
@@ -114,7 +116,7 @@ In addition, the script pulls in data from a range of sources to enrich our data
 
 -   City of Boston. 2024. [Boston Live Street Address Management System (SAM) Addresses](https://bostonopendata-boston.opendata.arcgis.com/datasets/b6bffcace320448d96bb84eabb8a075f/explore).
 
-    -   We use these geolocated addresses for three primary purposes: linking MA owner addresses to locations, identifying unique addresses which are treated as network entities, and, estimating unit counts for properties missing them (following, largely, a method provided by the (Metropolitan Area Planning Council)[<https://www.mapc.org/>]).
+    -   We use these geolocated addresses for three primary purposes: linking MA owner addresses to locations, identifying unique addresses which are treated as network entities, and, estimating unit counts for properties missing them (following, largely, a method provided by the [Metropolitan Area Planning Council](https://www.mapc.org/)).
 
 ## Acknowledgements
 

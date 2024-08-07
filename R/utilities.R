@@ -153,7 +153,7 @@ util_test_conn <- function(prefix="") {
   pass <- Sys.getenv(stringr::str_c(prefix, "PASS", sep="_"))
   ssl <- Sys.getenv(stringr::str_c(prefix, "SSL", sep="_"))
   if (any(c(dbname, host, port, user) == "")) {
-    stop(glue::glue("Can't find {prefix} credentials in .Renviron!!"))
+    stop(glue::glue("VALIDATION: Can't find '{prefix}' credentials in .Renviron!"))
   } 
   test_connect <- DBI::dbCanConnect(
       RPostgres::Postgres(),
@@ -165,10 +165,10 @@ util_test_conn <- function(prefix="") {
       sslmode = ssl
     )
   if(!test_connect) {
-    stop(glue::glue("Couldn't make connection to {prefix} database."))
+    stop(glue::glue("VALIDATION: Couldn't make connection to {prefix} database."))
   } else {
     util_log_message(
-      glue::glue("Successfully tested connection to {prefix} database.")
+      glue::glue("VALIDATION: Successfully tested connection to '{dbname}' on '{host}'.")
       )
   }
 }
@@ -247,28 +247,45 @@ util_run_tables_exist <- function(tables, push_dbs) {
   tables_exist
 }
 
-util_run_which_tables <- function(routines, push_dbs) {
+util_run_which_tables <- function(routines, push_dbs, oc_path) {
   load_tables <- c()
   proc_tables <- c()
   dedupe_tables <- c()
+  oc_path <- !is.null(oc_path)
   if (routines$proc) {
     load_tables <- c(
       load_tables, 
       c("zips", "places", "init_assess", "parcels",
-        "init_addresses", "init_companies", "init_officers")
+        "init_addresses")
     )
     proc_tables <- c(
       proc_tables, 
       c("proc_assess", "proc_sites", "proc_owners", 
-        "proc_companies", "proc_officers", "parcels_point")
+        "parcels_point")
     )
+    if(oc_path) {
+      load_tables <- c(
+        load_tables,
+        c("init_companies", "init_officers")
+      )
+      proc_tables <- c(
+        proc_tables,
+        c("proc_companies", "proc_officers")
+      )
+    }
   }
   if (routines$load) {
-    load_tables <- tables <- c(
+    load_tables <- c(
       load_tables,
       c("munis", "zips", "places", "init_assess", "init_addresses",
       "init_companies", "init_officers", "parcels", "block_groups", "tracts")
     )
+    if(oc_path) {
+      load_tables <- c(
+        load_tables,
+        c("init_companies", "init_officers")
+      )
+    }
   }
   if (routines$dedupe) {
     load_tables <- c(
@@ -284,14 +301,25 @@ util_run_which_tables <- function(routines, push_dbs) {
     proc_tables <- c(
       proc_tables,
       c("proc_sites", "proc_owners", 
-        "proc_companies", "proc_officers", "parcels_point")
+        "parcels_point")
     )
     dedupe_tables <- c(
       dedupe_tables,
-      c("sites_to_owners", 'owners', 'companies', 'officers',
-        "sites", 'metacorps_network', 'metacorps_cosine',
+      c("sites_to_owners", 'owners',
+        "sites", 'metacorps_cosine',
         'addresses')
     )
+    if(oc_path) {
+      proc_tables <- c(
+        proc_tables,
+        c("proc_companies", "proc_officers")
+      )
+      dedupe_tables <- c(
+        dedupe_tables,
+        c('companies', 'officers', 'metacorps_network')
+      )
+      
+    }
   }
   list(
     load = unique(load_tables),

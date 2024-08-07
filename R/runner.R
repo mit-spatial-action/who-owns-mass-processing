@@ -14,29 +14,17 @@ run <- function(data_path,
                 return_intermediate,
                 quiet) {
   
-  # Test DB Connections
-  # ===
-  
-  for (db in unlist(unname(PUSH_DBS)) |> unique()) {
-    util_test_conn(db)
-  }
-  
   if (!company_test) {
     company_test_count <- NULL
   }
   
-  # Test Validity of (and Zero-Pad) Municipality IDs
-  # ===
-  
-  muni_ids <- util_test_muni_ids(
-    muni_ids=muni_ids,
-    path=data_path,
-    quiet=quiet
-  )
-  
   # Check for Existence of Tables Needed for Each Subroutine
   # ===
-  tables <- util_run_which_tables(routines, push_dbs)
+  tables <- util_run_which_tables(
+    routines, 
+    push_dbs, 
+    oc_path
+    )
   tables_exist <- util_run_tables_exist(tables, push_dbs)
   
   if (interactive()) {
