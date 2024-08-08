@@ -42,14 +42,43 @@ YOURSTRING_DB_PORT=5432
 YOURSTRING_DB_NAME="yourdbname"
 ```
 
+If you modify your `.Renviron` mid-RStudio session, you can simply run `readRenviron('.Renviron')` to reload.
+
 `.Renviron` is in `.gitignore` to ensure that you don't commit your credentials.
+
+## Loading Results (`load_results.R`)
+
+If you want to simply read the results without worrying about triggering the deduplication process, you can simply begin a new RScript, source `load_results.R`, and run a one-liner like so...
+
+``` r
+source('load_results.R')
+load_results("your_db_prefix", load_boundaries=TRUE)
+```
+
+This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`. **This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
+
+Note that for statewide results, these are very large tables and therefore it might take 5-10 minutes depending on your network connection/whether you're reading from a local or remote database.
+
+## Running the Process (`run.R`)
+
+We provide an onmibus `manage_run()` function in `run.R`. It does preflight testing and triggers three sequences: a data ingestion sequence (`load_read_write_all()`, see `R/loaders.R`), a data processing sequence (`proc_all()`, see `R/processors.R`) and a deduplication sequence (`dedupe_all()`, see `R/deduplicators.R`).
+
+We recommend running from the terminal using...
+
+``` bash
+Rscript run.R
+```
+
+This is because when the process is run interactively (i.e., in an RStudio environment), intermediate results are stored in an output object, which has memory costs. You can then read the results with `load_results.R`, as described above.
+
+If the process is run interactively, it automatically outputs results to objects in your environment (including intermediate results if `RETURN_INTERMEDIATE` is `TRUE` in `config.R`. It also writes results to `.csv` and `.Rda` files in `/results`, but doesn't ever try to read these---the PostgreSQL database is the only output location from which our scripts read data.
 
 ### Configuration (`config.R`)
 
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
 | Variable              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|----------------------|--------------------------------------------------|
+|-----------|-------------------------------------------------------------|
 | `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `ROUTINES=list(load = TRUE, proc = TRUE, dedupe = TRUE)`, `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `REFRESH`             | Default: `TRUE`If `TRUE`, datasets will be reingested regardless of whether results already exist in the database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `PUSH_DBS`            | Default: `list(load = "", proc = "", dedupe = "")` Named list with string values. If `""`, looks for `.Renviron` database connection parameters of the format `"DB_NAME"`. If string passed, looks for parameters of the format `"YOURSTRING_DB_NAME"` where `YOURSTRING` can be passed upper or lower case, though parameters must be all uppercase. **Note that whatever `dedupe` is set to is treated as "production", meaning that select intermediate tables from previous subroutines are pushed there as well. Requires that you set `.Renviron` parameters (see section 'Setting Up `.Renviron`' above).**                                            |
@@ -68,12 +97,6 @@ We expose a large number of configuration variables in `config.R`, which is sour
 | `RESULTS_PATH`        | Default: `"results"` This is the folder where resulting `.csv` and `.Rda` files will be written. Note that tables will always be written to the PostGIS database, so this is for backup/uncredentialed result transfer only.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `OC_PATH`             | Default: `"2024-04-12"` Either the name of the folder (within `/data`) that contains the OpenCorporates bulk data or `NULL`. Scripts depend on `companies.csv` and `officers.csv`. If `NULL`, a simplified cosine-similarity deduplication routine will run, returning a simpler set of tables.                                                                                                                                                                                                                                                                                                                                                               |
 | `GDB_PATH`            | Default: `"L3_AGGREGATE_FGDB_20240703"`This is either a folder (within `/data`) containing all the vintages of the MassGIS parcel data *or* a single most recent vintage geodatabase (in `/data`).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-
-### Running the Script
-
-We provide an onmibus `run()` function in `run.R`. It triggers three sequences: a data ingestion sequence (`load_read_write_all()`, see `R/loaders.R`), a data processing sequence (`proc_all()`, see `R/processors.R`) and a deduplication sequence (`dedupe_all()`, see `R/deduplicators.R`).
-
-This function automatically outputs results to objects that will be visible in an RStudio environment using `wrapr::unpack()`. It also writes results to `.csv` and `.Rda` files in `/results`, but doesn't ever try to read these---the PostgreSQL database is the only output location that is subsequently referenced.
 
 ## Data
 
