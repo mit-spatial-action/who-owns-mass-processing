@@ -61,6 +61,8 @@ Note that for statewide results, these are very large tables and therefore it mi
 
 ## Running the Process (`run.R`)
 
+This is a very time-consuming process, even for small subsets (this is due to the size of the `companies` and `officers` tables, which must be processed for reliable results even for smaller spatial subsets). On a 2021 Apple M1 Max chip with 64 GB of memory, the full state is taking a little under 13 hours.
+
 We provide an onmibus `manage_run()` function in `run.R`. It does preflight testing and triggers three sequences: a data ingestion sequence (`load_read_write_all()`, see `R/loaders.R`), a data processing sequence (`proc_all()`, see `R/processors.R`) and a deduplication sequence (`dedupe_all()`, see `R/deduplicators.R`).
 
 We recommend running from the terminal using...
