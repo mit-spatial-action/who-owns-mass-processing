@@ -61,9 +61,9 @@ load_results("your_db_prefix", load_boundaries=TRUE, summarize=TRUE)
 
 This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
 
-If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis.
-
 [Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+
+If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis. These appear in the data dictionary as well.
 
 **This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
 
@@ -90,7 +90,7 @@ If the process is run interactively, it automatically outputs results to objects
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
 | Variable              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-|---------------|---------------------------------------------------------|
+|-----------------|-------------------------------------------------------|
 | `COMPLETE_RUN`        | Default: `FALSE`A little helper that overrides values such that `ROUTINES=list(load = TRUE, proc = TRUE, dedupe = TRUE)`, `REFRESH=TRUE`, `MUNI_IDS=NULL`,and `COMPANY_TEST=FALSE`. This ensures a fresh, statewide run on complete datasets, not subsets.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `REFRESH`             | Default: `TRUE`If `TRUE`, datasets will be reingested regardless of whether results already exist in the database.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `PUSH_DBS`            | Default: `list(load = "", proc = "", dedupe = "")` Named list with string values. If `""`, looks for `.Renviron` database connection parameters of the format `"DB_NAME"`. If string passed, looks for parameters of the format `"YOURSTRING_DB_NAME"` where `YOURSTRING` can be passed upper or lower case, though parameters must be all uppercase. **Note that whatever `dedupe` is set to is treated as "production", meaning that select intermediate tables from previous subroutines are pushed there as well. Requires that you set `.Renviron` parameters (see section 'Setting Up `.Renviron`' above).**                                            |

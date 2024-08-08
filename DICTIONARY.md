@@ -15,7 +15,7 @@ For any spatial tables listed below (indicated using 🌐), data is stored in [N
 Residential properties Each row represents a property in the assessors table.
 
 | Field                         | Type      | Description                                                                                                                                                                                   |
-|-------------------------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-----------|-----------|--------------------------------------------------|
 | `id` (PK)                     | Integer   | Unique identifier.                                                                                                                                                                            |
 | `fy`                          | Integer   | Fiscal year of assessor's database.                                                                                                                                                           |
 | `muni_id` (FK to `munis`)     | String    | Identifier of property municipality.                                                                                                                                                          |
@@ -37,7 +37,7 @@ Residential properties Each row represents a property in the assessors table.
 Each row represents either a unique owner name-address pair.
 
 | Field                                       | Type    | Description                                                                                                                                                             |
-|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-------------|-------------|-----------------------------------------------|
 | `id` (PK)                                   | Integer | Unique identifier.                                                                                                                                                      |
 | `name`                                      | String  | Name of un-deduplicated owner.                                                                                                                                          |
 | `inst`                                      | Boolean | Institutional owner. If `TRUE`, we flagged the owner as institutional using keywords unlikely to be identified with individuals.                                        |
@@ -53,9 +53,9 @@ Each row represents either a unique owner name-address pair.
 Represents the many-to-many relationship between `owners` and `sites`. All many-to-many relations are induced by splitting non-institutional owners on instances of the word "and" to identify multiple individual owners of a site.
 
 | Field                                       | Type    | Description                                                                                                                                                             |
-|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-------------|-------------|-----------------------------------------------|
 | `id` (PK)                                   | Integer | Unique identifier.                                                                                                                                                      |
-| `site_id` (FK to `site``)`                  | Integer | Identifier of property.                                                                                                                                                 |
+| `site_id` (FK to ``` site``) ```            | Integer | Identifier of property.                                                                                                                                                 |
 | `owner_id` (FK to `owners`)                 | Integer | Identifier of owner.                                                                                                                                                    |
 | `cosine_group` (FK to `metacorps_cosine`)   | String  | Identifier of cosine-deduplicated metacorp. Group assigned by cosine deduplication process.                                                                             |
 | `network_group` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp. Group assigned by either network deduplication process or cosine deduplication process, when there are no network matches. |
@@ -65,7 +65,7 @@ Represents the many-to-many relationship between `owners` and `sites`. All many-
 Companies from OpenCorporates matched to at least one row in the assessors table, or present in the networks of those companies.
 
 | Field                                    | Type    | Description                                  |
-|------------------------------------------|---------|----------------------------------------------|
+|---------------------------|---------------|------------------------------|
 | `id` (PK)                                | Integer | Unique identifier.                           |
 | `name`                                   | String  | Name of company.                             |
 | `company_type`                           | String  | Type of company, given by OpenCorporates.    |
@@ -77,13 +77,21 @@ Companies from OpenCorporates matched to at least one row in the assessors table
 Each row represents a unique name-company relationship.
 
 | Field                                    | Type    | Description                                                   |
-|------------------------------------------|---------|---------------------------------------------------------------|
+|-----------------------|---------------|-----------------------------------|
 | `id` (PK)                                | Integer | Unique identifier.                                            |
 | `name`                                   | String  | Name of officer.                                              |
 | `positions`                              | String  | Comma-separated list of positions held by officer in company. |
 | `company_id` (FK to `companies`)         | String  | Identifier of company.                                        |
 | `addr_id` (FK to `addresses`)            | String  | Identifier of address.                                        |
 | `network_id` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp.                  |
+
+#### Summary Fields
+
+Currently included only when `load_results()` is run with `summarize=TRUE`.
+
+| Field                     | Type    | Description                                                                           |
+|-----------------------|---------------|-----------------------------------|
+| `innetwork_company_count` | Integer | Number of companies the given officer is an officer of *within* the network metacorp. |
 
 ### `metacorps_network`
 
@@ -94,6 +102,21 @@ Each row represents a network-identified 'metacorp', or group of companies that 
 | `id` (PK) | Integer | Unique identifier.                        |
 | `name`    | String  | Most common company name within metacorp. |
 
+#### Summary Fields
+
+Currently included only when `load_results()` is run with `summarize=TRUE`.
+
+| Field            | Type    | Description                                                                                                                |
+|---------------------|-----------------|----------------------------------|
+| `prop_count`     | Integer | Number of properties (i.e., `sites` rows) linked to a given metacorp.                                                      |
+| `unit_count`     | Numeric | Estimated number of units linked to a given metacorp.                                                                      |
+| `area`           | Integer | Summed building area held by a particular metacorp (where 'building area' means the larger of `res_area` and `bld_area`).  |
+| `val`            | Integer | Summed building and residential value held by a particular metacorp.                                                       |
+| `units_per_prop` | Numeric | Total estimated units divided by the property count. This is a measure of what scale of property a given owner invests in. |
+| `val_per_prop`   | Numeric | Total value divided by property count. A measure of how valuable a given metacorps properties are.                         |
+| `val_per_area`   | Numeric | Value per square foot. Another measure of how valuable a metacorps properties are.                                         |
+| `company_count`  | Integer | How many unique companies appear within a given metacorp.                                                                  |
+
 ### `metacorps_cosine`
 
 Each row represents a cosine-deduplication-identified 'metacorp', or group of companies that we've identified as related.
@@ -103,12 +126,26 @@ Each row represents a cosine-deduplication-identified 'metacorp', or group of co
 | `id` (PK) | Integer | Unique identifier.                        |
 | `name`    | String  | Most common company name within metacorp. |
 
+#### Summary Fields
+
+Currently included only when `load_results()` is run with `summarize=TRUE`.
+
+| Field            | Type    | Description                                                                                                                |
+|---------------------|------------------|---------------------------------|
+| `prop_count`     | Integer | Number of properties (i.e., `sites` rows) linked to a given metacorp.                                                      |
+| `unit_count`     | Numeric | Estimated number of units linked to a given metacorp.                                                                      |
+| `area`           | Integer | Summed building area held by a particular metacorp (where 'building area' means the larger of `res_area` and `bld_area`).  |
+| `val`            | Integer | Summed building and residential value held by a particular metacorp.                                                       |
+| `units_per_prop` | Numeric | Total estimated units divided by the property count. This is a measure of what scale of property a given owner invests in. |
+| `val_per_prop`   | Numeric | Total value divided by property count. A measure of how valuable a given metacorps properties are.                         |
+| `val_per_area`   | Numeric | Value per square foot. Another measure of how valuable a metacorps properties are.                                         |
+
 ### `parcels_point` (🌐)
 
 Each row is a `POINT()` representation of a parcel in the MassGIS parcels database.
 
 | Field                                   | Type           | Description                                                              |
-|-----------------------------------------|----------------|--------------------------------------------------------------------------|
+|--------------------|----------------|-------------------------------------|
 | `loc_id` (PK)                           | Integer        | Unique identifier.                                                       |
 | `muni_id` (FK to `munis`)               | String         | Unique identifier of municipality.                                       |
 | `block_group_id` (FK to `block_groups`) | String         | Unique identifier of block group that contains parcel.                   |
@@ -120,7 +157,7 @@ Each row is a `POINT()` representation of a parcel in the MassGIS parcels databa
 Each row is a unique address (including parsed ranges) found in any of `assessors`, `sites`, `owners`, `companies`, or `owners`. Constructed, in part, using the statewide and Boston address layers as a reference dataset.
 
 | Field                            | Type    | Description                                                                                        |
-|----------------------------------|---------|----------------------------------------------------------------------------------------------------|
+|--------------|--------------|---------------------------------------------|
 | `loc_id` (PK)                    | Integer | Unique identifier.                                                                                 |
 | `addr`                           | String  | Complete number, street name, type string, often reconstructed from address ranges, PO Boxes, etc. |
 | `start`                          | Number  | For ranges, start of address range. For single-number addresses, that single number.               |
@@ -139,7 +176,7 @@ These are loaded using `load_results()` if `load_boundaries = TRUE`.
 ### `munis` (🌐)
 
 | Field          | Type                    | Description                                                              |
-|----------------|-------------------------|--------------------------------------------------------------------------|
+|---------------|---------------|------------------------------------------|
 | `muni_id` (PK) | Integer                 | Unique identifier.                                                       |
 | `muni`         | String                  | Name of municipality.                                                    |
 | `hns`          | Boolean                 | If `TRUE`, municipality is one of the Healthy Neighborhoods Study areas. |
@@ -151,7 +188,7 @@ These are loaded using `load_results()` if `load_boundaries = TRUE`.
 Each row is a Massachusetts block group from the most recent vintage available in `tigris`. Currently, 2022.
 
 | Field      | Type                    | Description                                   |
-|------------|-------------------------|-----------------------------------------------|
+|----------------|-------------------|-------------------------------------|
 | `id` (PK)  | Integer                 | Unique identifier (i.e., the 12-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
 
@@ -160,7 +197,7 @@ Each row is a Massachusetts block group from the most recent vintage available i
 Each row is a Massachusetts census tract from the most recent vintage available in `tigris`. Currently, 2022.
 
 | Field      | Type                    | Description                                   |
-|------------|-------------------------|-----------------------------------------------|
+|----------------|-------------------|-------------------------------------|
 | `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
 
@@ -169,6 +206,6 @@ Each row is a Massachusetts census tract from the most recent vintage available 
 Each row is a ZIP code boundary some of which intersects with Massachusetts. (ZIPS can cross state lines).
 
 | Field      | Type                    | Description                                   |
-|------------|-------------------------|-----------------------------------------------|
+|----------------|-------------------|-------------------------------------|
 | `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
