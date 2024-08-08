@@ -10,6 +10,10 @@ While the full process requires that you source OpenCorporates data, you can run
 
 ## Getting Started
 
+### Data Dictionary
+
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+
 ### renv
 
 This library's dependencies are managed using [`renv`](https://rstudio.github.io/renv/articles/renv.html). To install necessary dependencies, simply install `renv` and run `renv::restore()`. If you are using Windows, you'll probably have to [install the `Rtools` bundle appropriate for your version of R](https://cran.r-project.org/bin/windows/Rtools/).
@@ -55,7 +59,11 @@ source('load_results.R')
 load_results("your_db_prefix", load_boundaries=TRUE)
 ```
 
-This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`. **This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
+This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
+
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+
+**This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
 
 Note that for statewide results, these are very large tables and therefore it might take 5-10 minutes depending on your network connection/whether you're reading from a local or remote database.
 
