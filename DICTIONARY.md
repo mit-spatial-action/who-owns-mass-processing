@@ -1,9 +1,8 @@
 # Data Dictionary
 
-|                  |                          |
-|------------------|--------------------------|
-| **Author**       | Eric Robsky Huntley, PhD |
-| **Last Updated** | August 8, 2024           |
+| **Author**               | Last Updated   |
+|--------------------------|----------------|
+| Eric Robsky Huntley, PhD | August 8, 2024 |
 
 ## Coordinate Reference System
 
