@@ -1,132 +1,175 @@
 # Data Dictionary
 
-+ Author: Eric Robsky Huntley, PhD
-+ Last Updated: July 2, 2024
+|                  |                          |
+|------------------|--------------------------|
+| **Author**       | Eric Robsky Huntley, PhD |
+| **Last Updated** | August 8, 2024           |
 
-This data dictionary provides documentation for files output by data processing scripts for Who Owns Massachusetts.
+## Coordinate Reference System
 
-## Data Sources
+For any spatial tables listed below (indicated using 🌐), data is stored in [NAD83 / Massachusetts Mainland (ftUS), EPSG:2249](https://epsg.io/2249-1696).
 
-+ OpenCorporates. 2024. Massachusetts Bulk Data Delivery. Sharing restricted by license agreement.
-+ MassGIS. 2024. [Property Tax Parcels](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).
-+ MassGIS. 2023. [Geographic Placenames](https://www.mass.gov/info-details/massgis-data-geographic-place-names). October.
-+ MassGIS. 2024. [Municipalities](https://www.mass.gov/info-details/massgis-data-municipalities).
-+ US Census Bureau TIGER/Line. ZIP Codes. 2010. Fetched using [Tidycensus](https://walker-data.com/tidycensus/index.html).
-+ MassGIS. 2024. [Master Address Data](https://www.mass.gov/info-details/massgis-data-master-address-data).
+## Output Tables
 
-## Production Owner Table
+### `sites`
 
-```yaml
-{
-  "id": '001', // metacorp id
-  "name": 'CAMBERVILLE PROPERTIES, LLC',
-  "corps": [
-    {
-      "name": 'CAMBERVILLE PROPERTIES, LLC',
-      "address": '61 SIXTH ST',
-      "city": 'CAMBRIDGE', 
-      "state": 'MA',
-      "postal": '021141'
-    },
-    {
-      "name": 'CAMBERVILLE PROPERTIES II, LLC',
-      "address": '61 SIXTH ST', 
-      "city": 'CAMBRIDGE', 
-      "state": 'MA',
-      "postal": '021141'
-    }
-  ],
-  "props": [
-    {
-      "name": 'CAMBERVILLE PROPERTIES II, LLC'
-      "address": 
-    },
-  ],
-  "evictions": {
-    "np": 8,
-    "nc": 3,
-    "c": 1
-  }
-}
-```
+Residential properties Each row represents a property in the assessors table.
 
-## Mapbox Simplified Parcels
+| Field                         | Type      | Description                                                                                                                                                                                   |
+|-------------------------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `id` (PK)                     | Integer   | Unique identifier.                                                                                                                                                                            |
+| `fy`                          | Integer   | Fiscal year of assessor's database.                                                                                                                                                           |
+| `muni_id` (FK to `munis`)     | String    | Identifier of property municipality.                                                                                                                                                          |
+| `ls_date`                     | Date      | Last sale date. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                      |
+| `ls_price`                    | Integer   | Last sale price. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                     |
+| `bld_area`                    | Integer   | Building area. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                       |
+| `res_area`                    | Integer   | Residential area. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                    |
+| `units`                       | Integer   | Estimated unit count. For use codes that are tied to specific unit counts, assigns these counts. For others, estimates based on 1) number of addresses on the parcel and 2) residential area, |
+| `lnd_val`                     | Integer   | Land value. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                          |
+| `bld_val`                     | Integer   | Building value. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                      |
+| `use_code`                    | Character | Use code. Unmodified from MassGIS, [see their documentation](https://www.mass.gov/info-details/massgis-data-property-tax-parcels).                                                            |
+| `luc`                         | Character | Land use code. Assigned based on our modified version of a crosswalk supplied by MAPC.                                                                                                        |
+| `ooc`                         | Boolean   | Owner occupied. If `TRUE`, listed owner address matches listed property address.                                                                                                              |
+| `condo`                       | Boolean   | Condo. If `TRUE`, there are properties with a condo land use code on the parcel (which leads us to treat the whole thing as a 'condo', i.e., a parcel with multiple associated properties).   |
+| `addr_id` (FK to `addresses`) | Integer   | Identifier of property's listed address.                                                                                                                                                      |
 
-```yaml
-{
-  "type": "Feature",
-  "properties": {
-    "id": "F_768178_2960083",
-    "addr": "61 SIXTH ST, CAMBRIDGE, MA 021141",
-    "metacorp_ids": ['001'],
-    "owner_names": ['CAMBERVILLE PROPERTIES, LLC', 'EL-DIAN MANAGEMENT LLC']
-  },
-  "geometry": {
-    "type": "Point",
-    "coordinates": [125.6, 10.1]
-  }
-}
-```
+### `owners`
 
-## Owner
+Each row represents either a unique owner name-address pair.
 
-```yaml
-{
-  "id": '001',
-  "name": 'CAMBERVILLE PROPERTIES, LLC',
-  "agents": [''],
-  "addresses": ['017', '037'],
-  "type": 'LLC'
-  "metacorp": '001'
-}
-```
+| Field                                       | Type    | Description                                                                                                                                                             |
+|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `id` (PK)                                   | Integer | Unique identifier.                                                                                                                                                      |
+| `name`                                      | String  | Name of un-deduplicated owner.                                                                                                                                          |
+| `inst`                                      | Boolean | Institutional owner. If `TRUE`, we flagged the owner as institutional using keywords unlikely to be identified with individuals.                                        |
+| `trust`                                     | Boolean | Trust. If `TRUE`, we flagged the owner as a trust using keywords.                                                                                                       |
+| `trustees`                                  | Boolean | Trustees. If `TRUE`, we flagged the owner as trustees of a trust using keywords.                                                                                        |
+| `addr_id` (FK to `addresses`)               | Integer | Identifier of owner address.                                                                                                                                            |
+| `company_id` (FK to `companies`)            | Integer | Identifier of company, if we were able to match the owner to a company in the OpenCorporates table.                                                                     |
+| `cosine_group` (FK to `metacorps_cosine`)   | String  | Identifier of cosine-deduplicated metacorp. Group assigned by cosine deduplication process.                                                                             |
+| `network_group` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp. Group assigned by either network deduplication process or cosine deduplication process, when there are no network matches. |
 
-## Person
+### `sites_to_owners`
 
-```yaml
-{
-  "id": '001',
-  "name": 'Applesauce McGoo',
-  "address": ['000', '027']
-}
-```
+Represents the many-to-many relationship between `owners` and `sites`. All many-to-many relations are induced by splitting non-institutional owners on instances of the word "and" to identify multiple individual owners of a site.
 
-## Filing
+| Field                                       | Type    | Description                                                                                                                                                             |
+|---------------------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `id` (PK)                                   | Integer | Unique identifier.                                                                                                                                                      |
+| `site_id` (FK to `site``)`                  | Integer | Identifier of property.                                                                                                                                                 |
+| `owner_id` (FK to `owners`)                 | Integer | Identifier of owner.                                                                                                                                                    |
+| `cosine_group` (FK to `metacorps_cosine`)   | String  | Identifier of cosine-deduplicated metacorp. Group assigned by cosine deduplication process.                                                                             |
+| `network_group` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp. Group assigned by either network deduplication process or cosine deduplication process, when there are no network matches. |
 
-```yaml
-{
-  "plaintiff_ids": ['076'], // FK to owner.
-  "attorney_ids": ['125'], // FK to person.
-  "arrears": 25000,
-  "type": 'np',
-  "parcel_id": 'F_768178_2960083' // FK to parcel
-}
-```
+### `companies`
 
-| Month    | Savings |
-| -------- | ------- |
-| January  | $250    |
-| February | $80     |
-| March    | $420    |
+Companies from OpenCorporates matched to at least one row in the assessors table, or present in the networks of those companies.
 
-## Parcel
+| Field                                    | Type    | Description                                  |
+|------------------------------------------|---------|----------------------------------------------|
+| `id` (PK)                                | Integer | Unique identifier.                           |
+| `name`                                   | String  | Name of company.                             |
+| `company_type`                           | String  | Type of company, given by OpenCorporates.    |
+| `addr_id` (FK to `addresses`)            | String  | Identifier of address.                       |
+| `network_id` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp. |
 
-```yaml
-{
-  "id": "F_768178_2960083",
-  "addr": "61 SIXTH ST",
-  "city": 'CAMBRIDGE',
-  "state": 'MA',
-  "zip": '02141',
-  "ls_price": 19911015,
-  "ls_date": '1991-10-15',
-  "units": 1,
-  "bld_area": 2364,
-  "res_area": 2996,
-  "bldg_val": 401600,
-  "land_val": 941800,
-  "total_val": 1343400,
-  "use_code_orig": "109",
-  "use_code": "109"
-}
-```
+### `officers`
+
+Each row represents a unique name-company relationship.
+
+| Field                                    | Type    | Description                                                   |
+|------------------------------------------|---------|---------------------------------------------------------------|
+| `id` (PK)                                | Integer | Unique identifier.                                            |
+| `name`                                   | String  | Name of officer.                                              |
+| `positions`                              | String  | Comma-separated list of positions held by officer in company. |
+| `company_id` (FK to `companies`)         | String  | Identifier of company.                                        |
+| `addr_id` (FK to `addresses`)            | String  | Identifier of address.                                        |
+| `network_id` (FK to `metacorps_network`) | String  | Identifier of network-deduplicated metacorp.                  |
+
+### `metacorps_network`
+
+Each row represents a network-identified 'metacorp', or group of companies that we've identified as related.
+
+| Field     | Type    | Description                               |
+|-----------|---------|-------------------------------------------|
+| `id` (PK) | Integer | Unique identifier.                        |
+| `name`    | String  | Most common company name within metacorp. |
+
+### `metacorps_cosine`
+
+Each row represents a cosine-deduplication-identified 'metacorp', or group of companies that we've identified as related.
+
+| Field     | Type    | Description                               |
+|-----------|---------|-------------------------------------------|
+| `id` (PK) | Integer | Unique identifier.                        |
+| `name`    | String  | Most common company name within metacorp. |
+
+### `parcels_point` (🌐)
+
+Each row is a `POINT()` representation of a parcel in the MassGIS parcels database.
+
+| Field                                   | Type           | Description                                                              |
+|-----------------------------------------|----------------|--------------------------------------------------------------------------|
+| `loc_id` (PK)                           | Integer        | Unique identifier.                                                       |
+| `muni_id` (FK to `munis`)               | String         | Unique identifier of municipality.                                       |
+| `block_group_id` (FK to `block_groups`) | String         | Unique identifier of block group that contains parcel.                   |
+| `tract_id` (FK to `tracts`)             | String         | Unique identifier of census tract that contains tract.                   |
+| `geometry`                              | Point Geometry | Point representation of parcel, found using `sf::st_point_on_surface()`. |
+
+### `addresses`
+
+Each row is a unique address (including parsed ranges) found in any of `assessors`, `sites`, `owners`, `companies`, or `owners`. Constructed, in part, using the statewide and Boston address layers as a reference dataset.
+
+| Field                            | Type    | Description                                                                                        |
+|----------------------------------|---------|----------------------------------------------------------------------------------------------------|
+| `loc_id` (PK)                    | Integer | Unique identifier.                                                                                 |
+| `addr`                           | String  | Complete number, street name, type string, often reconstructed from address ranges, PO Boxes, etc. |
+| `start`                          | Number  | For ranges, start of address range. For single-number addresses, that single number.               |
+| `end`                            | Number  | For ranges, end of address range. For single-number addresses, that single number.                 |
+| `body`                           | String  | Street name and address type.                                                                      |
+| `even`                           | Boolean | Whether an address is even or odd.                                                                 |
+| `muni`                           | String  | Name of municipality.                                                                              |
+| `postal`                         | String  | Postal code. For US addresses, a ZIP code.                                                         |
+| `state`                          | String  | State (or, for international addresses, a region).                                                 |
+| `loc_id` (FK to `parcels_point`) | String  | Unique identifier of parcel.                                                                       |
+
+## Boundaries
+
+These are loaded using `load_results()` if `load_boundaries = TRUE`.
+
+### `munis` (🌐)
+
+| Field          | Type                    | Description                                                              |
+|----------------|-------------------------|--------------------------------------------------------------------------|
+| `muni_id` (PK) | Integer                 | Unique identifier.                                                       |
+| `muni`         | String                  | Name of municipality.                                                    |
+| `hns`          | Boolean                 | If `TRUE`, municipality is one of the Healthy Neighborhoods Study areas. |
+| `mapc`         | Boolean                 | If `TRUE`, municipality is part of the MAPC region.                      |
+| `geometry`     | Geometry (MultiPolygon) | Municipal boundary.                                                      |
+
+### `block_groups` (🌐)
+
+Each row is a Massachusetts block group from the most recent vintage available in `tigris`. Currently, 2022.
+
+| Field      | Type                    | Description                                   |
+|------------|-------------------------|-----------------------------------------------|
+| `id` (PK)  | Integer                 | Unique identifier (i.e., the 12-digit GEOID). |
+| `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
+
+### `tracts` (🌐)
+
+Each row is a Massachusetts census tract from the most recent vintage available in `tigris`. Currently, 2022.
+
+| Field      | Type                    | Description                                   |
+|------------|-------------------------|-----------------------------------------------|
+| `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
+| `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
+
+### `zips` (🌐)
+
+Each row is a ZIP code boundary some of which intersects with Massachusetts. (ZIPS can cross state lines).
+
+| Field      | Type                    | Description                                   |
+|------------|-------------------------|-----------------------------------------------|
+| `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
+| `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
