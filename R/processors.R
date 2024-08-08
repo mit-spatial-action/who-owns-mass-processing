@@ -526,23 +526,27 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   }
   sites <- df |>
     dplyr::select(
-      dplyr::starts_with(site_prefix)
+      c(dplyr::starts_with(site_prefix), own_site_id, own_muni_id)
     ) |>
     dplyr::rename_with(
       ~ stringr::str_remove(.x, stringr::str_c(site_prefix, "_"))
+    )  |>
+    dplyr::mutate(
+      ooc = dplyr::case_when(
+        own_id == id & own_muni_id == muni_id ~ TRUE,
+        .default = FALSE
+      )
     ) |>
-    dplyr::select(-c(country))
-  
-  res_col <- stringr::str_c(site_prefix, "res", sep="_")
+    dplyr::select(-c(country, own_id, own_muni_id))
   
   owners <- df |>  
-    dplyr::filter(.data[[res_col]]) |>
+    dplyr::filter(site_res) |>
     dplyr::rename(
-      match_site_id = own_site_id, 
+      match_site_id = own_site_id,
       match_muni_id = own_muni_id
       ) |>
     dplyr::select(
-      c(site_id, site_muni_id, site_loc_id, match_site_id, match_muni_id, dplyr::starts_with(own_prefix))
+      c(site_id, site_muni_id, match_site_id, match_muni_id, dplyr::starts_with(own_prefix))
     ) |>
     dplyr::rename_with(
       ~ stringr::str_remove(.x, stringr::str_c(own_prefix, "_"))
@@ -551,7 +555,7 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
   
   owners <- owners |>
     dplyr::filter(!is.na(match_site_id) & !is.na(match_muni_id)) |>
-    dplyr::select(site_id, site_muni_id, site_loc_id, match_site_id, match_muni_id, name) |>
+    dplyr::select(site_id, site_muni_id, match_site_id, match_muni_id, name) |>
     dplyr::left_join(
       sites |>
         dplyr::select(
@@ -564,21 +568,11 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
       multiple="any",
       na_matches="never"
     ) |>
-    dplyr::mutate(
-      ooc = dplyr::case_when(
-        match_site_id == site_id & match_muni_id == site_muni_id ~ TRUE,
-        .default = FALSE
-      ),
-      ooc_p = dplyr::case_when(
-        loc_id == site_loc_id ~ TRUE,
-        .default = FALSE
-      )
-    ) |>
     dplyr::bind_rows(
       owners |>
         dplyr::filter(!(!is.na(match_site_id) & !is.na(match_muni_id)))
     ) |>
-    dplyr::select(-c(match_site_id, match_muni_id, site_loc_id))
+    dplyr::select(-c(match_site_id, match_muni_id))
 
   list(
     sites = sites,
@@ -684,45 +678,46 @@ proc_assess_owners <- function(df, name_col, address_col, type = "owners", quiet
     tibble::rowid_to_column("id")
 }
 
-proc_address_full_match <- function(df, site_prefix, own_prefix) {
-  unmatched <- df |>
-    dplyr::filter(is.na(own_site_id) & is.na(own_muni_id))
-    
-  site <- unmatched |>
-    dplyr::select(dplyr::starts_with(site_prefix))
-  
-  own <- unmatched |>
-    dplyr::select(dplyr::starts_with(own_prefix)) |>
-    dplyr::left_join(
-      site |>
-        dplyr::select(
-          site_addr, site_muni, site_postal, 
-          site_id, site_muni_id) |>
-        dplyr::distinct(),
-      dplyr::join_by(
-        own_addr == site_addr, 
-        own_muni == site_muni, 
-        own_postal == site_postal),
-      multiple = "any",
-      na_matches = "never"
-    ) |>
-    dplyr::mutate(
-      own_site_id = dplyr::case_when(
-        !is.na(site_id) ~ site_id,
-        .default = own_site_id
-      ),
-      own_muni_id = dplyr::case_when(
-        !is.na(site_muni_id) ~ site_muni_id,
-        .default = own_muni_id
-      )
-    ) |>
-    dplyr::select(-c(site_id, site_muni_id)) |>
-    dplyr::bind_cols(site) |>
-    dplyr::bind_rows(
-      df |>
-        dplyr::filter(!(is.na(own_site_id) & is.na(own_muni_id)))
-    )
-}
+# Proved too inclusive.
+# proc_address_full_match <- function(df, site_prefix, own_prefix) {
+#   unmatched <- df |>
+#     dplyr::filter(is.na(own_site_id) & is.na(own_muni_id))
+#     
+#   site <- unmatched |>
+#     dplyr::select(dplyr::starts_with(site_prefix))
+#   
+#   own <- unmatched |>
+#     dplyr::select(dplyr::starts_with(own_prefix)) |>
+#     dplyr::left_join(
+#       site |>
+#         dplyr::select(
+#           site_addr, site_muni, site_postal, 
+#           site_id, site_muni_id) |>
+#         dplyr::distinct(),
+#       dplyr::join_by(
+#         own_addr == site_addr, 
+#         own_muni == site_muni, 
+#         own_postal == site_postal),
+#       multiple = "any",
+#       na_matches = "never"
+#     ) |>
+#     dplyr::mutate(
+#       own_site_id = dplyr::case_when(
+#         !is.na(site_id) ~ site_id,
+#         .default = own_site_id
+#       ),
+#       own_muni_id = dplyr::case_when(
+#         !is.na(site_muni_id) ~ site_muni_id,
+#         .default = own_muni_id
+#       )
+#     ) |>
+#     dplyr::select(-c(site_id, site_muni_id)) |>
+#     dplyr::bind_cols(site) |>
+#     dplyr::bind_rows(
+#       df |>
+#         dplyr::filter(!(is.na(own_site_id) & is.na(own_muni_id)))
+#     )
+# }
 
 proc_address_full_match_range <- function(df, site_prefix, own_prefix) {
   unmatched <- df |>
@@ -781,8 +776,7 @@ proc_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE)
         site_addr == own_addr ~ site_muni_id,
         .default = NA_character_
       )
-    ) |>
-    proc_address_full_match(site_prefix, own_prefix)
+    )
   
   matched <- df |>
     dplyr::filter(!is.na(own_site_id) & !is.na(own_muni_id)) |>
@@ -802,7 +796,6 @@ proc_assess_address_text <- function(df, site_prefix, own_prefix, quiet = FALSE)
         .default = own_muni_id
       )
     ) |>
-    proc_address_full_match(site_prefix, own_prefix) |>
     dplyr::bind_rows(matched)
 }
 
@@ -838,7 +831,6 @@ proc_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE
         .default = own_muni_id
       )
     ) |>
-    proc_address_full_match(site_prefix, own_prefix) |>
     dplyr::bind_rows(matched)
 }
 

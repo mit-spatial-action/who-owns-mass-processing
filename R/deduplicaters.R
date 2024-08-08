@@ -378,23 +378,27 @@ dedupe_cosine <- function(df,
 }
 
 dedupe_cosine_join <- function(owners, companies) {
-  cosine_relations <- owners |>
-    dplyr::filter(is.na(company_id) & (inst | trust)) |>
+  owners <- owners |>
     dplyr::mutate(
       table = "owners"
-    ) |>
+    )
+  
+  companies <- companies |>
+    dplyr::mutate(
+      table = "companies"
+    )
+    
+  
+  cosine_relations <- owners |>
+    dplyr::filter(is.na(company_id) & (inst | trust)) |>
     dplyr::bind_rows(
-      companies |>
-        dplyr::mutate(
-          table = "companies"
-        ) |>
-        dplyr::rename(company_id = id)
+      companies
     ) |>
-    dplyr::filter(!is.na(cosine_bound)) |>
-    dplyr::group_by(init_group = cosine_bound, table) |>
+    dplyr::filter(!is.na(group)) |>
+    dplyr::group_by(group, table) |>
     dplyr::slice_head() |>
     dplyr::ungroup() |>
-    dplyr::select(name, company_id, addr_id, init_group, table) |>
+    dplyr::select(name, company_id, addr_id, init_group = group, table) |>
     dplyr::distinct() |>
     dedupe_cosine_bounded(
       "name",
@@ -403,28 +407,37 @@ dedupe_cosine_join <- function(owners, companies) {
       table_col="table",
       prefix="joined"
     ) |>
-    dplyr::group_by(cosine_bound) |>
+    dplyr::filter(!is.na(group)) |>
+    dplyr::group_by(group) |>
     tidyr::fill(company_id, .direction="updown") |>
     dplyr::ungroup() |>
     dplyr::filter(table == "owners" & !is.na(company_id)) |>
     dplyr::select(init_group, company_id)
   
-  owners |>
+  save(cosine_relations, file="relations.Rda")
+  
+  unmatched <- owners |>
     dplyr::filter(is.na(company_id)) |>
     dplyr::select(-company_id) |>
     dplyr::left_join(
       cosine_relations,
       by=dplyr::join_by(
-        cosine_bound == init_group
-      )
-    ) |>
-    dplyr::group_by(cosine_bound) |>
+        group == init_group
+      ),
+      na_matches="never"
+    )
+
+  df <- unmatched |>
+    dplyr::filter(!is.na(group)) |>
+    dplyr::group_by(group) |>
     tidyr::fill(company_id, .direction="downup") |>
     dplyr::ungroup() |>
-    dplyr::group_by(cosine_bound) |>
+    dplyr::group_by(group) |>
     tidyr::fill(naive, .direction="downup") |>
     dplyr::ungroup() |>
     dplyr::bind_rows(
+      unmatched |>
+        dplyr::filter(is.na(group)),
       owners |>
         dplyr::filter(!is.na(company_id))
     )
@@ -621,6 +634,23 @@ dedupe_all <- function(
     
     conn <- util_conn(push_db)
     sites |>
+      dplyr::select(
+        id,
+        fy,
+        muni_id,
+        ls_date,
+        ls_price,
+        bld_area,
+        res_area,
+        units,
+        bld_val = bldg_val,
+        lnd_val = land_val,
+        use_code,
+        luc,
+        ooc,
+        condo,
+        addr_id
+      ) |>
       load_write(
         conn=conn,
         table_name="sites",
