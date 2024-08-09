@@ -12,7 +12,7 @@ While the full process requires that you source OpenCorporates data, you can run
 
 ### Data Dictionary
 
-[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
 
 ### renv
 
@@ -61,7 +61,7 @@ load_results("your_db_prefix", load_boundaries=TRUE, summarize=TRUE)
 
 This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
 
-[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
 
 If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis. These appear in the data dictionary as well.
 
