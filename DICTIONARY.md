@@ -178,7 +178,7 @@ These are loaded using `load_results()` if `load_boundaries = TRUE`.
 | Field          | Type                    | Description                                                              |
 |---------------|---------------|------------------------------------------|
 | `muni_id` (PK) | Integer                 | Unique identifier.                                                       |
-| `id`         | String                  | Name of municipality.                                                    |
+| `muni`         | String                  | Name of municipality.                                                    |
 | `hns`          | Boolean                 | If `TRUE`, municipality is one of the Healthy Neighborhoods Study areas. |
 | `mapc`         | Boolean                 | If `TRUE`, municipality is part of the MAPC region.                      |
 | `geometry`     | Geometry (MultiPolygon) | Municipal boundary.                                                      |
