@@ -33,9 +33,11 @@ DB_PASS="yourpassword"
 # Or whatever your port
 DB_PORT=5432
 DB_NAME="yourdbname"
+# Will likely need to be "require" for remote.
+DB_SSL="allow"
 ```
 
-Optionally, you can use the `PUSH_DBS` configuration parameter to specify a different database you'd like to point subroutine results to, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to pass a string value to the appropriate named elements in `PUSH_DBS` (see section 'Configuration (`config.R`)' below) and define...
+Optionally, you can use the `PUSH_DBS` configuration parameter to specify a different database you'd like to point subroutine results to, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to pass a string value to the appropriate named elements in `PUSH_DBS` (see section 'Configuration (`config.R`)' below), or to `load_results("yourstring")` and define...
 
 ``` r
 YOURSTRING_DB_HOST="yourhost"
@@ -44,6 +46,8 @@ YOURSTRING_DB_PASS="yourpassword"
 # Or whatever your port
 YOURSTRING_DB_PORT=5432
 YOURSTRING_DB_NAME="yourdbname"
+# Will likely need to be "require" for remote.
+YOURSTRING_DB_SSL="allow"
 ```
 
 If you modify your `.Renviron` mid-RStudio session, you can simply run `readRenviron('.Renviron')` to reload.
