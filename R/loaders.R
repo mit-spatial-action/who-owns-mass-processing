@@ -1057,7 +1057,7 @@ load_places <- function(munis, zips, crs, quiet=FALSE) {
     tibble::rowid_to_column("id")
 }
 
-load_munis <- function(crs, quiet=FALSE) {
+load_munis <- function(crs, path, quiet=FALSE) {
   #' Load Massachusetts Municipal Boundaries
   #' 
   #' Downloads MA municipalities from MassGIS ArcGIS Hub and flags
@@ -1091,7 +1091,10 @@ load_munis <- function(crs, quiet=FALSE) {
       ),
       muni = stringr::str_replace(muni, "BORO$", "BOROUGH")
     ) |>
-    std_flag_hns("muni")
+    dplyr::left_join(
+      util_muni_table(path) |> dplyr::select(muni_id, hns, mapc),
+      by=dplyr::join_by(muni_id == muni_id)
+    )
 }
 
 load_ma_hydro <- function(crs, thresh = 0.98, quiet=FALSE) {
@@ -1485,6 +1488,7 @@ load_read_write_all <- function(
       "munis",
       loader=load_munis(
         crs=crs,
+        path=data_path,
         quiet=quiet
       ),
       id_col="muni_id",

@@ -1840,16 +1840,6 @@ std_separate_and_label <- function(df,
 
 # Type Flags ====
 
-std_flag_hns <- function(df, col) {
-  hns_munis <- c(
-    "LYNN", "EVERETT", "CHELSEA", "BROCKTON", 
-    "FALL RIVER", "NEW BEDFORD", "BOSTON")
-  df |>
-    dplyr::mutate(
-      hns = .data[[col]] %in% hns_munis
-    )
-}
-
 std_flag_agent <- function(df, col, position_col) {
   df |>
     dplyr::mutate(
