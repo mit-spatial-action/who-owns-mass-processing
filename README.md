@@ -4,7 +4,7 @@ This repository deduplicates property owners in Massachusetts using the [MassGIS
 
 While we share large parts of their approach (i.e., relying on community detection on company-officer relationships, following cosine-similarity deduplication of names), we believe that our results are more robust for several reasons. Inspired, in part, by [Preis (2024)](https://doi.org/10.1080/24694452.2023.2277810), we expend a great deal of effort on address standardization so that we can use addresses themselves as network entities (prior approaches, with the exception of Preis, have just concatenated addresses and names prior to deduplication). This is a substantial change: "similar" addresses, by whatever measure, can still be very different addresses. By relying on standardized unique addresses, we believe that we are substantially reducing our false positive rate.
 
-Community detection---based on both network analysis and cosine similarity---is accomplished using the `igraph` implementation of the fast greedy modularity optimization algorithm.
+Community detection---based on both network analysis and cosine similarity---is accomplished using the [`igraph`](https://r.igraph.org/) package's implementation of the fast greedy modularity optimization algorithm. Cosine similarity is calculated using the [`quanteda`](https://quanteda.io/) package.
 
 While the full process requires that you source OpenCorporates data, you can run the cosine-similarity-based deduplication process using only the assessors tables. (See the documentation for the `OC_PATH` configuration variable.)
 
@@ -12,7 +12,7 @@ While the full process requires that you source OpenCorporates data, you can run
 
 ### Data Dictionary
 
-[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
 
 ### renv
 
@@ -33,9 +33,11 @@ DB_PASS="yourpassword"
 # Or whatever your port
 DB_PORT=5432
 DB_NAME="yourdbname"
+# Will likely need to be "require" for remote.
+DB_SSL="allow"
 ```
 
-Optionally, you can use the `PUSH_DBS` configuration parameter to specify a different database you'd like to point subroutine results to, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to pass a string value to the appropriate named elements in `PUSH_DBS` (see section 'Configuration (`config.R`)' below) and define...
+Optionally, you can use the `PUSH_DBS` configuration parameter to specify a different database you'd like to point subroutine results to, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to pass a string value to the appropriate named elements in `PUSH_DBS` (see section 'Configuration (`config.R`)' below), or to `load_results("yourstring")` and define...
 
 ``` r
 YOURSTRING_DB_HOST="yourhost"
@@ -44,6 +46,8 @@ YOURSTRING_DB_PASS="yourpassword"
 # Or whatever your port
 YOURSTRING_DB_PORT=5432
 YOURSTRING_DB_NAME="yourdbname"
+# Will likely need to be "require" for remote.
+YOURSTRING_DB_SSL="allow"
 ```
 
 If you modify your `.Renviron` mid-RStudio session, you can simply run `readRenviron('.Renviron')` to reload.
@@ -61,7 +65,7 @@ load_results("your_db_prefix", load_boundaries=TRUE, summarize=TRUE)
 
 This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
 
-[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/README.md)
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
 
 If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis. These appear in the data dictionary as well.
 
