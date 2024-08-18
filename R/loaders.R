@@ -267,11 +267,32 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
     )
   }
   if ("sf" %in% class(df)) {
+    drop_idx_q <- glue::glue("DROP INDEX IF EXISTS {table_name}_geom_idx")
+    DBI::dbExecute(
+      conn,
+      drop_idx_q
+    ) |> suppressMessages()
     sf::st_write(
       df, 
       dsn=conn, 
       layer=table_name,
       delete_layer=overwrite
+    )
+    geom_type <- df |>
+      sf::st_geometry_type(by_geometry = FALSE) |> 
+      as.character()
+    epsg <- sf::st_crs(df)$input |>
+      stringr::str_extract("[0-9]+$") |> 
+      as.numeric()
+    geom_q <- glue::glue("ALTER TABLE {table_name} ALTER COLUMN geometry TYPE geometry({geom_type}, {epsg})")
+    DBI::dbExecute(
+      conn,
+      geom_q
+    )
+    idx_q <- glue::glue("CREATE INDEX {table_name}_geom_idx ON {table_name} USING GIST(geometry)")
+    DBI::dbExecute(
+      conn,
+      idx_q
     )
   } else {
     DBI::dbWriteTable(
