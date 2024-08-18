@@ -158,7 +158,7 @@ Each row is a unique address (including parsed ranges) found in any of `assessor
 
 | Field                            | Type    | Description                                                                                        |
 |--------------|--------------|---------------------------------------------|
-| `loc_id` (PK)                    | Integer | Unique identifier.                                                                                 |
+| `id` (PK)                    | Integer | Unique identifier.                                                                                 |
 | `addr`                           | String  | Complete number, street name, type string, often reconstructed from address ranges, PO Boxes, etc. |
 | `start`                          | Number  | For ranges, start of address range. For single-number addresses, that single number.               |
 | `end`                            | Number  | For ranges, end of address range. For single-number addresses, that single number.                 |
@@ -177,7 +177,7 @@ These are loaded using `load_results()` if `load_boundaries = TRUE`.
 
 | Field          | Type                    | Description                                                              |
 |---------------|---------------|------------------------------------------|
-| `muni_id` (PK) | Integer                 | Unique identifier.                                                       |
+| `muni_id` (PK) | String                  | Unique identifier.                                                       |
 | `muni`         | String                  | Name of municipality.                                                    |
 | `hns`          | Boolean                 | If `TRUE`, municipality is one of the Healthy Neighborhoods Study areas. |
 | `mapc`         | Boolean                 | If `TRUE`, municipality is part of the MAPC region.                      |
