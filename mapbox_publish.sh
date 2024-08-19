@@ -39,7 +39,7 @@ fi
 
 {
   echo "Uploading data to "$tileset"..."
-  # tilesets upload-source $username --replace --no-validation $tileset $file
+  tilesets upload-source $username --replace --no-validation $tileset $file
 } && {
   # # If source upload is successful, create tileset.
   existing_tilesets=$(tilesets list $username)
