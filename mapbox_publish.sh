@@ -1,6 +1,12 @@
 #!/bin/bash
 # Automate the source creation and tileset publication process.
 
+if [[ $(brew list | grep 'gdal') ]]; then
+  echo "GDAL is installed."
+else
+  brew install gdal
+fi
+
 if ! test -f venv/bin/activate; then
   echo "Could not locate python virtual environment. Attempting to create."
   if command -v python &> /dev/null; then
@@ -11,9 +17,11 @@ if ! test -f venv/bin/activate; then
     echo "Could not create virtual environment."
     exit 1
   fi
+  echo "Activating Python virtual environment."
   source venv/bin/activate
   python -m pip install 'mapbox-tilesets[estimate-area]'
 else
+  echo "Activating Python virtual environment."
   source venv/bin/activate
 fi
 
