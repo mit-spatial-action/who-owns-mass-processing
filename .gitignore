@@ -33,6 +33,8 @@ results/*.Rda
 
 data/*
 
+venv/*
+
 !data/muni_ids.csv
 !data/luc_crosswalk.csv
 !data/README.csv
