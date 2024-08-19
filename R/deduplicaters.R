@@ -832,7 +832,8 @@ dedupe_all <- function(
       
       officers <- officers |>
         std_flag_agent("name", position_col ="position") |>
-        dplyr::filter(!agent) |>
+        std_flag_manager("name") |>
+        dplyr::filter(!agent & !manager) |>
         dplyr::group_by(
           name,
           inst,

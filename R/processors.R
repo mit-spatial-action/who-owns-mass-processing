@@ -1,9 +1,3 @@
-source('R/standardizers.R')
-source('R/loaders.R')
-source("R/utilities.R")
-
-
-
 # Addresses ====
 
 proc_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {

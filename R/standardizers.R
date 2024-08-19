@@ -1852,6 +1852,15 @@ std_flag_agent <- function(df, col, position_col) {
     )
 }
 
+std_flag_manager <- function(df, col) {
+  df |>
+    dplyr::mutate(
+      manager = dplyr::case_when(
+        stringr::str_detect(.data[[col]], "MANAGE(R|MENT)")
+      )
+    )
+}
+
 std_flag_condos <- function(df, luc_col, id_cols) {
   condo <- df |>
     dplyr::filter(.data[[luc_col]] == '102')
