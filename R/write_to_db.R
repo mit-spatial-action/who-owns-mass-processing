@@ -66,12 +66,16 @@ sites_for_db <- sites |>
 
 # TODO: having to deduplicate (`distinct` method) because there are two entries 
 # with the same ID (48) and different `site_id`
-owners_for_db <- dplyr::left_join(owners, sites_to_owners |> 
-                                    dplyr::select(-c(id)), by=c('id'='owner_id')) |> 
+owners_for_db <- 
+  dplyr::left_join(owners, sites_to_owners |> 
+                  dplyr::select(-c(id)), by=c('id'='owner_id')) |> 
   dplyr::rename(
     address_id = addr_id,
     metacorp_id = network_group
-  ) |> dplyr::distinct(id, .keep_all = TRUE)
+  ) |> dplyr::distinct(id, .keep_all = TRUE) |>
+  dplyr::filter(!(is.na(company_id))) 
+
+### TODO: filter out metacorps ()
 
 
 company_types <- data.frame(matrix(ncol = 2, nrow=length(unique(companies$company_type))))
@@ -90,30 +94,90 @@ companies_for_db <- companies |>
   ) |>
   dplyr::select(-c(company_type))
 
-# for some reason we have companies in owners table that don't exist in compannies table
-# TODO: do something better than just getting rid of them
-nrow(owners_for_db |> dplyr::filter(!(company_id %in% companies$id) ))
-owners_for_db <- owners_for_db |> dplyr::filter(company_id %in% companies$id)
+# joint table between owners and companies
+company_owner <- owners_for_db |> 
+  dplyr::rename(person_id = id) |>
+  dplyr::select(c(owner_id, company_id))
+
+company_person <- people_for_db |>
+  dplyr::rename(person_id = id) |>
+  dplyr::select(c(person_id, company_id))
+
+
+roles_for_db <- officers |> 
+  dplyr::select(c("positions")) |>
+  tidyr::separate_rows(positions, sep=",") |>
+  distinct() |>
+  dplyr::mutate(
+    id = row_number(),
+    ) |>
+  dplyr::rename(
+    position = positions
+  )
+
+# name_to_id <- roles_for_db |>
+#   dplyr::deframe() |> # Convert dataframe to named vector
+#   as.character()
+
+people_for_db <- officers |> 
+
+get_item_ids <- function(item_list, lookup_df) {
+  ids <- lookup_df |>
+    dplyr::filter(position %in% item_list) |>
+    pull(id)
+  return(str_c(ids, collapse=", "))
+}
+
+people_for_db <- officers |>
+  dplyr::mutate(roles = strsplit(positions, ",")) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(role_ids = get_item_ids(roles, roles_for_db)) |>
+  dplyr::ungroup() |>
+  dplyr::select(-c(roles, positions))
+
+person_role <- people_for_db |>
+  tidyr::separate_rows(role_ids, sep = ", ") |>
+  dplyr::rename(role_id = role_ids) |>
+  dplyr::mutate(role_id = as.integer(role_id),
+                person_id = id) |>
+  dplyr::select(c(person_id, role_id))
+
+companies_for_db <- companies_for_db |> 
+  dplyr::left_join(people_for_db, by=c('id'='company_id')) |>
+  dplyr::select(-c(roles, positions, name.y, addr_id, network_id, role_ids)) |>
+  dplyr::rename(name = name.x, person_id = id.y) |>
+  dplyr::group_by(id) |>
+  dplyr::summarize(people = list(person_id), .groups = 'drop') |>
+  dplyr::left_join(companies_for_db, by='id')
+
+people_for_db <- people_for_db |>
+  dplyr::select(-c(network_id, innetwork_company_count, addr_id, company_id, role_ids))
 
 # UPDATE mytable SET the_geom  = ST_SetSRID(the_geom, newSRID);
 dbWriteTable(con, "metacorps_network", metacorps_network, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "munis", munis_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "zips", zips, overwrite = FALSE, append = TRUE)
-
+dbWriteTable(con, "muni", munis_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "zip", zips, overwrite = FALSE, append = TRUE)
 # dbWriteTable(con, "parcels", parcels, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "tracts", tracts, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "block_groups", block_groups, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "tract", tracts, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "block_group", block_groups, overwrite = FALSE, append = TRUE)
 dbWriteTable(con, "parcels_point", parcels_point_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "addresses", addresses_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "company_types", company_types, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "sites", sites_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "who_owns_institution", companies_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "owners", owners_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "address", addresses_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "company_type", company_types, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "site", sites_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "role", roles_for_db |> dplyr::rename(name = position), overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "person", people_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "company", companies_for_db, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "owner", owners_for_db |> dplyr::select(-c(company_id)), overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "person_role", person_role, overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "company_owner", company_owner |> dplyr::filter(company_id %in% companies_for_db$id), overwrite = FALSE, append = TRUE)
+dbWriteTable(con, "company_person", company_person |> dplyr::filter(person_id %in% people_for_db), overwrite = FALSE, append = TRUE)
+
 
 # Close the connection
 dbDisconnect(con)
 
 # currently saving owners with 3 or more properties (partly for mapbox size reasons, <= 5MB)
+# three or more purchases within a five-year window
 mapbox_gis_df <- sites_for_db |> dplyr::filter(ooc == FALSE) |> 
   dplyr::select(c(id, address_id)) |>
   dplyr::left_join(owners_for_db |> dplyr::filter(inst == TRUE) |> dplyr::select(c(site_id, metacorp_id)), by=c('id' = 'site_id')) |>
@@ -137,3 +201,32 @@ mapbox_gis_df <- sites_for_db |> dplyr::filter(ooc == FALSE) |>
 geojson <- geojson_list(mapbox_gis_df)
 sf_df <- st_as_sf(mapbox_gis_df |> dplyr::filter(!(is.na(longitude))), coords = c("longitude", "latitude"), crs = 2249, remove = FALSE)
 st_write(sf_df, "output.geojson", driver = "GeoJSON")
+
+
+library(jsonlite)
+
+# Define your Mapbox Style JSON structure
+mapbox_style <- list(
+  version = 8,
+  name = "Example Style",
+  sources = list(
+    example_source = list(
+      type = "geojson",
+      data = "output.geojson"  # Path to your GeoJSON file
+    )
+  ),
+  layers = list(
+    list(
+      id = "example_layer",
+      type = "circle",
+      source = "example_source",
+      paint = list(
+        "circle-radius" = 5,
+        "circle-color" = "#ff0000"
+      )
+    )
+  )
+)
+
+# Save the Mapbox Style JSON file
+write_json(mapbox_style, "mapbox_style.json", pretty = TRUE)
