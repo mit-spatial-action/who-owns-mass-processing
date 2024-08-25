@@ -176,23 +176,24 @@ dbWriteTable(con, "company_person", company_person |> dplyr::filter(person_id %i
 # Close the connection
 dbDisconnect(con)
 
-# currently saving owners with 3 or more properties (partly for mapbox size reasons, <= 5MB)
+# currently saving owners with 3 or more properties  (partly for mapbox size reasons, <= 5MB)
 # three or more purchases within a five-year window
 mapbox_gis_df <- sites_for_db |> dplyr::filter(ooc == FALSE) |> 
-  dplyr::select(c(id, address_id)) |>
-  dplyr::left_join(owners_for_db |> dplyr::filter(inst == TRUE) |> dplyr::select(c(site_id, metacorp_id)), by=c('id' = 'site_id')) |>
+  dplyr::rename(site_id = id) |>
+  dplyr::select(c(site_id, address_id, units)) |>
+  dplyr::left_join(companies_for_db |> dplyr::select(c(id, address_id)) |> dplyr::rename(company_id = id), by='address_id', relationship = "many-to-many") |>
+  dplyr::left_join(owners_for_db |> dplyr::filter(inst == TRUE) |> dplyr::select(c(site_id, metacorp_id, cosine_group)), by='site_id') |>
   dplyr::left_join(addresses_for_db |> dplyr::select(c(id, loc_id)), by=c('address_id' = 'id')) |>
   dplyr::left_join(parcels_point_for_db |> dplyr::select(c(id, geometry)), by=c('loc_id' = 'id')) |>
   dplyr::filter(!(is.na(metacorp_id))) |>
   dplyr::left_join(metacorps_network |> dplyr::select(c(id, company_count)), by=c('metacorp_id' = 'id')) |>
-  dplyr::filter(company_count > 2) |>
-  dplyr::rename(site_id = id) |>
+  dplyr::filter(!st_is_empty(geometry)) |>
   dplyr::mutate(geometry = st_transform(geometry, crs = 4326)) |>
   dplyr::mutate(coords = sf::st_coordinates(geometry)) |>
   dplyr::mutate(longitude = coords[,1],
                 latitude = coords[,2]) |>
-  dplyr::select(-c(coords, site_id, address_id)) 
-
+  dplyr::select(-c(coords, address_id)) 
+ 
 
 
 # mapbox_gis_json <- toJSON(mapbox_gis_df)
@@ -200,6 +201,7 @@ mapbox_gis_df <- sites_for_db |> dplyr::filter(ooc == FALSE) |>
 
 geojson <- geojson_list(mapbox_gis_df)
 sf_df <- st_as_sf(mapbox_gis_df |> dplyr::filter(!(is.na(longitude))), coords = c("longitude", "latitude"), crs = 2249, remove = FALSE)
+
 st_write(sf_df, "output.geojson", driver = "GeoJSON")
 
 
