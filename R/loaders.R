@@ -281,9 +281,7 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
     geom_type <- df |>
       sf::st_geometry_type(by_geometry = FALSE) |> 
       as.character()
-    epsg <- sf::st_crs(df)$input |>
-      stringr::str_extract("[0-9]+$") |> 
-      as.numeric()
+    epsg <- sf::st_crs(df)$epsg
     geom_q <- glue::glue("ALTER TABLE {table_name} ALTER COLUMN geometry TYPE geometry({geom_type}, {epsg})")
     DBI::dbExecute(
       conn,
