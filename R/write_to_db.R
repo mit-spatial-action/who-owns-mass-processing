@@ -22,8 +22,14 @@ addresses_for_db$start <- as.integer(addresses_for_db$start)
 addresses_for_db$end <- as.integer(addresses_for_db$end)
 
 parcels_point_for_db <- parcels_point |> dplyr::rename(
-  id = loc_id, 
-) |> dplyr::select(-c(wet))
+  id = loc_id) |> 
+  dplyr::mutate(
+    geometry = sf::st_transform(geometry, crs = 4326),
+    coords = sf::st_coordinates(geometry)
+  ) |>
+  dplyr::mutate(longitude = coords[,1],
+                latitude = coords[,2]) |>
+  dplyr::select(-c(wet, coords))
 
 missing_loc_ids_in_pp <- addresses_for_db |> 
   dplyr::filter(!is.na(loc_id)) |>
