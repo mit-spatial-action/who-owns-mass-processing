@@ -189,7 +189,7 @@ Each row is a Massachusetts block group from the most recent vintage available i
 
 | Field      | Type                    | Description                                   |
 |----------------|-------------------|-------------------------------------|
-| `id` (PK)  | Integer                 | Unique identifier (i.e., the 12-digit GEOID). |
+| `id` (PK)  | String                 | Unique identifier (i.e., the 12-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
 
 ### `tracts` (🌐)
@@ -198,7 +198,7 @@ Each row is a Massachusetts census tract from the most recent vintage available 
 
 | Field      | Type                    | Description                                   |
 |----------------|-------------------|-------------------------------------|
-| `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
+| `id` (PK)  | String                 | Unique identifier (i.e., the 11-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
 
 ### `zips` (🌐)
@@ -207,5 +207,5 @@ Each row is a ZIP code boundary some of which intersects with Massachusetts. (ZI
 
 | Field      | Type                    | Description                                   |
 |----------------|-------------------|-------------------------------------|
-| `id` (PK)  | Integer                 | Unique identifier (i.e., the 11-digit GEOID). |
+| `zip` (PK)  | String                 | Unique identifier (i.e., the 11-digit GEOID). |
 | `geometry` | Geometry (MultiPolygon) | Block group boundary.                         |
