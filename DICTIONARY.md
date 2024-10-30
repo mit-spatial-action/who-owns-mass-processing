@@ -158,7 +158,7 @@ Each row is a unique address (including parsed ranges) found in any of `assessor
 
 | Field                            | Type    | Description                                                                                        |
 |--------------|--------------|---------------------------------------------|
-| `loc_id` (PK)                    | Integer | Unique identifier.                                                                                 |
+| `id` (PK)                    | Integer | Unique identifier.                                                                                 |
 | `addr`                           | String  | Complete number, street name, type string, often reconstructed from address ranges, PO Boxes, etc. |
 | `start`                          | Number  | For ranges, start of address range. For single-number addresses, that single number.               |
 | `end`                            | Number  | For ranges, end of address range. For single-number addresses, that single number.                 |
