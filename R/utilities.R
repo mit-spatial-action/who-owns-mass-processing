@@ -208,6 +208,13 @@ util_conn <- function(prefix="") {
   )
 }
 
+utils_check_for_results <- function() {
+  results_dfs <- c("addresses", "block_groups", "companies", "metacorps_network", 
+                   "munis", "officers", "owners", "parcels_point", "sites",
+                   "sites_to_owners", "tracts", "zips")
+  all(sapply(results_dfs, exists))
+}
+
 util_check_for_tables <- function(conn, table_names) {
   #' Check Whether Database Table Exists
   #' 

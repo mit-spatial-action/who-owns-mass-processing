@@ -233,7 +233,15 @@ load_add_fk <- function(conn, table1, table2, table1_col, table2_col) {
   )
 }
 
-load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), overwrite=FALSE, quiet=FALSE, dir=RESULTS_PATH) {
+load_write <- function(df, 
+                       conn, 
+                       table_name, 
+                       id_col=NULL, 
+                       other_formats = c(), 
+                       overwrite=FALSE, 
+                       append=FALSE,
+                       quiet=FALSE, 
+                       dir=RESULTS_PATH) {
   #' Write Table to PostGIS
   #' 
   #' Writes table to PostGIS.
@@ -276,7 +284,8 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
       df, 
       dsn=conn, 
       layer=table_name,
-      delete_layer=overwrite
+      delete_layer=overwrite,
+      append=append
     )
     geom_type <- df |>
       sf::st_geometry_type(by_geometry = FALSE) |> 
@@ -297,7 +306,8 @@ load_write <- function(df, conn, table_name, id_col=NULL, other_formats = c(), o
       conn=conn,
       name=table_name,
       value=df,
-      overwrite=overwrite
+      overwrite=overwrite,
+      append=append
     )
   }
   if(!is.null(id_col)) {

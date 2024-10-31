@@ -1,109 +1,195 @@
-library(RPostgres)
-library(dplyr)
-library(DBI)
-library(sf)
+source('load_results.R')
 
-# Connect to PostgreSQL database
-con <- dbConnect(
-  RPostgres::Postgres(),
-  dbname = "who_owns",
-  host = "localhost",
-  port = 5432,
-  user = "",
-  password = ""
-)
-
-addresses_for_db <- addresses |> dplyr::rename(
-  muni_str = muni
-) 
-
-addresses_for_db$start <- as.integer(addresses_for_db$start)
-addresses_for_db$end <- as.integer(addresses_for_db$end)
-
-parcels_point_for_db <- parcels_point |> dplyr::rename(
-  id = loc_id, 
-) |> dplyr::select(-c(wet))
-
-missing_loc_ids_in_pp <- addresses_for_db |> 
-  dplyr::filter(!is.na(loc_id)) |>
-  dplyr::filter(!(loc_id %in% parcels_point$loc_id)) |>
-  dplyr::select(c(loc_id, muni_id)) |>
-  dplyr::distinct()
-
-# update parcels_point with missing loc_ids (otherwise address df errors on adding to db)
-updated_parcels_df <- data.frame()
-for (row in 1:nrow(missing_loc_ids_in_pp)) {
-  new_df <- data.frame(
-    id = missing_loc_ids_in_pp[row,]$loc_id,
-    muni_id = missing_loc_ids_in_pp[row,]$muni_id
-  )
-  updated_parcels_df <- dplyr::bind_rows(updated_parcels_df, new_df)
+django_munis <- function(munis, crs=4326) {
+  munis |>
+    dplyr::mutate(
+      state = "MA"
+    ) |>
+    dplyr::rename(
+      id = muni_id
+    ) |>
+    sf::st_transform(crs) |>
+    tidyr::drop_na(id)
 }
 
-parcels_point_for_db <- dplyr::bind_rows(parcels_point_for_db, updated_parcels_df)
+django_zips <- function(zips, crs=4326) {
+  zips |>
+    sf::st_transform(crs) |>
+    dplyr::select(
+      -dplyr::any_of(c("state", "unambig_state", "muni_unambig_from", "muni_unambig_to"))
+    )
+}
 
+django_parcels_point <- function(parcels_point, crs=4326) {
+  parcels_point <- parcels_point |> 
+    dplyr::rename(
+      id = loc_id,
+    ) |> 
+    dplyr::select(
+      -dplyr::any_of("wet")
+    ) |>
+    sf::st_transform(crs)
+  
+  coords <- sf::st_coordinates(parcels_point)
+  
+  parcels_point$lng <- coords[, "X"]
+  parcels_point$lat <- coords[, "Y"]
+  
+  parcels_point
+}
 
-unique_munis <- addresses_for_db |> dplyr::distinct(muni_id, muni_str) |> 
-  dplyr::filter(!is.na(muni_id)) |> 
-  dplyr::filter(!(muni_id %in% munis$muni_id))
+django_truncate_tables <- function(conn) {
+  django_tables <- c("metacorps_network", "tract", "block_group", "zip", "role",
+                     "address", "company", "muni", "officer", "owner", 
+                     "parcels_point", "site", "site_to_owner", "officer_to_role")
+  
+  django_tables_sep <- stringr::str_c(django_tables, collapse=",")
+  
+  DBI::dbExecute(conn, 
+                 glue::glue("TRUNCATE TABLE {django_tables_sep} CASCADE;"))
+}
 
-unique_munis <- unique_munis |>
-  dplyr::rename(muni = muni_str, 
-                id = muni_id)
+django_write <- function(load_prefix, django_prefix) {
+  
+  if (!utils_check_for_results()) {
+    util_log_message("VALIDATION: Results not present in environment. Pulling from database. 🚀🚀🚀")
+    load_results(load_prefix, load_boundaries=TRUE, summarize=TRUE)
+  } else {
+    util_log_message("VALIDATION: Results already present in environment. 🚀🚀🚀")
+  }
+  
+  util_test_conn(django_prefix)
+  conn <- util_conn(django_prefix)
+  on.exit(DBI::dbDisconnect(conn))
+  
+  django_truncate_tables(conn)
+  
+  # Write Metacorps
+  
+  load_write(metacorps_network, conn, "metacorps_network", overwrite=FALSE, append=TRUE)
+  
+  # Write Munis
+  
+  munis |>
+    django_munis() |>
+    load_write(conn, "muni", overwrite=FALSE, append=TRUE)
+  
+  # Write Tracts
+  
+  tracts |>
+    sf::st_transform(4326) |>
+    load_write(conn, "tract", overwrite=FALSE, append=TRUE)
+  
+  # Write Block Groups
+  
+  block_groups |>
+    sf::st_transform(4326) |>
+    load_write(conn, "block_group", overwrite=FALSE, append=TRUE)
+  
+  # Write ZIPs
+  
+  zips |>
+    django_zips()  |>
+    load_write(conn, "zip", overwrite=FALSE, append=TRUE)
+  
+  # Write Parcel Points
+  
+  parcels_point |> 
+    django_parcels_point() |>
+    load_write(conn, "parcels_point", overwrite=FALSE, append=TRUE)
+  
+  # Write Addresses
+  
+  addresses |>
+    dplyr::select(-muni_id) |>
+    dplyr::rename(parcel_id=loc_id) |>
+    dplyr::mutate(
+      parcel_id = dplyr::case_when(
+        parcel_id %in% parcels_point$loc_id ~ parcel_id,
+      .default = NA_character_
+      )
+    ) |>
+    load_write(conn, "address", overwrite=FALSE, append=TRUE)
+  
+  # Write Companies
+  
+  companies |>
+    dplyr::rename(
+      address_id = addr_id,
+      metacorp_id = network_id
+    ) |>
+    load_write(conn, "company", overwrite=FALSE, append=TRUE)
 
-munis_for_db <- munis |> dplyr::rename(
-  id = muni_id
-) 
+  officers_to_roles <- officers |>
+    dplyr::select(officer=id, role=positions) |>
+    tidyr::separate_longer_delim(role, delim=",")
+  
+  # Write Officers
+  
+  officers |>
+    dplyr::select(-c(positions, innetwork_company_count)) |>
+    dplyr::rename(
+      address_id = addr_id,
+      metacorp_id = network_id
+    ) |>
+    load_write(conn, "officer", overwrite=FALSE, append=TRUE)
 
-munis_for_db <- munis_for_db |> dplyr::add_row(unique_munis)
+  # Write Role
+  
+  officers_to_roles |>
+    dplyr::select(name=role) |>
+    dplyr::distinct() |>
+    tidyr::drop_na() |>
+    load_write(conn, "role", overwrite=FALSE, append=TRUE)
+  
+  # Write Officer-to-Role through table.
+  
+  officers_to_roles |>
+    dplyr::rename(
+      officer_id = officer,
+      role_id = role
+    ) |>
+    tidyr::drop_na() |>
+    load_write(conn, "officer_to_role", overwrite=FALSE, append=TRUE)
+  
+  # Write owners
+  
+  owners |>
+    dplyr::select(-cosine_group) |>
+    dplyr::rename(
+      address_id = addr_id,
+      metacorp_id = network_group
+    ) |>
+    dplyr::mutate(
+      company_id = dplyr::case_when(
+        company_id %in% companies$id ~ company_id,
+        .default = NA_integer_
+      )
+    ) |>
+    load_write(conn, "owner", overwrite=FALSE, append=TRUE)
+  
+  # Write owner
+  
+  sites |>
+    dplyr::rename(
+      address_id = addr_id
+    ) |>
+    dplyr::mutate(
+      units = as.integer(units)
+    ) |> 
+    load_write(conn, "site", overwrite=FALSE, append=TRUE)
+  
+  # Write site-to-owner through table.
+  
+  sites_to_owners |>
+    dplyr::filter(
+      site_id %in% sites$id & owner_id %in% owners$id
+    ) |>
+    dplyr::select(-id) |>
+    load_write(conn, "site_to_owner", overwrite=FALSE, append=TRUE)
+  
+  
+  invisible(NULL)
+}
 
-sites_for_db <- sites |>
-  dplyr::rename(address_id = addr_id) |>
-  dplyr::mutate(units = as.integer(units))
-
-
-# TODO: having to deduplicate (`distinct` method) because there are two entries 
-# with the same ID (48) and different `site_id`
-owners_for_db <- dplyr::left_join(owners, sites_to_owners |> 
-                                    dplyr::select(-c(id)), by=c('id'='owner_id')) |> 
-  dplyr::rename(
-    address_id = addr_id,
-    metacorp_id = network_group
-  ) |> dplyr::distinct(id, .keep_all = TRUE)
-
-
-company_types <- data.frame(matrix(ncol = 2, nrow=length(unique(companies$company_type))))
-colnames(company_types) <- c("id", "name")
-company_types <- company_types |> dplyr::mutate(
-  id = row_number(), 
-  name = unique(companies$company_type))
-
-companies_for_db <- companies |> 
-  dplyr::left_join(company_types, by=c('company_type' = 'name'), suffix = c("companies", "company_type")) |>
-  dplyr::rename(
-    id = idcompanies,
-    company_type_id = idcompany_type,
-    address_id = addr_id, 
-    metacorp_id = network_id
-  ) |>
-  dplyr::select(-c(company_type))
-
-nrow(owners_for_db |> dplyr::filter(!(company_id %in% companies$id) ))
-
-# UPDATE mytable SET the_geom  = ST_SetSRID(the_geom, newSRID);
-dbWriteTable(con, "metacorps_network", metacorps_network, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "munis", munis_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "zips", zips, overwrite = FALSE, append = TRUE)
-
-# dbWriteTable(con, "parcels", parcels, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "tracts", tracts, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "block_groups", block_groups, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "parcels_point", parcels_point_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "addresses", addresses_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "company_types", company_types, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "sites", sites_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "who_owns_institution", companies_for_db, overwrite = FALSE, append = TRUE)
-dbWriteTable(con, "owners", owners_for_db, overwrite = FALSE, append = TRUE)
-
-# Close the connection
-dbDisconnect(con)
+django_write(load_prefix='prod', django_prefix='django')
