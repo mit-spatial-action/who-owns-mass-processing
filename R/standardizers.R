@@ -1856,7 +1856,9 @@ std_flag_manager <- function(df, col) {
   df |>
     dplyr::mutate(
       manager = dplyr::case_when(
-        stringr::str_detect(.data[[col]], "MANAGE(R|MENT)")
+        stringr::str_detect(.data[[col]], "MANAGE(R|MENT)") ~ TRUE,
+        stringr::str_detect(.data[[col]], "PROPERT(Y|IES)") ~ TRUE,
+        .default = FALSE
       )
     )
 }
