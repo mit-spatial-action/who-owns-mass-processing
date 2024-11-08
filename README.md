@@ -1,6 +1,6 @@
 # Who Owns Massachusetts Processing and Deduplication
 
-This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and legal entity data sourced from [OpenCorporates](https://opencorporates.com/) under their ['public-benefic project' program](https://opencorporates.com/plug-in-our-data/). The process builds on [Hangen and O'Brien's methods (2024)](https://www.tandfonline.com/doi/full/10.1080/02673037.2024.2325508), which are themselves similar (though not identical) to methods used by [Henry Gomory (2021)](https://doi.org/10.1093/sf/soab063) and the Anti-Eviction Mapping Project's [Evictorbook](https://evictorbook.com/) (see e.g., [McElroy and Amir-Ghassemi 2021](https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/)). It also builds on Eric's experience leading development of a tool called [TenantPower](https://tenantpower.org/) with Mutual Aid Medford and Somerville in 2020, which used the [`dedupe` Python package](https://github.com/dedupeio/dedupe) in a manner similar to [Immergluck et al. (2020)](https://www.tandfonline.com/doi/full/10.1080/02673037.2019.1639635).
+This repository deduplicates property owners in Massachusetts using the [MassGIS standardized assessors' parcel dataset](https://www.mass.gov/info-details/massgis-data-property-tax-parcels) and legal entity data sourced from [OpenCorporates](https://opencorporates.com/) under their ['public-benefic project' program](https://opencorporates.com/plug-in-our-data/). The process is most explicitly constructed with reference to [Hangen and O'Brien's methods (2024)](https://www.tandfonline.com/doi/full/10.1080/02673037.2024.2325508), which are themselves similar (though not identical) to methods used by [Taylor Shelton and Eric Seymour (2024)](https://doi.org/10.1080/24694452.2023.2278690) [Henry Gomory (2021)](https://doi.org/10.1093/sf/soab063) and the Anti-Eviction Mapping Project's [Evictorbook](https://evictorbook.com/) (see e.g., [McElroy and Amir-Ghassemi 2021](https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/)). It also builds on Eric's experience leading development of a tool called [TenantPower](https://tenantpower.org/) with Mutual Aid Medford and Somerville in 2020, which used the [`dedupe` Python package](https://github.com/dedupeio/dedupe) in a manner similar to [Immergluck et al. (2020)](https://www.tandfonline.com/doi/full/10.1080/02673037.2019.1639635).
 
 While we share large parts of their approach (i.e., relying on community detection on company-officer relationships, following cosine-similarity deduplication of names), we believe that our results are more robust for several reasons. Inspired, in part, by [Preis (2024)](https://doi.org/10.1080/24694452.2023.2277810), we expend a great deal of effort on address standardization so that we can use addresses themselves as network entities (prior approaches, with the exception of Preis, have just concatenated addresses and names prior to deduplication). This is a substantial change: "similar" addresses, by whatever measure, can still be very different addresses. By relying on standardized unique addresses, we believe that we are substantially reducing our false positive rate.
 
@@ -22,7 +22,7 @@ This library's dependencies are managed using [`renv`](https://rstudio.github.io
 
 The respository uses an instance of PostgreSQL with the PostGIS extension as its primary data store. You'll need to set up a PostGIS instance on either localhost or a server.
 
-#### Setting up .Renviron
+#### Setting up `.Renviron`
 
 The scripts expect to find your PostgreSQL credentials, host, port, etc. in an `.Renviron` file with the following environment variables defined:
 
@@ -58,7 +58,7 @@ If you modify your `.Renviron` mid-RStudio session, you can simply run `readRenv
 `.Renviron` is in `.gitignore` to ensure that you don't commit your credentials.
 
 
-## Running Deduplication Process (`run.R`)
+## Running Deduplication Process ([`run.R`](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/run.R))
 
 This is a very time-consuming process, even for small subsets (this is due to the size of the `companies` and `officers` tables, which must be processed for reliable results even for smaller spatial subsets). On a 2021 Apple M1 Max chip with 64 GB of memory, the full state is taking a little under 13 hours.
 
@@ -74,7 +74,7 @@ This is because when the process is run interactively (i.e., in an RStudio envir
 
 If the process is run interactively, it automatically outputs results to objects in your environment (including intermediate results if `RETURN_INTERMEDIATE` is `TRUE` in `config.R`. It also writes results to `.csv` and `.Rda` files in `/results`, but doesn't ever try to read these---the PostgreSQL database is the only output location from which our scripts read data.
 
-### Configuring the Deduplication Process (`config.R`)
+### Configuring the Deduplication Process ([`config.R`](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/config.R))
 
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
@@ -99,7 +99,7 @@ We expose a large number of configuration variables in `config.R`, which is sour
 | `OC_PATH`             | Default: `"2024-04-12"` Either the name of the folder (within `/data`) that contains the OpenCorporates bulk data or `NULL`. Scripts depend on `companies.csv` and `officers.csv`. If `NULL`, a simplified cosine-similarity deduplication routine will run, returning a simpler set of tables.                                                                                                                                                                                                                                                                                                                                                               |
 | `GDB_PATH`            | Default: `"L3_AGGREGATE_FGDB_20240703"`This is either a folder (within `/data`) containing all the vintages of the MassGIS parcel data *or* a single most recent vintage geodatabase (in `/data`).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-## Loading Results (`load_results.R`)
+## Loading Results ([`load_results.R`](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/load_results.R))
 
 If you want to simply read the results without worrying about triggering the deduplication process, you can simply begin a new RScript, source `load_results.R`, and run a one-liner like so...
 
@@ -148,7 +148,7 @@ PROD_DB_USER="yourusername"
 # ...etc
 ```
 
-## Mapbox Preprocessing (`mapbox_preprocess.R`)
+## Mapbox Preprocessing ([`mapbox_preprocess.R`](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/mapbox_preprocess.R))
 
 The Who Owns Massachusetts application leverages several preprocessed data layers, which must be pushed to the Mapbox Tilesets API. This script runs the necessary preprocessing steps and pushes the results to Mapbox. Note that the script requires the following environment variables be defined in `.Renviron`:
 
@@ -226,5 +226,7 @@ This work received grant support from the Conservation Law Foundation and was de
 -   Henry Gomory. 2022. "The Social and Institutional Contexts Underlying Landlords’ Eviction Practices." *Social Forces* 100 (4): 1774-805. <https://doi.org/10.1093/sf/soab063>.
 -   Forrest Hangen and Daniel T. O’Brien. 2024 (Online First). "Linking Landlords to Uncover Ownership Obscurity." *Housing Studies*. 1–26. <https://doi.org/10.1080/02673037.2024.2325508>.
 -   Dan Immergluck, Jeff Ernsthausen, Stephanie Earl, and Allison Powell. 2020. "Evictions, Large Owners, and Serial Filings: Findings from Atlanta." *Housing Studies* 35 (5): 903–24. <https://doi.org/10.1080/02673037.2019.1639635>.
--   Erin McElroy and Azad Amir-Ghassemi. 2020. “Evictor Structures: Erin McElroy and Azad Amir-Ghassemi on Fighting Displacement.” *Logic Magazine*, 2020. <https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/>.
--   Benjamin Preis. 2024 (Online First). “Where the Landlords Are: A Network Approach to Landlord-Rental Locations.” *Annals of the American Association of Geographers*. 1–12.<https://doi.org/10.1080/24694452.2023.2277810>.
+-   Erin McElroy and Azad Amir-Ghassemi. 2020. "Evictor Structures: Erin McElroy and Azad Amir-Ghassemi on Fighting Displacement." *Logic Magazine*, 2020. <https://logicmag.io/commons/evictor-structures-erin-mcelroy-and-azad-amir-ghassemi-on-fighting/>.
+-   Benjamin Preis. 2024. "Where the Landlords Are: A Network Approach to Landlord-Rental Locations." *Annals of the American Association of Geographers* 114 (8): 1757-1768.<https://doi.org/10.1080/24694452.2023.2277810>.
+-   Taylor Shelton and Eric Seymour. 2024. "Horizontal Holdings: Untangling the Networks of Corporate Landlords" _Annals of the American Association of Geographers_ 114 (8): 1819–31. https://doi.org/10.1080/24694452.2023.2278690.
+
