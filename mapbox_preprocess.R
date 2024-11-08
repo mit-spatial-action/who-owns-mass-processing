@@ -17,6 +17,8 @@ st_agg_to_grids <- function(df,
                             count_col_name,
                             sum_cols,
                             mean_cols,
+                            ntile_cols,
+                            ntile_bins = 10,
                             median_cols) {
   all <- list()
   for (size in cellsizes) {
@@ -44,6 +46,13 @@ st_agg_to_grids <- function(df,
         )
       ) |>
       dplyr::ungroup() |>
+      dplyr::mutate(
+        dplyr::across(
+          dplyr::any_of(ntile_cols),
+          ~ dplyr::ntile(.x, n=ntile_bins),
+          .names = "{.col}_ntile"
+        )
+      ) |>
       dplyr::mutate(
         size=size
       )
@@ -121,10 +130,6 @@ mapbox_process_tables <- function() {
 
 mapbox_write_points <- function(points, out_file, dest_dir) {
   points |>
-    # dplyr::mutate(
-    #   quartile = dplyr::ntile(prop_count, 4),
-    #   quintile = dplyr::ntile(prop_count, 5)
-    # ) |>
     dplyr::select(site_id, network_group, own_name, loc_id, addr, muni) |>
     sf::st_transform(4326) |>
     sf::st_write(
@@ -137,7 +142,8 @@ mapbox_write_hexes <- function(points,
                                cellsizes,
                                out_hex_file, 
                                out_centroid_file,
-                               dest_dir
+                               dest_dir,
+                               ntile_bins=10
                                ) {
   hexes <- points |>
     st_agg_to_grids(
@@ -145,7 +151,9 @@ mapbox_write_hexes <- function(points,
       count_col_name = "props",
       sum_cols=c(units),
       mean_cols=c(unit_count, prop_count),
-      median_cols=c(unit_count, prop_count)
+      median_cols=c(unit_count, prop_count),
+      ntile_cols=c("prop_count_mean", "unit_count_mean"),
+      ntile_bins=ntile_bins
     ) |>
     sf::st_transform(4326) 
   
@@ -199,46 +207,46 @@ mapbox_preprocess <- function(
   if (!nchar(mb_user) > 0) {
     stop("VALIDATION: Mapbox user not set. Check that MB_USER is defined in .Renviron.")
   }
-  # mapbox_points <- mapbox_process_tables()
-  # 
-  # util_log_message("PROCESSING: Processing sites for display on Mapbox.")
-  # mapbox_write_points(
-  #   mapbox_points,
-  #   out_file=stringr::str_c(
-  #     sites_name,
-  #     "geojson",
-  #     sep="."
-  #   ),
-  #   dest_dir=dest_dir
-  #   )
-  # 
-  # util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
-  # mapbox_write_hexes(
-  #   mapbox_points,
-  #   cellsizes=list(
-  #     units::as_units(0.25, "miles"),
-  #     units::as_units(0.5, "miles")
-  #   ),
-  #   out_hex_file=stringr::str_c(
-  #     hexes_name,
-  #     "geojson",
-  #     sep="."
-  #   ),
-  #   out_centroid_file=stringr::str_c(
-  #     hex_centroids_name,
-  #     "geojson",
-  #     sep="."
-  #     ),
-  #   dest_dir=dest_dir
-  #   )
+  mapbox_points <- mapbox_process_tables()
+
+  util_log_message("PROCESSING: Processing sites for display on Mapbox.")
+  mapbox_points |>
+    mapbox_write_points(
+      out_file=stringr::str_c(
+        sites_name,
+        "geojson",
+        sep="."
+      ),
+      dest_dir=dest_dir
+    )
+
+  util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
+  mapbox_points |>
+    mapbox_write_hexes(
+      cellsizes=list(
+        units::as_units(0.25, "miles"),
+        units::as_units(0.5, "miles")
+    ),
+    out_hex_file=stringr::str_c(
+      hexes_name,
+      "geojson",
+      sep="."
+    ),
+    out_centroid_file=stringr::str_c(
+      hex_centroids_name,
+      "geojson",
+      sep="."
+      ),
+    dest_dir=dest_dir
+    )
   
   util_log_message("UPLOADING: Uploading sites to Mapbox Tileset.")
   mapbox_publish(
     file=file.path(
-      dest_dir, 
+      dest_dir,
       stringr::str_c(
-        sites_name, 
-        "geojson", 
+        sites_name,
+        "geojson",
         sep="."
       )
       ),
@@ -283,6 +291,8 @@ mapbox_preprocess <- function(
     maxzoom=16
   )
 }
+
+
 
 if (!interactive()) {
   opts <- list(
