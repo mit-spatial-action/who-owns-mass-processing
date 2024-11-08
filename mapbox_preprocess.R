@@ -163,7 +163,7 @@ mapbox_write_hexes <- function(points,
       )
 }
 
-mapbox_publish <- function(file, username, tileset, token) {
+mapbox_publish <- function(file, username, tileset, token, minzoom, maxzoom) {
   base::system2("chmod", args = c("+x", "mapbox_publish.sh"))
   base::system2(
     "./mapbox_publish.sh",
@@ -171,7 +171,9 @@ mapbox_publish <- function(file, username, tileset, token) {
       "-f", base::shQuote(file),
       "-u", base::shQuote(username),
       "-t", base::shQuote(tileset),
-      "-k", base::shQuote(token)
+      "-k", base::shQuote(token),
+      "-m", base::shQuote(minzoom),
+      "-x", base::shQuote(maxzoom)
     )
   )
 }
@@ -197,38 +199,38 @@ mapbox_preprocess <- function(
   if (!nchar(mb_user) > 0) {
     stop("VALIDATION: Mapbox user not set. Check that MB_USER is defined in .Renviron.")
   }
-  mapbox_points <- mapbox_process_tables()
-  
-  util_log_message("PROCESSING: Processing sites for display on Mapbox.")
-  mapbox_write_points(
-    mapbox_points,
-    out_file=stringr::str_c(
-      sites_name,
-      "geojson",
-      sep="."
-    ),
-    dest_dir=dest_dir
-    )
-
-  util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
-  mapbox_write_hexes(
-    mapbox_points,
-    cellsizes=list(
-      units::as_units(0.25, "miles"),
-      units::as_units(0.5, "miles")
-    ),
-    out_hex_file=stringr::str_c(
-      hexes_name,
-      "geojson",
-      sep="."
-    ),
-    out_centroid_file=stringr::str_c(
-      hex_centroids_name,
-      "geojson",
-      sep="."
-      ),
-    dest_dir=dest_dir
-    )
+  # mapbox_points <- mapbox_process_tables()
+  # 
+  # util_log_message("PROCESSING: Processing sites for display on Mapbox.")
+  # mapbox_write_points(
+  #   mapbox_points,
+  #   out_file=stringr::str_c(
+  #     sites_name,
+  #     "geojson",
+  #     sep="."
+  #   ),
+  #   dest_dir=dest_dir
+  #   )
+  # 
+  # util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
+  # mapbox_write_hexes(
+  #   mapbox_points,
+  #   cellsizes=list(
+  #     units::as_units(0.25, "miles"),
+  #     units::as_units(0.5, "miles")
+  #   ),
+  #   out_hex_file=stringr::str_c(
+  #     hexes_name,
+  #     "geojson",
+  #     sep="."
+  #   ),
+  #   out_centroid_file=stringr::str_c(
+  #     hex_centroids_name,
+  #     "geojson",
+  #     sep="."
+  #     ),
+  #   dest_dir=dest_dir
+  #   )
   
   util_log_message("UPLOADING: Uploading sites to Mapbox Tileset.")
   mapbox_publish(
@@ -242,7 +244,9 @@ mapbox_preprocess <- function(
       ),
     username=mb_user,
     tileset=sites_name,
-    token=mb_token
+    token=mb_token,
+    minzoom=10,
+    maxzoom=16
   )
   
   util_log_message("UPLOADING: Uploading hexes to Mapbox Tileset.")
@@ -257,7 +261,9 @@ mapbox_preprocess <- function(
     ),
     username=mb_user,
     tileset=hexes_name,
-    token=mb_token
+    token=mb_token,
+    minzoom=5,
+    maxzoom=16
   )
   
   util_log_message("UPLOADING: Uploading hex centroids to Mapbox Tileset.")
@@ -272,7 +278,9 @@ mapbox_preprocess <- function(
     ),
     username=mb_user,
     tileset=hex_centroids_name,
-    token=mb_token
+    token=mb_token,
+    minzoom=5,
+    maxzoom=16
   )
 }
 

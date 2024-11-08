@@ -30,13 +30,17 @@ file=""
 username=""
 tileset=""
 token=""
+minzoom=""
+maxzoom=""
 
-while getopts 'f:u:t:k:' flag; do
+while getopts 'f:u:t:k:m:x:' flag; do
   case "${flag}" in
     f) file="${OPTARG}" ;;
     u) username="${OPTARG}" ;;
     t) tileset="${OPTARG}" ;;
     k) token="${OPTARG}" ;;
+    m) minzoom="${OPTARG}" ;;
+    x) maxzoom="${OPTARG}" ;;
   esac
 done
 
@@ -62,8 +66,8 @@ fi
       "layers": {
         "geographies": {
           "source": "mapbox://tileset-source/'$username'/'$tileset'",
-          "minzoom": 10,
-          "maxzoom": 16,
+          "minzoom": '$minzoom',
+          "maxzoom": '$maxzoom',
           "tiles": {
             "layer_size": 2500
           }
