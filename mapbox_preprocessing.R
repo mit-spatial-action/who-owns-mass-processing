@@ -17,11 +17,10 @@ st_agg_to_grids <- function(df,
                             count_col_name,
                             sum_cols,
                             mean_cols,
-                            median_cols,
-                            centroids=FALSE) {
+                            median_cols) {
   all <- list()
   for (size in cellsizes) {
-    grid <- st_grid_sf(points, size)
+    grid <- st_grid_sf(df, size)
     agg <- df |>
       sf::st_join(grid) |>
       sf::st_drop_geometry() |>
@@ -57,26 +56,12 @@ st_agg_to_grids <- function(df,
       )
   }
   
-  all <- all |>
+  all |>
     dplyr::bind_rows()
-  
-  if(centroids) {
-    all <- all |>
-      sf::st_centroid()
-  }
-  
-  all
 }
 
-mapbox_preprocess <- function(load_prefix) {
-  if (!utils_check_for_results()) {
-    util_log_message("VALIDATION: Results not present in environment. Pulling from database. 🚀🚀🚀")
-    load_results(prefix=load_prefix, load_boundaries=TRUE, summarize=TRUE)
-  } else {
-    util_log_message("VALIDATION: Results already present in environment. 🚀🚀🚀")
-  }
-  
-  points <- sites_to_owners |>
+mapbox_process_tables <- function() {
+  sites_to_owners |>
     dplyr::left_join(
       owners |>
         dplyr::select(-addr_id) |>
@@ -134,6 +119,160 @@ mapbox_preprocess <- function(load_prefix) {
     sf::st_set_geometry("geometry")
 }
 
+mapbox_write_points <- function(points, out_file, dest_dir) {
+  points |>
+    # dplyr::mutate(
+    #   quartile = dplyr::ntile(prop_count, 4),
+    #   quintile = dplyr::ntile(prop_count, 5)
+    # ) |>
+    dplyr::select(site_id, network_group, own_name, loc_id, addr, muni) |>
+    sf::st_transform(4326) |>
+    sf::st_write(
+      file.path(dest_dir, out_file), 
+      delete_dsn=TRUE
+      )
+}
+
+mapbox_write_hexes <- function(points, 
+                               cellsizes,
+                               out_hex_file, 
+                               out_centroid_file,
+                               dest_dir
+                               ) {
+  hexes <- points |>
+    st_agg_to_grids(
+      cellsizes=cellsizes,
+      count_col_name = "props",
+      sum_cols=c(units),
+      mean_cols=c(unit_count, prop_count),
+      median_cols=c(unit_count, prop_count)
+    ) |>
+    sf::st_transform(4326) 
+  
+  hexes |>
+    sf::st_write(
+      file.path(dest_dir, out_hex_file), 
+      delete_dsn=TRUE
+      )
+  
+  hexes |>
+    sf::st_centroid() |>
+    sf::st_write(
+      file.path(dest_dir, out_centroid_file), 
+      delete_dsn=TRUE
+      )
+}
+
+mapbox_publish <- function(file, username, tileset, token) {
+  base::system2("chmod", args = c("+x", "mapbox_publish.sh"))
+  base::system2(
+    "./mapbox_publish.sh",
+    args = c(
+      "-f", base::shQuote(file),
+      "-u", base::shQuote(username),
+      "-t", base::shQuote(tileset),
+      "-k", base::shQuote(token)
+    )
+  )
+}
+
+mapbox_preprocess <- function(
+    load_prefix,
+    sites_name="who-owns-mass-sites",
+    hexes_name="who-owns-mass-hexes",
+    hex_centroids_name="who-owns-mass-hex-centroids",
+    mb_token=Sys.getenv("MB_TOKEN"),
+    mb_user=MB_USER,
+    dest_dir=RESULTS_PATH
+    ) {
+  if (!utils_check_for_results()) {
+    util_log_message("VALIDATION: Results not present in environment. Pulling from database. 🚀🚀🚀")
+    load_results(prefix=load_prefix, load_boundaries=TRUE, summarize=TRUE)
+  } else {
+    util_log_message("VALIDATION: Results already present in environment. 🚀🚀🚀")
+  }
+  if (!nchar(mb_token) > 0) {
+    stop("VALIDATION: Mapbox token not set. Check your .Renviron.")
+  }
+  # mapbox_points <- mapbox_process_tables()
+  
+  util_log_message("PROCESSING: Processing sites for display on Mapbox.")
+  mapbox_write_points(
+    mapbox_points, 
+    out_file=stringr::str_c(
+      sites_name, 
+      "geojson", 
+      sep="."
+    ),
+    dest_dir=dest_dir
+    )
+  
+  util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
+  mapbox_write_hexes(
+    mapbox_points,
+    cellsizes=list(
+      units::as_units(0.25, "miles"), 
+      units::as_units(0.5, "miles")
+    ),
+    out_hex_file=stringr::str_c(
+      hexes_name, 
+      "geojson", 
+      sep="."
+    ),
+    out_centroid_file=stringr::str_c(
+      hex_centroids_name, 
+      "geojson", 
+      sep="."
+      ),
+    dest_dir=dest_dir
+    )
+  
+  util_log_message("UPLOADING: Uploading sites to Mapbox Tileset.")
+  mapbox_publish(
+    file=file.path(
+      dest_dir, 
+      stringr::str_c(
+        sites_name, 
+        "geojson", 
+        sep="."
+      )
+      ),
+    username=mb_user,
+    tileset=sites_name,
+    token=mb_token
+  )
+  
+  util_log_message("UPLOADING: Uploading hexes to Mapbox Tileset.")
+  mapbox_publish(
+    file=file.path(
+      dest_dir, 
+      stringr::str_c(
+        hexes_name, 
+        "geojson", 
+        sep="."
+      )
+    ),
+    username=mb_user,
+    tileset=hexes_name,
+    token=mb_token
+  )
+  
+  util_log_message("UPLOADING: Uploading hex centroids to Mapbox Tileset.")
+  mapbox_publish(
+    file=file.path(
+      dest_dir, 
+      stringr::str_c(
+        hex_centroids_name, 
+        "geojson", 
+        sep="."
+      )
+    ),
+    username=mb_user,
+    tileset=hex_centroids_name,
+    token=mb_token
+  )
+}
+
 if (!interactive()) {
   opts <- list(
     optparse::make_option(
@@ -152,31 +291,4 @@ if (!interactive()) {
   }
   mapbox_preprocess(prefix=opt$load_prefix)
 }
-
-t <- points |>
-  dplyr::mutate(
-    quartile = dplyr::ntile(prop_count, 4),
-    quintile = dplyr::ntile(prop_count, 5)
-  ) |>
-  dplyr::select(site_id, network_group, owners, loc_id, addr, muni, quartile, quintile) |>
-  sf::st_transform(4326) |>
-  sf::st_write('mapbox_points.geojson', delete_dsn=TRUE)
-
-  
-t <- st_agg_to_grids(
-    points, 
-    cellsizes=list(
-      units::as_units(0.25, "miles"), 
-      units::as_units(0.5, "miles")
-    ),
-    count_col_name = "props",
-    sum_cols=c(units),
-    mean_cols=c(unit_count, prop_count),
-    median_cols=c(unit_count, prop_count),
-    centroids=FALSE
-    ) 
-
-t |>
-  sf::st_transform(4326) |>
-    sf::st_write("mapbox_hexes.geojson", delete_dsn=TRUE)
   

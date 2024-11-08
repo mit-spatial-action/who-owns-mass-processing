@@ -29,9 +29,9 @@ fi
 file=""
 username=""
 tileset=""
-token="${MAPBOX_ACCESS_TOKEN}"
+token=""
 
-while getopts 'f:u:t:' flag; do
+while getopts 'f:u:t:k:' flag; do
   case "${flag}" in
     f) file="${OPTARG}" ;;
     u) username="${OPTARG}" ;;
@@ -40,20 +40,22 @@ while getopts 'f:u:t:' flag; do
   esac
 done
 
+
+
 if [[ -z "${token}" ]]; then
-  echo "No Mapbox token found. Either set the MAPBOX_ACCESS_TOKEN environment variable or pass a value using -k."
+  echo "No Mapbox token found. Pass a value using -k."
   exit 1
 fi
 
 {
   echo "Uploading data to "$tileset"..."
-  tilesets upload-source $username --replace --no-validation $tileset $file
+  tilesets upload-source $username --replace --no-validation --token $token $tileset $file
 } && {
   # # If source upload is successful, create tileset.
-  existing_tilesets=$(tilesets list $username)
+  existing_tilesets=$(tilesets list $username --token $token)
   if [[ $existing_tilesets =~ $username"."$tileset ]]; then
     echo $username"."$tileset" exists. Deleting..."
-    tilesets delete $username"."$tileset
+    tilesets delete $username"."$tileset --token $token
   fi
   echo '{
     "version": 1,
@@ -69,7 +71,7 @@ fi
     }
   }' > recipe.json
   echo "Creating tileset using recipe..."
-  tilesets create $username"."$tileset --recipe recipe.json --attribution '[
+  tilesets create $username"."$tileset --token $token --recipe recipe.json --attribution '[
     {
       "text": "MIT Spatial Analysis & Action Research Group",
       "link": "https://github.com/mit-spatial-action/who-owns-mass-processing"
@@ -79,5 +81,5 @@ fi
 } && {
   echo "Starting publishing process..."
   # # If tileset creation is successful, publish tileset.
-  tilesets publish $username"."$tileset
+  tilesets publish $username"."$tileset --token $token
 }
