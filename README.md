@@ -131,7 +131,7 @@ To use the provided script within RStudio you can simply run...
 
 ```r
 source('write_to_django.R')
-django_write(load_prefix='prod', django_prefix='django')
+write_to_django(load_prefix='prod', django_prefix='django')
 ```
 
 ...where `load_prefix` and `django_prefix` are the prefixes, separated from the database connection parameters by an underscore, stored in your `.Renviron`. For example, the above would look for...

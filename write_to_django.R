@@ -49,7 +49,7 @@ django_truncate_tables <- function(conn) {
                  glue::glue("TRUNCATE TABLE {django_tables_sep} CASCADE;"))
 }
 
-django_write <- function(load_prefix, django_prefix) {
+write_to_django <- function(load_prefix, django_prefix) {
   
   if (!utils_check_for_results()) {
     util_log_message("VALIDATION: Results not present in environment. Pulling from database. 🚀🚀🚀")
@@ -217,5 +217,5 @@ if (!interactive()) {
     stop("Django database prefix must be specified.", call. = FALSE)
   }
   
-  django_write(load_prefix=opt$load_prefix, django_prefix=opt$django_prefix)
+  write_to_django(load_prefix=opt$load_prefix, django_prefix=opt$django_prefix)
 }
