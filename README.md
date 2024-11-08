@@ -35,6 +35,9 @@ DB_PORT=5432
 DB_NAME="yourdbname"
 # Will likely need to be "require" for remote.
 DB_SSL="allow"
+# Necessary to run `mapbox_preprocess.R`
+MB_USER="your-mapbox-username"
+MB_TOKEN="your-mapbox-token"
 ```
 
 Optionally, you can use the `PUSH_DBS` configuration parameter to specify a different database you'd like to point subroutine results to, allowing you to separate, for example, a development environment from a production environment. If you'd like to make of this parameter, you'll need to pass a string value to the appropriate named elements in `PUSH_DBS` (see section 'Configuration (`config.R`)' below), or to `load_results("yourstring")` and define...
@@ -143,6 +146,31 @@ DJANGO_DB_USER="yourusername"
 PROD_DB_HOST="yourhost"
 PROD_DB_USER="yourusername"
 # ...etc
+```
+
+## Mapbox Preprocessing (`mapbox_preprocess.R`)
+
+The Who Owns Massachusetts application leverages several preprocessed data layers, which must be pushed to the Mapbox Tilesets API. This script runs the necessary preprocessing steps and pushes the results to Mapbox. Note that the script requires the following environment variables be defined in `.Renviron`:
+
+```bash
+# Necessary to run `mapbox_preprocess.R`
+MB_USER="your-mapbox-username"
+MB_TOKEN="your-mapbox-token"
+```
+
+Note also that the Mapbox token you use _must_ be scoped to have `DATASETS:READ` `VISION:READ`, `TILESETS:LIST`, `TILESETS:READ`, and `TILESETS:WRITE` access. You can run from a terminal like so...
+
+```bash
+Rscript mapbox_preprocess.R -l 'prod'
+# or...
+Rscript mapbox_preprocess.R --load_prefix 'prod'
+```
+
+To use the provided script within RStudio you can simply run...
+
+```r
+source('mapbox_preprocess.R')
+mapbox_preprocess(load_prefix='prod')
 ```
 
 ## Data
