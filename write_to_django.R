@@ -192,4 +192,30 @@ django_write <- function(load_prefix, django_prefix) {
   invisible(NULL)
 }
 
-django_write(load_prefix='prod', django_prefix='django')
+if (!interactive()) {
+  opts <- list(
+    optparse::make_option(
+      c("-l", "--load_prefix"), type = "character", default = NULL,
+      help = "Prefix of parameters for database containing deduplication 
+      results in .Renviron.", metavar = "character"),
+    optparse::make_option(
+      c("-d", "--django_prefix"), type = "character", default = NULL,
+      help = "Prefix of parameters for database containing Django models in 
+      .Renviron.", metavar = "character")
+  )
+  parser <- optparse::OptionParser(
+    option_list=opts
+  )
+  opt <- optparse::parse_args(parser)
+  
+  if (is.null(opt$load_prefix)) {
+    optparse::print_help(parser)
+    stop("Load database prefix must be specified.", call. = FALSE)
+  }
+  if (is.null(opt$django_prefix)) {
+    optparse::print_help(parser)
+    stop("Django database prefix must be specified.", call. = FALSE)
+  }
+  
+  django_write(load_prefix=opt$load_prefix, django_prefix=opt$django_prefix)
+}
