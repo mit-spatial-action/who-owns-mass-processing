@@ -194,7 +194,7 @@ mapbox_preprocess <- function(
   if (!nchar(mb_token) > 0) {
     stop("VALIDATION: Mapbox token not set. Check your .Renviron.")
   }
-  # mapbox_points <- mapbox_process_tables()
+  mapbox_points <- mapbox_process_tables()
   
   util_log_message("PROCESSING: Processing sites for display on Mapbox.")
   mapbox_write_points(
