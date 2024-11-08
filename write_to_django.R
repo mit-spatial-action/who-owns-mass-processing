@@ -3,7 +3,8 @@ source('load_results.R')
 django_munis <- function(munis, crs=4326) {
   munis |>
     dplyr::mutate(
-      state = "MA"
+      state = "MA",
+      mapc = FALSE
     ) |>
     dplyr::rename(
       id = muni_id
