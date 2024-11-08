@@ -55,7 +55,7 @@ fi
   existing_tilesets=$(tilesets list $username --token $token)
   if [[ $existing_tilesets =~ $username"."$tileset ]]; then
     echo $username"."$tileset" exists. Deleting..."
-    tilesets delete $username"."$tileset --token $token
+    tilesets delete $username"."$tileset --force --token $token
   fi
   echo '{
     "version": 1,

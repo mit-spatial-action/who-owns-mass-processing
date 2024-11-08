@@ -192,36 +192,39 @@ mapbox_preprocess <- function(
     util_log_message("VALIDATION: Results already present in environment. 🚀🚀🚀")
   }
   if (!nchar(mb_token) > 0) {
-    stop("VALIDATION: Mapbox token not set. Check your .Renviron.")
+    stop("VALIDATION: Mapbox token not set. Check that MB_TOKEN is defined in .Renviron.")
+  }
+  if (!nchar(mb_user > 0) {
+    stop("VALIDATION: Mapbox user not set. Check that MB_USER is defined in .Renviron.")
   }
   mapbox_points <- mapbox_process_tables()
   
   util_log_message("PROCESSING: Processing sites for display on Mapbox.")
   mapbox_write_points(
-    mapbox_points, 
+    mapbox_points,
     out_file=stringr::str_c(
-      sites_name, 
-      "geojson", 
+      sites_name,
+      "geojson",
       sep="."
     ),
     dest_dir=dest_dir
     )
-  
+
   util_log_message("PROCESSING: Producing hexes for display on Mapbox.")
   mapbox_write_hexes(
     mapbox_points,
     cellsizes=list(
-      units::as_units(0.25, "miles"), 
+      units::as_units(0.25, "miles"),
       units::as_units(0.5, "miles")
     ),
     out_hex_file=stringr::str_c(
-      hexes_name, 
-      "geojson", 
+      hexes_name,
+      "geojson",
       sep="."
     ),
     out_centroid_file=stringr::str_c(
-      hex_centroids_name, 
-      "geojson", 
+      hex_centroids_name,
+      "geojson",
       sep="."
       ),
     dest_dir=dest_dir
