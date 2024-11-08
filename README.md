@@ -54,26 +54,8 @@ If you modify your `.Renviron` mid-RStudio session, you can simply run `readRenv
 
 `.Renviron` is in `.gitignore` to ensure that you don't commit your credentials.
 
-## Loading Results (`load_results.R`)
 
-If you want to simply read the results without worrying about triggering the deduplication process, you can simply begin a new RScript, source `load_results.R`, and run a one-liner like so...
-
-``` r
-source('load_results.R')
-load_results("your_db_prefix", load_boundaries=TRUE, summarize=TRUE)
-```
-
-This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
-
-[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
-
-If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis. These appear in the data dictionary as well.
-
-**This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
-
-Note that for statewide results, these are very large tables and therefore it might take 5-10 minutes depending on your network connection/whether you're reading from a local or remote database.
-
-## Running the Process (`run.R`)
+## Running Deduplication Process (`run.R`)
 
 This is a very time-consuming process, even for small subsets (this is due to the size of the `companies` and `officers` tables, which must be processed for reliable results even for smaller spatial subsets). On a 2021 Apple M1 Max chip with 64 GB of memory, the full state is taking a little under 13 hours.
 
@@ -89,7 +71,7 @@ This is because when the process is run interactively (i.e., in an RStudio envir
 
 If the process is run interactively, it automatically outputs results to objects in your environment (including intermediate results if `RETURN_INTERMEDIATE` is `TRUE` in `config.R`. It also writes results to `.csv` and `.Rda` files in `/results`, but doesn't ever try to read these---the PostgreSQL database is the only output location from which our scripts read data.
 
-### Configuration (`config.R`)
+### Configuring the Deduplication Process (`config.R`)
 
 We expose a large number of configuration variables in `config.R`, which is sourced in `run.R`. In order...
 
@@ -113,6 +95,55 @@ We expose a large number of configuration variables in `config.R`, which is sour
 | `RESULTS_PATH`        | Default: `"results"` This is the folder where resulting `.csv` and `.Rda` files will be written. Note that tables will always be written to the PostGIS database, so this is for backup/uncredentialed result transfer only.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `OC_PATH`             | Default: `"2024-04-12"` Either the name of the folder (within `/data`) that contains the OpenCorporates bulk data or `NULL`. Scripts depend on `companies.csv` and `officers.csv`. If `NULL`, a simplified cosine-similarity deduplication routine will run, returning a simpler set of tables.                                                                                                                                                                                                                                                                                                                                                               |
 | `GDB_PATH`            | Default: `"L3_AGGREGATE_FGDB_20240703"`This is either a folder (within `/data`) containing all the vintages of the MassGIS parcel data *or* a single most recent vintage geodatabase (in `/data`).                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+## Loading Results (`load_results.R`)
+
+If you want to simply read the results without worrying about triggering the deduplication process, you can simply begin a new RScript, source `load_results.R`, and run a one-liner like so...
+
+``` r
+source('load_results.R')
+load_results("your_db_prefix", load_boundaries=TRUE, summarize=TRUE)
+```
+
+This will load `companies`, `munis`, `officers`, `owners`, `sites`, `sites_to_owners`, `parcels_point`, `metacorps_cosine` and `metacorps_network` into your R environment. If `load_boundaries` is true, it will also return `munis`, `zips`, `tracts`, and `block_groups`.
+
+[Please consult the data dictionary for field definitions.](https://github.com/mit-spatial-action/who-owns-mass-processing/blob/main/DICTIONARY.md)
+
+If summarize is `TRUE`, it will return a number of summary fields for `officers`, `metacorps_cosine`, and `metacorps_network` that are useful for diagnosing cases of over-inclusion in the network analysis. These appear in the data dictionary as well.
+
+**This requires that you have `.Renviron` set up with appropriate prefixes (see 'Setting up `.Renviron`', above).**
+
+Note that for statewide results, these are very large tables and therefore it might take 5-10 minutes depending on your network connection/whether you're reading from a local or remote database.
+
+## Writing to Django (`write_to_django.R`)
+
+The Who Owns Massachusetts application runs on top of a backend written in Django. We provide a script (`write_to_django.R`) to support writing to the tables created and managed by the Django application, which assumes that you've already run the deduplication process (`run.R`) and stored its results in a database. by this application. (It also assumes, obviously, that you have set up our `who-owns-mass-backend` Django application on a server/localhost). The key thing here is that rather than overwriting the tables, it truncates them (removes all rows) and appends results to the tables. This is important because overwriting tables causes all kinds of mayhem with e.g., Django's indexing and constraint management.
+
+To run the script from the terminal, you can use the `-l` or `--load_prefix` flags to specify the prefix used to indicate the database that contains the results of the deduplication process and the `-d` or `--django-prefix` flags to specify the prefix used to indicate the database containing your managed Django models (as stored in your `.Renviron` file). For example...
+
+```bash
+Rscript write_to_django.R -l 'prod' -d 'django'
+# or...
+Rscript write_to_django.R --load_prefix 'prod' --django_prefix 'django'
+```
+
+To use the provided script within RStudio you can simply run...
+
+```r
+source('write_to_django.R')
+django_write(load_prefix='prod', django_prefix='django')
+```
+
+...where `load_prefix` and `django_prefix` are the prefixes, separated from the database connection parameters by an underscore, stored in your `.Renviron`. For example, the above would look for...
+
+```bash
+DJANGO_DB_HOST="yourhost"
+DJANGO_DB_USER="yourusername"
+# ....etc and
+PROD_DB_HOST="yourhost"
+PROD_DB_USER="yourusername"
+# ...etc
+```
 
 ## Data
 
