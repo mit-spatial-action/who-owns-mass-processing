@@ -194,7 +194,7 @@ mapbox_preprocess <- function(
   if (!nchar(mb_token) > 0) {
     stop("VALIDATION: Mapbox token not set. Check that MB_TOKEN is defined in .Renviron.")
   }
-  if (!nchar(mb_user > 0) {
+  if (!nchar(mb_user) > 0) {
     stop("VALIDATION: Mapbox user not set. Check that MB_USER is defined in .Renviron.")
   }
   mapbox_points <- mapbox_process_tables()
