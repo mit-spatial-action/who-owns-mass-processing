@@ -182,7 +182,7 @@ mapbox_preprocess <- function(
     hexes_name="who-owns-mass-hexes",
     hex_centroids_name="who-owns-mass-hex-centroids",
     mb_token=Sys.getenv("MB_TOKEN"),
-    mb_user=MB_USER,
+    mb_user=Sys.getenv("MB_USER"),
     dest_dir=RESULTS_PATH
     ) {
   if (!utils_check_for_results()) {
