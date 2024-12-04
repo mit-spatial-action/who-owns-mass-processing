@@ -1840,6 +1840,31 @@ std_separate_and_label <- function(df,
 
 # Type Flags ====
 
+std_flag_generic <- function(df, col, string, flag_col) {
+  #' Flags provided text in provided column using regex defined in global 
+  #' 
+  #' @param df A dataframe
+  #' @param col A column containing characters. 
+  #' @param string A string to flag the presence of.
+  #' @param flag_col A name for the new column. If not provided, name is generated based on `string` text. .
+  #' @returns A dataframe with added flag column.
+  #' @export
+  #' @details If no `flag_col` provided, its name will be generated based on `string` text.
+  
+  if (missing(flag_col)) {
+    flag_col <- string |>
+      stringr::str_split("[\\s\\,\\.]+", simplify = TRUE) |> 
+      stringr::str_sub(1, 3) |>                   
+      stringr::str_to_lower() |>                   
+      paste(collapse = "_")
+  }
+  
+  df |>
+    dplyr::mutate(
+      !!flag_col := stringr::str_detect(.data[[col]], string)
+    )
+}
+
 std_flag_agent <- function(df, col, position_col) {
   df |>
     dplyr::mutate(
@@ -2258,4 +2283,5 @@ std_match_address_to_address <- function(a1, a2, fill_cols, ...) {
 #'       )
 #'     )
 #' }
+
 
