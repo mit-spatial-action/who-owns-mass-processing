@@ -1029,14 +1029,9 @@
     },
     "units": {
       "Package": "units",
-      "Version": "0.8-4",
+      "Version": "0.8-5",
       "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "Rcpp"
-      ],
-      "Hash": "e0fbcea25008a7540c83c2c294135de0"
+      "Repository": "CRAN"
     },
     "utf8": {
       "Package": "utf8",
