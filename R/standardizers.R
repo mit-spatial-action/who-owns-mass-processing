@@ -56,6 +56,14 @@ SEARCH <- tibble::lst(
 # Standardizer Helpers ====
 
 std_collapse_regex <- function(c, full_string = FALSE) {
+  #' Collapse vector elements into a single string suitable for use as a regular expression.
+  #' 
+  #' @param c A character vector. 
+  #' @param full_string Logical. If TRUE, the regex pattern will match the entire string by adding `^` at the
+  #' start and `$` at the end. Default is `FALSE`. The regex will match the input strings anywhere within a text.
+  #'
+  #' @return A single character string representing the collapsed regular expression.
+  #' @export
   str <- stringr::str_c(c, collapse="|")
   if (full_string) {
     str <- stringr::str_c("^(", str, ")$")
@@ -64,6 +72,17 @@ std_collapse_regex <- function(c, full_string = FALSE) {
 }
 
 std_replace_generic <- function(df, cols, pattern, replace) {
+  #' for specified columns of a data frame, replace a pattern with a replacement string 
+  #'
+  #' @param df A data frame to be changed
+  #' @param cols A vector of column names or a logical selector to operate replacement
+  #' @param pattern A string represents the regex pattern to match.
+  #' @param replace A string used as the replacement for matched patterns. 
+  #'   If not provided, matches will be replaced with an empty string.
+  #'
+  #' @return A data frame with the specified columns that operated the 
+  #'   pattern replacements.
+  #' @export
   if (missing(replace)) {
     df |>
       dplyr::mutate(
@@ -113,6 +132,16 @@ std_fuzzify_string <- function(c) {
 }
 
 std_counts_in_group <- function(df, cols, col_distinct) {
+  #' calculates the total row count and the count of distinct values in a specified column, 
+  #' grouped by one or more columns in a data frame.
+  #'
+  #' @param df A data frame to analyze.
+  #' @param cols A vector of the column names to group by.
+  #' @param col_distinct A single string of the column name where the distinct count will be calculated.
+  #'
+  #' @return A data frame with two new columns count(total number of rows in each group)
+  #'   and distinct(number of distinct values in col_distinct for each group).
+  #' @export
   df |>
     dplyr::group_by(dplyr::across(dplyr::all_of(cols))) |>
     dplyr::mutate(
@@ -123,6 +152,12 @@ std_counts_in_group <- function(df, cols, col_distinct) {
 }
 
 std_pad_muni_ids <- function(ids) {
+  #' standard municipality ids with a fixed width of three characters.
+  #'
+  #' @param ids A vector or numeric vector of municipality IDs to be standardized 
+  #' @return A vector where each ID is padded to have a total width of three characters, 
+  #'   with leading zeros added where necessary.
+  #'   @export
   ids |>
     stringr::str_pad(3, side="left", pad="0")
 }
