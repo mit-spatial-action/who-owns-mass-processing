@@ -52,7 +52,7 @@ django_truncate_tables <- function(conn) {
 
 write_to_django <- function(load_prefix, django_prefix) {
   
-  if (!utils_check_for_results()) {
+  if (!util_check_for_results()) {
     util_log_message("VALIDATION: Results not present in environment. Pulling from database. 🚀🚀🚀")
     load_results(load_prefix, load_boundaries=TRUE, summarize=TRUE)
   } else {
