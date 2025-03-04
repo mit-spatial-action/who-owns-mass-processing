@@ -6,7 +6,7 @@ SEARCH <- tibble::lst(
     "STREET", "AVENUE", "LANE", "EXTENSION", "PARK", "DRIVE",
     "ROAD", "BOULEVARD", "PARKWAY", "TERRACE", "PLACE", "WAY",
     "CIRCLE", "ALLEY", "SQUARE", "HIGHWAY", "CENTER", "FREEWAY",
-    "COURT", "PLAZA", "WHARF", "SQUARE"
+    "COURT", "PLAZA", "WHARF", "SQUARE", "POINT", "COVE", "RIDGE"
   ),
   inst = c(
     "CORPORATION", " INC( |$)", "LLC", "LTD", "COMPANY",
@@ -465,6 +465,10 @@ std_street_types <- function(df, cols) {
     "\\bEXT\\b" = "EXTENSION",
     "\\bPR?K\\b" = "PARK",
     "\\bDRV?\\b" = "DRIVE",
+    "\\bPT\\b" = "POINT",
+    "\\bCV\\b" = "COVE",
+    "\\bRDG\\b" = "RIDGE",
+    "\\bTRL?\\b" = "TRAIL",
     "\\bRD\\b" = "ROAD",
     "\\bRO\\b" = "ROW",
     "\\bT[ER]+R+(CE)?\\b" = "TERRACE",
