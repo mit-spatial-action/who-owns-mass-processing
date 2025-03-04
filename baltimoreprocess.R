@@ -24,7 +24,7 @@ rename_assess <- function(assess_path, crosswalk_path, output_path = NULL) {
   # Identify MAR columns that exist in the input data
   available_mar_cols <- base::intersect(col_crosswalk$MAR_col, colnames(assess))
   
-  # Create mapping of MAR columns to MAS columns (key is MAR, value is MAS)
+  # Create mapping of MAR columns to MAS columns
   col_mapping <- col_crosswalk |>
     dplyr::filter(MAR_col %in% available_mar_cols) |>
     dplyr::select(MAS_col, MAR_col) |>
