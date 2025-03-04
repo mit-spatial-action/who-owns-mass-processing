@@ -1,0 +1,14 @@
+site,code,subtype,unit_low,unit_high
+ma,101,,1,1
+ma,104,,2,2
+ma,105,,3,3
+ma,111,,4,8
+ma,112,,8,
+ma,109,,2,
+ma,102,,1,1
+ma,102,,1,1
+md,R,1,1,1
+md,R,,2,
+md,M,,4,
+md,U,,1,1
+md,CC,,1,1

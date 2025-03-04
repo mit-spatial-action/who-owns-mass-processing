@@ -38,3 +38,5 @@ venv/*
 !data/muni_ids.csv
 !data/luc_crosswalk.csv
 !data/README.csv
+!data/unit_crosswalk.csv
+!data/col_crosswalk.csv
