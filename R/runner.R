@@ -155,6 +155,8 @@ run <- function(data_path,
         util_log_message(
           "Deduplication database different than processing. Writing select results.",
         )
+        parcels |>
+          load_write(conn, "parcels", id_col="loc_id", overwrite=TRUE)
         parcels_point |>
           load_write(conn, "parcels_point", id_col="loc_id", overwrite=TRUE)
       } else {
