@@ -963,7 +963,7 @@ std_test_units <- function(df, col, luc_col, muni_id_col) {
         .data[[luc_col]] == '112' & !dplyr::between(.data[[col]], 7, 30) ~
           FALSE,
         # BOSTON, 113: 31-99 Unit
-        .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 7, 30) ~
+        .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 31, 99) ~
           FALSE,
         # BOSTON, 114: 31-99 Unit
         .data[[luc_col]] == '114' & .data[[col]] < 100 ~
