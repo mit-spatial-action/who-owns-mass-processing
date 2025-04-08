@@ -1,0 +1,27 @@
+ma,md
+site_id,
+site_loc_id,polyid
+site_fy,lastassd
+site_addr,address
+addr_num,
+full_str,strtnam
+site_muni_id,towncode
+site_postal,zipcode
+own_name_1,ownname1
+own_name_2,ownname2
+own_addr_1,ownadd1
+own_addr_2,ownadd2
+own_muni,owncity
+own_state,ownstate
+own_zip_1,ownerzip
+own_zip_2,ownerzip2
+own_country,
+site_ls_date,tradate
+site_ls_price,considr1;mortgag
+site_bld_area,sqftstrc
+site_res_area,nfmimpvl
+site_units,bldg_units
+site_bldg_val,nfmimpvl
+land_val,nfmlndvl
+site_tot_val,nfmttlvl
+site_use_code,lu; resityp
