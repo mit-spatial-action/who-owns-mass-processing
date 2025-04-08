@@ -10,6 +10,7 @@ renv/*
 sandbox.R
 
 *.RData
+*.RDataTmp
 # logr logs
 *.log
 *.msg
