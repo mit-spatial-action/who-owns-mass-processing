@@ -1134,7 +1134,7 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
         res & .data[[col]] == 0  & !is.na(.data[[count_col]]) ~
           .data[[count_col]],
         res & .data[[col]] == 0 & !is.na(all_addr) & (((all_addr - total_units - 1) / total_missing) >= 1) ~
-          (all_addr - total_units - 1) / total_missing,
+          ceiling((all_addr - total_units - 1) / total_missing),
         res & .data[[col]] == 0 & units_by_area > 0 ~
           units_by_area,
         .default = .data[[col]]
