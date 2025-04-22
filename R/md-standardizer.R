@@ -36,44 +36,18 @@ cols_by_state <- function(state, cw_file = "col_cw.csv", data_path = "data") {
     unique()
 }
 
-p <- parcels |> 
-  dplyr::rename_with(stringr::str_to_lower) |>
-  dplyr::filter(lu %in% lu_by_state(state)) |>
-  dplyr::select(dplyr::any_of(cols_by_state(state)))
-
-cols_by_state("MD")
-
-# Filter parcel_boundaries to include only the residential properties
-
-# Filter to include only relevant columns
-filtercol <- function(dataset, col_crosswalk, additional_cols = NULL) {
-  md_columns <- col_crosswalk$md_col
-  md_columns <- md_columns[!is.na(md_columns) & md_columns != ""]
-  split_columns <- unlist(strsplit(md_columns, "|")) 
-  split_columns <- trimws(split_columns)
+filter_residential <- function(data, state) {
+  result <- parcels |> 
+    dplyr::rename_with(stringr::str_to_lower) |>
+    dplyr::filter(lu %in% lu_by_state(state)) |>
+    dplyr::select(dplyr::any_of(cols_by_state(state)))
   
-  # Add additional columns if provided
-  if (!is.null(additional_cols)) {
-    split_columns <- c(split_columns, additional_cols)
-  }
-  # Remove duplicates before checking existence in dataset
-  split_columns <- unique(split_columns)
-  existing_columns <- split_columns[split_columns %in% names(dataset)]
-  if (inherits(dataset, "sf")) {
+  if ("sf" %in% class(data)) {
     # Convert to regular data frame (drops geometry)
-    result <- as.data.frame(dataset)[, existing_columns, drop = FALSE]
-  } else {
-    result <- dataset[, existing_columns, drop = FALSE]
+    result <- result |>
+      sf::st_drop_geometry()
   }
-  return(result)
 }
-
-# Apply Filtering
-parcels <- filtercol(
-  parcels, 
-  col_crosswalk,
-  additional_cols = NULL)
-names(parcels)
 
 #' Title
 #'
@@ -175,6 +149,9 @@ combine_site_use_code <- function(data, md_col) {
   }
   return(combined_values)
 }
+
+data |>
+  dplyr::rename(col_cw)
 
 #' Standardize Parcel Columns According to Mapping
 #' This function takes a parcels dataset with original column names (md_col) and 
