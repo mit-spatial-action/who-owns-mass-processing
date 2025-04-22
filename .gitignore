@@ -10,6 +10,7 @@ renv/*
 sandbox.R
 
 *.RData
+*.RDataTmp
 # logr logs
 *.log
 *.msg
@@ -36,5 +37,7 @@ data/*
 venv/*
 
 !data/muni_ids.csv
-!data/luc_crosswalk.csv
+!data/luc_cw.csv
 !data/README.csv
+!data/unit_cw.csv
+!data/col_cw.csv
