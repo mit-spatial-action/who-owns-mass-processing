@@ -895,7 +895,7 @@ std_luc <- function(
     muni_id_col, 
     path=DATA_PATH,
     name="luc",
-    file = "luc_crosswalk.csv"
+    file = "luc_cw.csv"
 ){
   
   # Read Land Use Codes
@@ -1000,9 +1000,9 @@ std_test_units <- function(df, col, luc_col, muni_id_col) {
           FALSE,
         # BOSTON, 112: 7-30 Unit
         .data[[luc_col]] == '112' & !dplyr::between(.data[[col]], 7, 30) ~
-          FALSE,
+          FALSE,s
         # BOSTON, 113: 31-99 Unit
-        .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 7, 30) ~
+        .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 31, 99) ~
           FALSE,
         # BOSTON, 114: 31-99 Unit
         .data[[luc_col]] == '114' & .data[[col]] < 100 ~
