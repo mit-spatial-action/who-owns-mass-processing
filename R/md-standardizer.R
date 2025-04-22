@@ -75,78 +75,34 @@ parcels <- filtercol(
   additional_cols = NULL)
 names(parcels)
 
-# unit estimation ====
-std_units_by_luresityp <- function(data, csv_path, filter_state = "md") {
-  reference_data <- utils::read.csv(csv_path, stringsAsFactors = FALSE)
-  names(reference_data) <- tolower(names(reference_data))
-  state_data <- reference_data[tolower(reference_data$state) == tolower(filter_state), ]
-  
-  # Build lookup tables 
-  # Exact match lookup (code + resityp)
-  exact_lookup <- data.frame(
-    code = state_data$code,
-    resityp = state_data$resityp,
-    unit_low = state_data$unit_low,
-    unit_high = state_data$unit_high,
-    stringsAsFactors = FALSE
-  )
-  # Split multi-value resityp entries (handling the either or case)
-  expanded_lookup <- data.frame(
-    code = character(),
-    resityp = character(),
-    unit_low = numeric(),
-    unit_high = numeric(),
-    stringsAsFactors = FALSE
-  )
-  
-  for(i in 1:nrow(exact_lookup)) {
-    code_val <- exact_lookup$code[i]
-    resityp_val <- exact_lookup$resityp[i]
-    low_val <- exact_lookup$unit_low[i]
-    high_val <- exact_lookup$unit_high[i]
-    
-    if(is.na(resityp_val)) {
-      resityp_val <- "<NA>"
-    }
-    resityp_options <- strsplit(resityp_val, "[;:]")[[1]]
-    for(option in resityp_options) {
-      option <- trimws(option)  
-      expanded_lookup <- rbind(
-        expanded_lookup,
-        data.frame(
-          code = code_val,
-          resityp = option,
-          unit_low = low_val,
-          unit_high = high_val,
-          stringsAsFactors = FALSE
-        )
+#' Title
+#'
+#' @param data Dataframe to link to unit crosswalk estimes.
+#' @param unit_cw_path Path to crosswalk. By default `file.path(DATA_PATH, "unit_cw.csv")`
+#' @param lu_col 
+#' @param resi_col 
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+std_units_by_lu <- function(data, unit_cw_path = file.path(DATA_PATH, "unit_cw.csv"), lu_col = "lu", resi_col = "resityp") {
+  data |>
+    # Flagged: hardcoded resityp on left will break unless column names match
+    dplyr::left_join(
+      unit_cw_path |>
+        readr::read_csv() |>
+        dplyr::rename_with(tolower) |>
+        tidyr::separate_longer_delim("resityp", "|"), 
+      by=c(
+        resi_col = "resityp",
+        lu_col = "code"
       )
-    }
-  }
-  
-  
-  data$estimated_unit_low <- NA
-  data$estimated_unit_high <- NA
-  
-  for(i in 1:nrow(data)) {
-    lu_val <- data$LU[i]
-    resityp_val <- data$RESITYP[i]
-    if(is.na(resityp_val)) {
-      resityp_val <- "<NA>"
-    }
-    # Look for exact match
-    exact_matches <- expanded_lookup[
-      expanded_lookup$code == lu_val & 
-        expanded_lookup$resityp == resityp_val, 
-    ]
-    if(nrow(exact_matches) > 0) {
-      data$estimated_unit_low[i] <- exact_matches$unit_low[1]
-      data$estimated_unit_high[i] <- exact_matches$unit_high[1]
-    }
-  }
- 
-  return(data)
+    )
 }
+
+
+  
 std_test_units <- function(data, col, units_low_col, units_high_col) {
   data |>
     dplyr::mutate(
