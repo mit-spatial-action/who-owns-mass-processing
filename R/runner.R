@@ -3,21 +3,18 @@ run <- function(data_path,
                 refresh,
                 crs,
                 gdb_path,
+                assess_layer,
+                parcel_layer,
                 oc_path,
                 most_recent,
                 thresh,
                 inds_thresh,
                 zip_int_thresh,
                 routines,
-                company_test,
-                company_test_count,
                 push_dbs,
                 return_intermediate,
-                quiet) {
-  
-  if (!company_test) {
-    company_test_count <- NULL
-  }
+                quiet,
+                company_count = NULL) {
   
   # Check for Existence of Tables Needed for Each Subroutine
   # ===
@@ -44,12 +41,14 @@ run <- function(data_path,
       muni_ids=muni_ids,
       crs=crs,
       gdb_path=gdb_path,
+      assess_layer=assess_layer,
+      parcel_layer=parcel_layer,
       oc_path=oc_path,
       zip_int_thresh=zip_int_thresh,
       tables=tables$load,
       most_recent=most_recent,
       quiet=quiet,
-      company_test_count=company_test_count,
+      company_count=company_count,
       # Don't refresh if load tables exist and user has specified a subroutine.
       refresh=refresh & routines$load,
       push_db=push_dbs$load
