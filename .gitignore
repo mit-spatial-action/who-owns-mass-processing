@@ -36,6 +36,8 @@ data/*
 
 venv/*
 
+_targets/
+
 !data/muni_ids.csv
 !data/luc_cw.csv
 !data/README.csv

@@ -811,38 +811,6 @@
       "Author": "David Bosak [aut, cre], Duong Tran [ctb]",
       "Repository": "CRAN"
     },
-    "config": {
-      "Package": "config",
-      "Version": "0.3.2",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "Manage Environment Specific Configuration Values",
-      "Authors@R": "c( person(\"JJ\", \"Allaire\", role = c(\"aut\"), email = \"jj@rstudio.com\"), person(\"Andrie\", \"de Vries\", role = \"cre\", email = \"apdevries@gmail.com\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
-      "Imports": [
-        "yaml (>= 2.1.19)"
-      ],
-      "Suggests": [
-        "testthat",
-        "knitr",
-        "rmarkdown",
-        "covr",
-        "spelling",
-        "withr"
-      ],
-      "Description": "Manage configuration values across multiple environments (e.g. development, test, production). Read values using a function that determines the current environment and returns the appropriate value.",
-      "License": "GPL-3",
-      "URL": "https://rstudio.github.io/config/, https://github.com/rstudio/config",
-      "BugReports": "https://github.com/rstudio/config/issues",
-      "RoxygenNote": "7.2.3",
-      "VignetteBuilder": "knitr",
-      "Encoding": "UTF-8",
-      "Language": "en-US",
-      "Config/testthat/edition": "3",
-      "NeedsCompilation": "no",
-      "Author": "JJ Allaire [aut], Andrie de Vries [cre], Posit Software, PBC [cph, fnd]",
-      "Maintainer": "Andrie de Vries <apdevries@gmail.com>",
-      "Repository": "RSPM"
-    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.5.2",
