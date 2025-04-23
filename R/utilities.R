@@ -71,7 +71,7 @@ util_print_splash <- function() {
   )
 }
 
-util_muni_table <- function(path, file="muni_ids.csv") { 
+util_muni_table <- function(path, file="munis.csv") { 
   readr::read_csv(
     file.path(path, file), 
     progress=TRUE,
@@ -88,7 +88,7 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #' MUNIS |> 
   #'     sf::st_drop_geometry() |> 
   #'     dplyr::select(muni_id, muni) |>
-  #'     readr::write_csv("data/muni_ids.csv")
+  #'     readr::write_csv("data/munis.csv")
   #'
   #' @param muni_ids Vector of municipality IDs.
   #' @param path Path to data directory.

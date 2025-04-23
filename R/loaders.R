@@ -1103,7 +1103,7 @@ load_munis <- function(crs, path, quiet=FALSE) {
   
   load_from_arc("43664de869ca4b06a322c429473c65e5_0", crs = crs) |>
     dplyr::select(
-      muni_id = town_id, 
+      id = town_id, 
       muni = town
       ) |>
     dplyr::mutate(
@@ -1111,7 +1111,7 @@ load_munis <- function(crs, path, quiet=FALSE) {
         dplyr::where(is.character), 
         stringr::str_to_upper
         ),
-      muni_id = std_pad_muni_ids(muni_id)
+      id = std_pad_muni_ids(id)
       ) |>
     dplyr::mutate(
       muni = dplyr::case_when(
@@ -1121,8 +1121,10 @@ load_munis <- function(crs, path, quiet=FALSE) {
       muni = stringr::str_replace(muni, "BORO$", "BOROUGH")
     ) |>
     dplyr::left_join(
-      util_muni_table(path) |> dplyr::select(muni_id, hns, mapc),
-      by=dplyr::join_by(muni_id == muni_id)
+      path |>
+        util_muni_table() |> 
+        dplyr::select(id, hns, mapc),
+      by=dplyr::join_by(id == id)
     )
 }
 
