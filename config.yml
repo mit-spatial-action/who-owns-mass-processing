@@ -1,0 +1,25 @@
+default:
+  complete_run: FALSE
+  refresh: TRUE
+  push_dbs:
+    load: ''
+    proc: ''
+    dedupe: ''
+  routines:
+    load: TRUE
+    proc: TRUE
+    dedupe: TRUE
+  muni_ids: [274, 49, 35]
+  most_recent: FALSE
+  return_intermediate: FALSE
+  company_test_count: 50000
+  company_test: TRUE
+  cosine_thresh: 0.85
+  inds_thresh: 0.95
+  zip_int_thresh: 1
+  quiet: FALSE
+  crs: 2249
+  data_path: 'data'
+  results_path: 'results'
+  oc_path: '2024-04-12'
+  gdb_path: 'L3_AGGREGATE_FGDB_20240703'
