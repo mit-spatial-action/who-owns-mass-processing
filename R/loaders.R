@@ -643,7 +643,7 @@ load_tracts <- function(state, crs, year=NULL, quiet=FALSE) {
     suppressMessages()
 }
 
-load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, most_recent=FALSE, quiet=FALSE) {
+load_assess <- function(path, gdb_path, layer, fy = NULL, cy = NULL, muni_ids=NULL, most_recent=FALSE, quiet=FALSE) {
   #' Load Assessors' Tables from MassGIS Parcel GDB(s)
   #' 
   #' Load assessing table from MassGIS tax parcel collection, presented either
@@ -686,7 +686,7 @@ load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, mos
   single_gdb <- load_gdb_is_file(gdb_path)
   
   if (single_gdb) {
-    q <- stringr::str_c("SELECT", cols, "FROM L3_ASSESS", sep = " ")
+    q <- stringr::str_c("SELECT", cols, "FROM", layer, sep = " ")
     if (!is.null(muni_ids)) {
       q <- stringr::str_c(
         q,
@@ -748,7 +748,7 @@ load_assess <- function(path, gdb_path, fy = NULL, cy = NULL, muni_ids=NULL, mos
     load_assess_preprocess(path)
 }
 
-load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, most_recent = FALSE, quiet=FALSE) {
+load_parcels <- function(gdb_path, layer, crs, assess, block_groups, muni_ids=NULL, most_recent = FALSE, quiet=FALSE) {
   #' Load Parcels from MassGIS Parcel GDB(s)
   #' 
   #' Load parcels from MassGIS tax parcel collection, presented either
@@ -773,7 +773,7 @@ load_parcels <- function(gdb_path, crs, assess, block_groups, muni_ids=NULL, mos
   single_gdb <- load_gdb_is_file(gdb_path)
   
   if (single_gdb) {
-    q <- "SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM L3_TAXPAR_POLY"
+    q <- glue::glue("SELECT LOC_ID, TOWN_ID AS MUNI_ID FROM {layer}")
     
     if (!is.null(muni_ids)) {
       q <- stringr::str_c(
@@ -1460,13 +1460,15 @@ load_read_write_all <- function(
     data_path,
     muni_ids,
     gdb_path,
+    assess_layer,
+    parcel_layer,
     oc_path,
     crs,
     zip_int_thresh,
     most_recent,
     refresh,
     tables,
-    company_test_count=NULL,
+    company_count=NULL,
     quiet=FALSE,
     push_db=""
     ) {
@@ -1607,6 +1609,7 @@ load_read_write_all <- function(
       load_assess(
         path=data_path,
         gdb_path=file.path(data_path, gdb_path),
+        assess_layer=assess_layer,
         muni_ids=muni_ids,
         most_recent=most_recent,
         quiet=quiet
@@ -1627,6 +1630,7 @@ load_read_write_all <- function(
       "parcels",
       loader=load_parcels(
         gdb_path=file.path(data_path, gdb_path),
+        layer=parcel_layer,
         muni_ids=muni_ids,
         assess=assess,
         block_groups=block_groups,
@@ -1679,7 +1683,7 @@ load_read_write_all <- function(
         muni_ids=muni_ids,
         most_recent=most_recent,
         quiet=quiet,
-        test_count=company_test_count
+        test_count=company_count
       ),
       id_col="company_id",
       refresh=refresh

@@ -8,20 +8,6 @@ source("config.R")
 
 manage_run <- function() {
   
-  # Change Defaults if COMPLETE_RUN is set.
-  # ===
-  
-  if (COMPLETE_RUN) {
-    REFRESH <- TRUE
-    COMPANY_TEST <- FALSE
-    MUNI_IDS <- NULL
-    ROUTINES <- list(
-      load = TRUE,
-      proc = TRUE,
-      dedupe = TRUE
-    )
-  }
-  
   # Open Log
   # ===
   
@@ -40,15 +26,15 @@ manage_run <- function() {
   # Test Validity of (and Zero-Pad) Municipality IDs
   # ===
   
-  MUNI_IDS <- util_test_muni_ids(
-    muni_ids=MUNI_IDS,
-    path=DATA_PATH,
-    quiet=QUIET
+  config$muni_ids <- util_test_muni_ids(
+    muni_ids=config$muni_ids,
+    path=config$data_path,
+    quiet=config$quiet
   )
   
   # Test DB Values and Connections
   # ===
-  db_vals <- unique(unlist(unname(PUSH_DBS)))
+  db_vals <- unique(unlist(unname(config$push_dbs)))
   if(!all(stringr::str_detect(db_vals, "^[a-zA-Z\\_]*$"))) {
     stop("VALIDATION: You provided invalid database prefixes---must be made up of characters and underscores.")
   }
@@ -59,18 +45,18 @@ manage_run <- function() {
   rm(db_vals)
   
   # Test Thresholds
-  threshes <- c(COSINE_THRESH, INDS_THRESH, ZIP_INT_THRESH)
+  threshes <- c(config$thresh$cosine, config$thresh$inds, cosine$thresh$zip_int)
   if (any(threshes > 1)) {
-    stop("VALIDATION: COSINE_THRESH, INDS_THRESH, and ZIP_INT_THRESH must be less than 1.")
+    stop("VALIDATION: config$thresh$cosine, config$thresh$inds, and cosine$thresh$zip_int must be less than 1.")
   } else {
-    util_log_message("VALIDATION: COSINE_THRESH, INDS_THRESH, and ZIP_INT_THRESH are valid!")
+    util_log_message("VALIDATION: config$thresh$inds, config$thresh$inds, and cosine$thresh$zip_int are valid!")
   }
   rm(threshes)
   
   # Test CRS
   # ===
   
-  if(suppressWarnings(is.na(sf::st_crs(CRS)$input))) {
+  if(suppressWarnings(is.na(sf::st_crs(config$crs)$input))) {
     stop("VALIDATION: You provided an invalid CRS. Check config.R.")
   } else {
     util_log_message("VALIDATION: CRS is valid!")
@@ -78,37 +64,36 @@ manage_run <- function() {
   
   # Test OC Path
   
-  if (!is.null(OC_PATH)) {
-    oc_exists <- dir.exists(file.path(DATA_PATH, OC_PATH))
+  if (!is.null(config$oc$path)) {
+    path <- file.path(config$data_path, config$oc$path)
+    oc_exists <- dir.exists(path)
     if (!oc_exists) {
-      stop("VALIDATION: You provided an invalid OC_PATH. Check config.R.")
+      stop("VALIDATION: You provided an invalid config$oc$path. Check config.R.")
     } else {
-      companies_exist <- any(stringr::str_detect(
-        list.files(file.path(DATA_PATH, OC_PATH)), 
-        "companies.csv"
-        ))
-      officers_exist <- any(stringr::str_detect(
-        list.files(file.path(DATA_PATH, OC_PATH)), 
-        "officers.csv"
-      ))
+      companies_exist <- file.exists(file.path(path, config$oc$companies))
+      officers_exist <- file.exists(file.path(path, config$oc$officers))
       if(!(companies_exist & officers_exist)) {
-        stop("VALIDATION: OC_PATH is a folder but doesn't contain 'companies.csv' and 'officers.csv'. Check config.R.")
+        stop(
+          glue::glue("VALIDATION: config$oc$path is a folder but doesn't contain '{config$oc$companies}' and '{config$oc$officers}'. Check config.R.")
+          )
       } else {
-        util_log_message("VALIDATION: OC_PATH is valid! It contains 'companies.csv' and 'officers.csv'")
+        util_log_message(
+          glue::glue("VALIDATION: config$oc$path is valid! It contains '{config$oc$companies}' and '{config$oc$officers}'")
+          )
       }
       rm(companies_exist, officers_exist)
     }
     rm(oc_exists)
   } else {
-    util_log_message("VALIDATION: Passed NULL to OC_PATH. Will run without OC.")
+    util_log_message("VALIDATION: Passed NULL to config$oc$path. Will run without OC.")
   }
   
   # Test GDB Path
-  as_file <- file.exists(file.path(DATA_PATH, GDB_PATH))
-  as_folder <- dir.exists(file.path(DATA_PATH, GDB_PATH))
+  as_file <- file.exists(file.path(config$data_path, config$gdb$path))
+  as_folder <- dir.exists(file.path(config$data_path, config$gdb$path))
   
   if(!as_file & !as_folder) {
-    stop("VALIDATION: You provided an invalid GDB_PATH. Check config.R.")
+    stop("VALIDATION: You provided an invalid config$data_path. Check config.yml.")
   }
   
   rm(as_file)
@@ -117,22 +102,22 @@ manage_run <- function() {
     if(
       !any(
         stringr::str_detect(
-          list.files(file.path(DATA_PATH, GDB_PATH)), 
+          list.files(file.path(config$data_path, config$gdb$path)), 
           ".gdb")
         )
     ) {
-      stop("VALIDATION: GDB_PATH is a folder but contains no GDBs. Check config.R.")
+      stop("VALIDATION: config$gdb_path is a folder but contains no GDBs. Check config.yml.")
     }
   }
   
-  util_log_message("VALIDATION: GDB_PATH is valid!")
+  util_log_message("VALIDATION: config$gdb_path is valid!")
   
   rm(as_folder)
   
   # Confirm With User if More Intensive Config Options are Set
   # ===
   
-  if(!util_prompts(REFRESH, MUNI_IDS, COMPANY_TEST)) {
+  if(!util_prompts(config$refresh, config$muni_ids, config$company_count > 0)) {
     return(invisible(NULL))
   }
   
@@ -144,22 +129,23 @@ manage_run <- function() {
   }
   
   run(
-    data_path=DATA_PATH,
-    muni_ids=MUNI_IDS,
-    refresh=REFRESH,
-    crs=CRS,
-    gdb_path=GDB_PATH,
-    oc_path=OC_PATH,
-    most_recent=MOST_RECENT,
-    thresh=COSINE_THRESH,
-    inds_thresh=INDS_THRESH,
-    zip_int_thresh=ZIP_INT_THRESH,
-    routines=ROUTINES,
-    company_test=COMPANY_TEST,
-    company_test_count=COMPANY_TEST_COUNT,
-    push_dbs=PUSH_DBS,
-    return_intermediate=RETURN_INTERMEDIATE,
-    quiet=QUIET
+    data_path=config$data_path,
+    muni_ids=config$muni_ids,
+    refresh=config$refresh,
+    crs=config$crs,
+    gdb_path=config$gdb$path,
+    assess_layer=config$gdb$assess,
+    parcel_layer=config$gdb$parcel,
+    oc_path=config$oc$path,
+    most_recent=config$most_recent,
+    thresh=config$thresh$cosine,
+    inds_thresh=config$thresh$inds,
+    zip_int_thresh=config$thresh$zip_int,
+    routines=config$routines,
+    company_count=config$company_count,
+    push_dbs=config$push_dbs,
+    return_intermediate=config$return_intermediate,
+    quiet=config$quiet
   )
 }
 

@@ -367,10 +367,10 @@ util_prompt_check <- function(prompt) {
   }
 }
 
-util_prompts <- function(refresh, muni_ids, company_test) {
+util_prompts <- function(refresh, muni_ids, company_count_gt0) {
   if (refresh) {
     continue <- util_prompt_check(
-      "VALIDATION: REFRESH is TRUE. Any explictly identified subroutines will rerun. Continue? (Y/N) "
+      "VALIDATION: Refresh set. Any explictly identified subroutines will rerun. Continue? (Y/N) "
     )
     if (!continue) {
       return(continue)
@@ -379,16 +379,16 @@ util_prompts <- function(refresh, muni_ids, company_test) {
   
   if (is.null(muni_ids)) {
     continue <- util_prompt_check(
-      "VALIDATION: MUNI_IDS is set to NULL. This will run the process for the whole state, which will take a long time. Continue? (Y/N) "
+      "VALIDATION: No municipalities specified. This will run the process for the whole state, which will take a long time. Continue? (Y/N) "
     ) 
     if (!continue) {
       return(continue)
     }
   }
   
-  if (!company_test) {
+  if (!company_count_gt0) {
     continue <- util_prompt_check(
-      "VALIDATION: COMPANY_TEST is FALSE. This will run the process for all companies, which will take a long time. Continue? (Y/N) "
+      "VALIDATION: No company count passed. This will run the process for all companies, which will take a long time. Continue? (Y/N) "
     ) 
     if (!continue) {
       return(continue)
