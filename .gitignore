@@ -33,6 +33,7 @@ results/*.Rda
 *.rds
 
 data/*
+.RDataTmp
 
 venv/*
 
