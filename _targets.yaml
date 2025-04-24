@@ -8,6 +8,7 @@ testing:
     load: TRUE
     proc: TRUE
     dedupe: TRUE
+  state: "MA"
   muni_ids: [274, 49, 35]
   most_recent: FALSE
   return_intermediate: FALSE

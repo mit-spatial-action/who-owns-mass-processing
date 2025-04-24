@@ -1,29 +1,58 @@
-# Created by use_targets().
-# Follow the comments below to fill in this target script.
-# Then follow the manual to check and run the pipeline:
-#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline
-
-# Load packages required to define the pipeline:
-# library(tarchetypes) # Load other packages as needed.
-
-# Set target options:
 targets::tar_option_set(
-  packages = c("tibble"), # Packages that your targets need for their tasks.
   format = "qs"
 )
 
 targets::tar_source()
 
-config <- config::get()
+config <- targets::tar_config_yaml()
+config <- config$testing
 
 list(
   targets::tar_target(
-    name = data,
-    command = tibble(x = rnorm(100), y = rnorm(100))
-    # format = "qs" # Efficient storage for general data objects.
+    name = munis,
+    command = load_munis(
+      crs = config$crs,
+      path = config$data_path
+    )
   ),
   targets::tar_target(
-    name = model,
-    command = coefficients(lm(y ~ x, data = data))
+    name = zips,
+    command = load_zips(
+      munis = munis,
+      crs = config$crs,
+      thresh = config$thresh$zip_int
+    )
+  ),
+  targets::tar_target(
+    name = places,
+    command = load_places(
+      munis=munis,
+      zips=zips,
+      crs=config$crs
+    )
+  ),
+  targets::tar_target(
+    name = tracts,
+    command = load_tracts(
+      state = config$state,
+      crs = config$crs
+      )
+  ),
+  targets::tar_target(
+    name = block_groups,
+    command = load_block_groups(
+      state = config$state,
+      crs = config$crs
+    )
+  ),
+  targets::tar_target(
+    name = assess,
+    command = load_assess(
+      path = config$data_path,
+      gdb_path = file.path(config$data_path, config$gdb_path),
+      layer = config$assess_layer,
+      muni_ids = muni_ids,
+      most_recent = most_recent
+    )
   )
 )
