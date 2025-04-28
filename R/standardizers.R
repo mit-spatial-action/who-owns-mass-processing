@@ -856,7 +856,7 @@ std_luc <- function(
     muni_id_col, 
     path=DATA_PATH,
     name="luc",
-    file = "luc_crosswalk.csv"
+    file = "luc_cw.csv"
 ){
   
   # Read Land Use Codes

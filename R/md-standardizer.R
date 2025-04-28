@@ -1,115 +1,82 @@
-gdb_path <- "data/Nov_2024_Parcels.gdb"
-sf::st_layers(gdb_path)
-parcel_boundaries <- sf::st_read(gdb_path, layer = "ParcelBoundaries")
-col_crosswalk <- readr::read_csv("data/col_crosswalk.csv")
-unit_crosswalk <- readr::read_csv("data/unit_crosswalk.csv")
+data_path <- "data"
 
-# preliminary filtering ====
+gdb_path <- "Feb_2025_Parcels.gdb"
 
-# Filter parcel_boundaries to include only the residential properties
-parcels <- parcel_boundaries |> dplyr::filter(LU %in% c("R", "TH", "E", "M", "U", "CC", "CR", "RC"))
-# Filter to include only relevant columns
-filtercol <- function(dataset, col_crosswalk, additional_cols = NULL) {
-  mar_columns <- col_crosswalk$MAR_col
-  mar_columns <- mar_columns[!is.na(mar_columns) & mar_columns != ""]
-  split_columns <- unlist(strsplit(mar_columns, ";")) 
-  split_columns <- trimws(split_columns)
+
+parcels <- sf::st_read(
+  file.path(data_path, gdb_path), 
+  # layer = "ParcelBoundaries"
+  query = "SELECT * FROM ParcelBoundaries LIMIT 5000"
+  )
+
+col_cw <- readr::read_csv("data/col_cw.csv")
+unit_cw <- readr::read_csv("data/unit_cw.csv")
+state <- "MD"
+
+lu_by_state <- function(state, cw_file = "unit_cw.csv", data_path = "data") {
+  readr::read_csv(
+    file.path(data_path, cw_file),
+    show_col_types= FALSE
+    ) |>
+     dplyr::filter(state == state) |>
+     dplyr::pull(code) |>
+     unique()
+}
+
+cols_by_state <- function(state, cw_file = "col_cw.csv", data_path = "data") {
+  state <- stringr::str_to_lower(state)
+  readr::read_csv(
+    file.path(data_path, cw_file),
+    show_col_types= FALSE
+  ) |>
+    tidyr::drop_na(state) |>
+    dplyr::pull(state) |>
+    stringr::str_split("\\|") |>
+    unlist() |>
+    unique()
+}
+
+filter_residential <- function(data, state) {
+  result <- parcels |> 
+    dplyr::rename_with(stringr::str_to_lower) |>
+    dplyr::filter(lu %in% lu_by_state(state)) |>
+    dplyr::select(dplyr::any_of(cols_by_state(state)))
   
-  # Add additional columns if provided
-  if (!is.null(additional_cols)) {
-    split_columns <- c(split_columns, additional_cols)
-  }
-  # Remove duplicates before checking existence in dataset
-  split_columns <- unique(split_columns)
-  existing_columns <- split_columns[split_columns %in% names(dataset)]
-  if (inherits(dataset, "sf")) {
+  if ("sf" %in% class(data)) {
     # Convert to regular data frame (drops geometry)
-    result <- as.data.frame(dataset)[, existing_columns, drop = FALSE]
-  } else {
-    result <- dataset[, existing_columns, drop = FALSE]
+    result <- result |>
+      sf::st_drop_geometry()
   }
-  return(result)
 }
 
-# Apply Filtering
-parcels <- filtercol(
-  parcels, 
-  col_crosswalk,
-  additional_cols = NULL)
-names(parcels)
-
-# unit estimation ====
-std_units_by_luresityp <- function(data, csv_path, filter_state = "md") {
-  reference_data <- utils::read.csv(csv_path, stringsAsFactors = FALSE)
-  names(reference_data) <- tolower(names(reference_data))
-  state_data <- reference_data[tolower(reference_data$state) == tolower(filter_state), ]
-  
-  # Build lookup tables 
-  # Exact match lookup (code + resityp)
-  exact_lookup <- data.frame(
-    code = state_data$code,
-    resityp = state_data$resityp,
-    unit_low = state_data$unit_low,
-    unit_high = state_data$unit_high,
-    stringsAsFactors = FALSE
-  )
-  # Split multi-value resityp entries (handling the either or case)
-  expanded_lookup <- data.frame(
-    code = character(),
-    resityp = character(),
-    unit_low = numeric(),
-    unit_high = numeric(),
-    stringsAsFactors = FALSE
-  )
-  
-  for(i in 1:nrow(exact_lookup)) {
-    code_val <- exact_lookup$code[i]
-    resityp_val <- exact_lookup$resityp[i]
-    low_val <- exact_lookup$unit_low[i]
-    high_val <- exact_lookup$unit_high[i]
-    
-    if(is.na(resityp_val)) {
-      resityp_val <- "<NA>"
-    }
-    resityp_options <- strsplit(resityp_val, "[;:]")[[1]]
-    for(option in resityp_options) {
-      option <- trimws(option)  
-      expanded_lookup <- rbind(
-        expanded_lookup,
-        data.frame(
-          code = code_val,
-          resityp = option,
-          unit_low = low_val,
-          unit_high = high_val,
-          stringsAsFactors = FALSE
-        )
+#' Title
+#'
+#' @param data Dataframe to link to unit crosswalk estimes.
+#' @param unit_cw_path Path to crosswalk. By default `file.path(DATA_PATH, "unit_cw.csv")`
+#' @param lu_col 
+#' @param resi_col 
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+std_units_by_lu <- function(data, unit_cw_path = file.path(DATA_PATH, "unit_cw.csv"), lu_col = "lu", resi_col = "resityp") {
+  data |>
+    # Flagged: hardcoded resityp on left will break unless column names match
+    dplyr::left_join(
+      unit_cw_path |>
+        readr::read_csv() |>
+        dplyr::rename_with(tolower) |>
+        tidyr::separate_longer_delim("resityp", "|"), 
+      by=c(
+        resi_col = "resityp",
+        lu_col = "code"
       )
-    }
-  }
-  
-  
-  data$estimated_unit_low <- NA
-  data$estimated_unit_high <- NA
-  
-  for(i in 1:nrow(data)) {
-    lu_val <- data$LU[i]
-    resityp_val <- data$RESITYP[i]
-    if(is.na(resityp_val)) {
-      resityp_val <- "<NA>"
-    }
-    # Look for exact match
-    exact_matches <- expanded_lookup[
-      expanded_lookup$code == lu_val & 
-        expanded_lookup$resityp == resityp_val, 
-    ]
-    if(nrow(exact_matches) > 0) {
-      data$estimated_unit_low[i] <- exact_matches$unit_low[1]
-      data$estimated_unit_high[i] <- exact_matches$unit_high[1]
-    }
-  }
- 
-  return(data)
+    )
 }
+
+
+  
 std_test_units <- function(data, col, units_low_col, units_high_col) {
   data |>
     dplyr::mutate(
@@ -156,8 +123,8 @@ std_estimate_units <- function(data, col, units_low_col, units_high_col, area_co
 # standardization of column names ====
 
 #Calculate SITE_LS_PRICE Value by aggregating the values from CONSIDR1 and MORTGAG columns.
-calculate_site_ls_price <- function(data, mar_col) {
-  column_parts <- strsplit(mar_col, ";")[[1]]
+calculate_site_ls_price <- function(data, md_col) {
+  column_parts <- strsplit(md_col, "|")[[1]]
   # Ensure both columns exist, if not, use 0
   considr1_values <- if(column_parts[1] %in% names(data)) data[[column_parts[1]]] else 0
   mortgage_values <- if(column_parts[2] %in% names(data)) data[[column_parts[2]]] else 0
@@ -167,8 +134,8 @@ calculate_site_ls_price <- function(data, mar_col) {
   return(combined_values)
 }
 # Combine land use code and residential type as reference for site use code 
-combine_site_use_code <- function(data, mar_col) {
-  column_parts <- strsplit(mar_col, ";")[[1]]
+combine_site_use_code <- function(data, md_col) {
+  column_parts <- strsplit(md_col, "|")[[1]]
   column_parts <- trimws(column_parts)  
   first_col_values <- if(column_parts[1] %in% names(data)) data[[column_parts[1]]] else rep(NA, nrow(data))
   second_col_values <- if(column_parts[2] %in% names(data)) data[[column_parts[2]]] else rep(NA, nrow(data))
@@ -178,60 +145,63 @@ combine_site_use_code <- function(data, mar_col) {
     # Convert NA to "NA" string for combination
     first_val <- if(is.na(first_col_values[i])) "NA" else as.character(first_col_values[i])
     second_val <- if(is.na(second_col_values[i])) "NA" else as.character(second_col_values[i])
-    combined_values[i] <- paste(first_val, second_val, sep = ";")
+    combined_values[i] <- paste(first_val, second_val, sep = "|")
   }
   return(combined_values)
 }
 
+data |>
+  dplyr::rename(col_cw)
+
 #' Standardize Parcel Columns According to Mapping
-#' This function takes a parcels dataset with original column names (MAR_col) and 
-#' standardizes them according to a mapping table to the desired column names (MAS_col).
-#' @param data A data frame containing the original parcel data with MAR_col column names
-#' @param crosswalk A data frame with the mapping between MAR_col and MAS_col
+#' This function takes a parcels dataset with original column names (md_col) and 
+#' standardizes them according to a mapping table to the desired column names (ma_col).
+#' @param data A data frame containing the original parcel data with md_col column names
+#' @param crosswalk A data frame with the mapping between md_col and ma_col
 #'
-#' @return A data frame with standardized column names according to MAS_col
+#' @return A data frame with standardized column names according to ma_col
 std_rename_col<- function(data, crosswalk) {
   std_data <- data.frame(matrix(nrow = nrow(data), ncol = 0))
   
   for (row_index in 1:nrow(crosswalk)) {
-    mas_col <- crosswalk$MAS_col[row_index]
-    mar_col <- crosswalk$MAR_col[row_index]
+    ma_col <- crosswalk$ma[row_index]
+    md_col <- crosswalk$md[row_index]
     
-    # Case 1: MAS_col has empty MAR_col - add empty column
-    if (is.na(mar_col) || mar_col == "") {
-      std_data[[mas_col]] <- NA
+    # Case 1: ma_col has empty md_col - add empty column
+    if (is.na(md_col) || md_col == "") {
+      std_data[[ma_col]] <- NA
       next
     }
     
     # Case 2: Special case for SITE_LS_PRICE (sum of CONSIDR1 and MORTGAG)
-    if (mas_col == "SITE_LS_PRICE" && grepl(";", mar_col)) {
-      std_data[[mas_col]] <- calculate_site_ls_price(data, mar_col)
+    if (ma_col == "SITE_LS_PRICE" && grepl("|", md_col)) {
+      std_data[[ma_col]] <- calculate_site_ls_price(data, md_col)
       next
     }
     
     # Case 3: Special case for SITE_USE_CODE (handle LU; RESITYP)
-    if (mas_col == "SITE_USE_CODE" && grepl(";", mar_col)) {
-      std_data[[mas_col]] <- combine_site_use_code(data, mar_col)
+    if (ma_col == "SITE_USE_CODE" && grepl("|", md_col)) {
+      std_data[[ma_col]] <- combine_site_use_code(data, md_col)
       next
     }
     
     # Case 4: Special case for SITE_UNITS
-    if (mas_col == "SITE_UNITS") {
+    if (ma_col == "SITE_UNITS") {
       if ("UNITS" %in% names(data)) {
-        std_data[[mas_col]] <- data[["UNITS"]]
+        std_data[[ma_col]] <- data[["UNITS"]]
       } else {
-        std_data[[mas_col]] <- NA
+        std_data[[ma_col]] <- NA
       }
       next
     }
     
     
     # Case 5: Standard renaming
-    if (mar_col %in% names(data)) {
-      std_data[[mas_col]] <- data[[mar_col]]
+    if (md_col %in% names(data)) {
+      std_data[[ma_col]] <- data[[md_col]]
     } else {
       # Column doesn't exist in original data
-      std_data[[mas_col]] <- NA
+      std_data[[ma_col]] <- NA
     }
   }
   
