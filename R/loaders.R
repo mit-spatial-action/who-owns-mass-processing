@@ -106,6 +106,90 @@ load_rename_geometry <- function(g, name){
   g
 }
 
+load_filter_res <- function(df, unit_cw_path) {
+  
+  unit_cw <- readr::read_csv(unit_cw_path, show_col_types = FALSE)
+  
+  # Get land use codes for this state
+  state_lu_codes <- unit_cw  |>
+    dplyr::filter(state == state) |>
+    dplyr::pull(code) |>
+    stringr::str_replace("^([^-]+).*$", "\\1") |> #capture before the first hyphen, land use code without residential type
+    unique()
+  
+  df |>
+    dplyr::filter(lu %in% state_lu_codes)
+}
+
+load_standard_cols <- function(df, state, col_cw_path, nrows = NULL) {
+  if (is.numeric(nrows)) {
+    df <- df |> dplyr::slice_head(n = nrows)
+  } else if (!is.null(nrows)) {
+    stop("Non-numeric value passed to `nrows`.")
+  }
+  
+  if ("sf" %in% class(df)) {
+    df <- df |>
+      sf::st_drop_geometry()
+  }
+  
+  col_cw <- readr::read_csv(col_cw_path, show_col_types = FALSE)
+  
+  # Get columns for this state
+  state_cols <- col_cw |>
+    dplyr::select(dplyr::all_of(stringr::str_to_lower(state))) |>
+    tidyr::drop_na() |>
+    dplyr::pull() |>
+    stringr::str_split("\\|") |>
+    unlist() |>
+    unique()
+  
+  # Filter to residential parcels and select relevant columns
+  df <- df |> 
+    # Assumes clean land use codes, we need to run lu pre-processing FIRST.
+    dplyr::select(dplyr::any_of(state_cols))
+  
+  std_df <- data.frame(matrix(nrow = nrow(df), ncol = 0))
+  
+  for (row_index in 1:nrow(col_cw)) {
+    ma_col <- col_cw$ma[row_index]
+    md_col <- col_cw$md[row_index]
+    
+    if (is.na(md_col) || md_col == "") {
+      std_df[[ma_col]] <- NA
+    }
+    
+    # --- Special case: SITE_LS_PRICE ---
+    else if (ma_col == "site_ls_price" && grepl("\\|", md_col)) {
+      column_parts <- trimws(strsplit(md_col, "\\|")[[1]])
+      std_df[[ma_col]] <- dplyr::coalesce(df[[column_parts[1]]], 0) +
+        dplyr::coalesce(df[[column_parts[2]]], 0)
+      print(std_df[[ma_col]])
+      
+    }
+    
+    # --- Special case: SITE_USE_CODE ---
+    else if (ma_col == "site_use_code" && grepl("\\|", md_col)) {
+      column_parts <- trimws(strsplit(md_col, "\\|")[[1]])
+      std_df[[ma_col]] <- ifelse(
+        is.na(df[[column_parts[2]]]),
+        as.character(df[[column_parts[1]]]),
+        paste0(df[[column_parts[1]]], "-", df[[column_parts[2]]])
+      )
+    }
+    
+    # --- Standard copying ---
+    else if (md_col %in% names(df)) {
+      std_df[[ma_col]] <- df[[md_col]]
+    } else {
+      std_df[[ma_col]] <- NA
+    }
+  }
+  
+  
+  std_df
+}
+
 # Load from Services ====
 
 load_shp_from_zip <- function(path, shpfile, crs) {

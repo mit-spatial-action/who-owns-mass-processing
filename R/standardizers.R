@@ -997,6 +997,47 @@ std_test_units <- function(df, col, luc_col, muni_id_col) {
     )
 }
 
+std_site_units <- function(df, 
+                           unit_cw_path, 
+                           lu_col = "site_use_code", 
+                           units_col = "site_units", 
+                           area_col = "site_bld_area", 
+                           est_size = 900) {
+  unit_cw <- unit_cw_path |>
+    readr::read_csv(show_col_types = FALSE) |>
+    dplyr::select(code, units_low, units_high)
+  
+  df |>
+    dplyr::left_join(unit_cw, by = setNames("code", lu_col)) |>
+    
+    # Estimate unit count
+    dplyr::mutate(
+      unit_by_area = as.integer(ceiling(.data[[area_col]] / est_size)),
+      
+      unit_valid = dplyr::case_when(
+        !is.na(.data[[units_col]]) & !is.na(.data[["units_low"]]) &
+          (is.na(.data[["units_high"]]) | .data[[units_col]] <= .data[["units_high"]]) &
+          .data[[units_col]] >= .data[["units_low"]] ~ TRUE,
+        TRUE ~ NA
+      ),
+      
+      "{units_col}" := dplyr::case_when(
+        unit_valid == TRUE ~ .data[[units_col]],
+        TRUE ~ dplyr::case_when(
+          !is.na(.data[["units_low"]]) & !is.na(.data[["units_high"]]) &
+            .data[["units_low"]] == .data[["units_high"]] ~ .data[["units_low"]],
+          !is.na(.data[["units_low"]]) & !is.na(.data[["units_high"]]) &
+            (.data[["unit_by_area"]] >= .data[["units_low"]] &
+               .data[["unit_by_area"]] <= .data[["units_high"]]) ~ .data[["unit_by_area"]],
+          TRUE ~ .data[["units_low"]]
+        )
+      )
+    ) |>
+    
+    
+    dplyr::select(-unit_by_area, -unit_valid, -units_low, -units_high)
+}
+
 std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, addresses, est_size=900) {
   if ("sf" %in% class(addresses)) {
     addresses <- addresses |>
