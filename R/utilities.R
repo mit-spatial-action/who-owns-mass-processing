@@ -1,3 +1,7 @@
+util_get_config <- function(file = "config.yaml") {
+    config::get(file = file)  # auto-detects R_CONFIG_ACTIVE
+}
+
 util_log_message <- function(status, header=FALSE, timestamp=TRUE) {
   #' Print message to `logr` logs, or to message if log is not opened.
   #'

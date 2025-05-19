@@ -1,4 +1,4 @@
-testing:
+default:
   refresh: TRUE
   push_dbs:
     load: ''
@@ -31,13 +31,12 @@ testing:
     path: 'L3_AGGREGATE_FGDB_20240703'
     assess: 'L3_ASSESS'
     parcel: 'L3_TAXPAR_POLY'
-
-# complete:
-#   inherits: default
-#   refresh: TRUE
-#   company_count: NULL
-#   muni_ids: NULL
-#   routines:
-#     load: TRUE
-#     proc: TRUE
-#     dedupe: TRUE
+complete:
+  inherits: default
+  refresh: TRUE
+  company_count: NULL
+  muni_ids: NULL
+  routines:
+    load: TRUE
+    proc: TRUE
+    dedupe: TRUE
