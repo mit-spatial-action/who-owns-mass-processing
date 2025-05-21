@@ -75,13 +75,6 @@ util_print_splash <- function() {
   )
 }
 
-util_muni_table <- function(path, file="munis.csv") { 
-  readr::read_csv(
-    file.path(path, file), 
-    progress=TRUE,
-    show_col_types = FALSE)
-}
-
 util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #' Test Validity of Muni IDs and Pad
   #' 
@@ -101,9 +94,9 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #' @return A transformed vector of municipality IDs.
   #' 
   #' @export
-  muni_table <- util_muni_table(path) 
+  muni_table <- load_muni_helper(path) 
   ids <- muni_table |>
-    dplyr::pull(muni_id)
+    dplyr::pull(id)
   if (is.null(muni_ids)) {
     muni_ids <- std_pad_muni_ids(ids) |>
       unique()

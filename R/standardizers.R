@@ -187,14 +187,12 @@ std_col_prefixes <- function (df, prefixes=c(), parsed_cols=c()) {
 }
 
 # General Character Handlers ====
-
+#' Uppercase string values
+#'
+#' @param df A dataframe containing only string datatypes.
+#' @param except Column or columns to remain untouched.
+#' @returns A dataframe.
 std_uppercase <- function(df, cols) {
-  #' Uppercase string values
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @param except Column or columns to remain untouched.
-  #' @returns A dataframe.
-  #' @export
   df |>
     dplyr::mutate(
       dplyr::across(
@@ -215,6 +213,12 @@ std_squish_special <- function(df,cols) {
 }
 
 
+#' Squish string and replace empty with NA
+#'
+#' @param df A dataframe.
+#' @param cols Columns over which to apply the squishing.
+#'
+#' @returns A dataframe.
 std_squish <- function(df, cols) {
   df |> 
     dplyr::mutate(
@@ -226,15 +230,13 @@ std_squish <- function(df, cols) {
     std_squish_special(cols)
 }
 
+#' Removes all special characters from columns
+#'
+#' @param df A dataframe.
+#' @param cols Column or columns to be processed.
+#' @returns A dataframe.
+#' @export
 std_remove_special <- function(df, cols, rm_commas=TRUE) {
-  #' Removes all special characters from columns, except slash
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @param cols Column or columns to be processed.
-  #' @returns A dataframe.
-  #' @export
-  
-  # Remove (almost all) special characters.
   if (rm_commas) {
     string <- "[^[:alnum:][:space:]\\-\\.\\&\\']"
   } else {
@@ -340,12 +342,13 @@ std_leading_zeros <- function(df, cols, rmsingle = TRUE) {
   )
 }
 
+#' Replace blank or textual unknown indicators with NA.
+#'
+#' @param df A dataframe.
+#' @param cols columns over which to apply.
+#' @returns A dataframe.
+#'
 std_replace_blank <- function(df, cols) {
-  #' Replace blank string with NA and remove leading and trailing whitespace.
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @returns A dataframe.
-  #' @export
   blank <- c(
     ",?([:alnum:])\\2*",
     "[\\_\\-\\;\\:\\, ]+", 
@@ -353,8 +356,6 @@ std_replace_blank <- function(df, cols) {
     "N( /)? ?A",
     "U ?NKNOWN",
     "N N",
-    "LLC|LLP|INC|LTD",
-    "DOING BUSINESS (AS|BY)",
     " *",
     ""
     # "^[- ]*SAME( ADDRESS)?"
@@ -414,14 +415,13 @@ std_fix_concatenated_ranges <- function(df, cols) {
 
 
 
+#' Standardizes spacing characters, remove trailing ampersands
+#'
+#' @param df A dataframe.
+#' @param cols Column or columns to be processed.
+#' 
+#' @returns A dataframe.
 std_spacing_characters <- function(df, cols) {
-  #' Standardizes slashes to have a space on either side and
-  #' replaces all instances of an ampersand with the word "AND"
-  #'
-  #' @param df A dataframe containing only string datatypes.
-  #' @param cols Column or columns to be processed.
-  #' @returns A dataframe.
-  #' @export
   spacing_characters <- c(
     # Put space around slashes
     " ?/ ?" = "/",

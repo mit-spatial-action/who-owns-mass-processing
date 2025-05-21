@@ -1,3 +1,160 @@
+# Spatial ====
+
+# **********************************************************
+# These (st_*) are copied from ographiesresearch/urbanplanr. 
+# Decided import was too heavy.
+# **********************************************************
+
+#' Return Geometry Centers for Multiple Types.
+#'
+#' @inheritParams st_check_for_proj
+#' @param on_surface If `TRUE` (the default), generates polygon centroids using 
+#' `st_point_on_surface()`. If `FALSE`, uses `st_centroid()`.
+#' @param retain_geom Boolean. If `TRUE` (the default), returns points. If 
+#' `FALSE` preserves geometry type of input. 
+#'
+#' @returns An `sf` dataframe.
+#' @export
+st_multi_type_center <- function(df,
+                                 on_surface = TRUE,
+                                 retain_geom = FALSE) {
+  
+  if (retain_geom) {
+    center_col <- "center"
+  } else {
+    center_col <- attr(df, "sf_column")
+  }
+  if (st_is_polygon(df) & on_surface) {
+    df <- df |>
+      dplyr::mutate(
+        "{center_col}" := sf::st_point_on_surface(sf::st_geometry(df))
+      )
+  } else if (st_is_linestring(df) |
+             (st_is_polygon(df) & !on_surface)) {
+    df <- df |>
+      dplyr::mutate(
+        "{center_col}" := sf::st_centroid(sf::st_geometry(df))
+      )
+  }
+  df |>
+    sf::st_set_geometry(center_col)
+}
+
+#' Geometry to XY Columns
+#'
+#' Takes a simple features dataframe containing geometries and returns
+#' the frame with additional columns containing x and y coordinates. If
+#' `retain_geom` is TRUE, returns with original (non-point) geometry.
+#'
+#' @inheritParams st_check_for_proj
+#' @param cols Character vector of names for x and y columns. (Default 
+#' `c("x", "y")`.)
+#' @inheritParams st_check_for_proj
+#' @param retain_geom Boolean. If `FALSE` (default), returns point geometry. If
+#' `TRUE`, returns original geometries 
+#' @param ... Arguments passed on to `st_multi_type_center()`.
+#'
+#' @return Simple features dataframe.
+#'
+#' @export
+st_geom_to_xy <- function(df, 
+                          cols = c("x", "y"), 
+                          crs = 4326,
+                          retain_geom=FALSE, 
+                          ...
+) {
+  init_geo_col <- attr(df, "sf_column")
+  init_crs <- sf::st_crs(df)
+  
+  df <- df |> 
+    st_multi_type_center(retain_geom=retain_geom, ...) |>
+    sf::st_transform(crs = crs)
+  
+  df <- df |>
+    dplyr::mutate(
+      coords = sf::st_coordinates(sf::st_geometry(df)),
+      "{cols[1]}" := .data$coords[, "X"],
+      "{cols[2]}" := .data$coords[, "Y"]
+    ) |>
+    dplyr::select(-c("coords"))
+  
+  if(retain_geom) {
+    df <- df |>
+      sf::st_drop_geometry() |>
+      sf::st_set_geometry(init_geo_col) |>
+      sf::st_set_crs(init_crs)
+  } else {
+    df |>
+      sf::st_transform(init_crs)
+  }
+  df
+}
+
+#' Upgrade Geometry Type
+#' 
+#' Given an input `sf` object that is made up "POINT"s, "POLYLINE"s, etc.,
+#' upcasts that object to "MULTIPOINT", "MULTIPOLYLINE", etc.
+#'
+#' @inheritParams st_check_for_proj
+#'
+#' @returns An `sf` object, with upcast geometry.
+#' @export
+st_upgrade_type <- function(df) {
+  t <- list(
+    pt = c("POINT", "MULTIPOINT"),
+    ln = c("LINESTRING", "MULTILINESTRING"),
+    pl = c("POLYGON", "MULTIPOLYGON")
+  )
+  
+  in_type <- df |>
+    sf::st_geometry_type() |> 
+    unique() |>
+    as.character()
+  
+  if (length(in_type) > 1) {
+    cast_to <- dplyr::case_when(
+      all(in_type %in% t$pt) ~ t$pt[2],
+      all(in_type %in% t$ln) ~ t$ln[2],
+      all(in_type %in% t$pl) ~ t$pl[2]
+    )
+  } else {
+    cast_to <- in_type
+  }
+  df |>
+    sf::st_cast(cast_to)
+}
+
+#' Standard preprocessing operations for spatial data.
+#'
+#' @inheritParams st_check_for_proj
+#' @param name Character. Name of geometry column. `"geometry"` is default.
+#'
+#' @returns Simple Features dataframe.
+#' @export
+st_preprocess <- function(df, crs, name="geometry") {
+  df <- df |> 
+    st_upgrade_type() |>
+    sf::st_transform(crs) |>
+    dplyr::rename_with(tolower) |>
+    sf::st_set_geometry(name) |>
+    st_geom_to_xy(retain_geom = TRUE) |>
+    sf::st_make_valid()
+  
+  if (st_is_polygon(df)) {
+    df <- df |>
+      dplyr::mutate(
+        area = sf::st_area(sf::st_geometry(df))
+      )
+  }
+  if (st_is_linestring(df)) {
+    df <- df |>
+      dplyr::mutate(
+        area = sf::st_length(sf::st_geometry(df))
+      )
+  }
+  df
+}
+
 # Addresses ====
 
 proc_address_text <- function(df, cols, rm_ma = TRUE, numbers = TRUE) {
@@ -953,6 +1110,41 @@ proc_assess_luc <- function(df, quiet = FALSE, path=DATA_PATH) {
       muni_id_col="site_muni_id", 
       name="site_res")
 }
+
+# load_assess_preprocess <- function(df, state) {
+#   util_log_message(glue::glue("LOADING: Preprocessing Assessors' Tables."))
+#   df <- df |>
+#     dplyr::mutate(
+#       site_addr = dplyr::case_when(
+#         is.na(site_addr) & 
+#           !is.na(addr_num) & 
+#           !is.na(full_str) ~ stringr::str_c(addr_num, full_str, sep = " "),
+#         .default = site_addr
+#       )
+#     ) |>
+#     dplyr::select(-c(addr_num, full_str)) |>
+#     # All parcels are in MA, in the US...
+#     dplyr::mutate(
+#       site_muni_id = std_pad_muni_ids(site_muni_id),
+#       site_ls_date = lubridate::fast_strptime(site_ls_date, "%Y%m%d", lt=FALSE),
+#       site_state = state, 
+#       site_country = "US"
+#     ) |>
+#     load_generic_preprocess(
+#       c("site_addr", "site_muni", "site_postal", 
+#         "own_name",  "own_addr", "own_muni", 
+#         "own_postal", "own_state", "own_country"), 
+#       id_cols = c("site_id", "site_muni_id")
+#     ) |>
+#     tidyr::replace_na(list(site_units = 0)) |> 
+#     dplyr::group_by(site_addr, site_muni, site_postal) |>
+#     tidyr::fill(
+#       site_loc_id
+#     ) |>
+#     dplyr::ungroup() 
+#   # |>
+#   #   dplyr::filter(!is.na(site_loc_id))
+# }
 
 proc_assess <- function(df, 
                         site_prefix,
