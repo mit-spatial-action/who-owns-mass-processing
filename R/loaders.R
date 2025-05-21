@@ -872,39 +872,6 @@ load_munis <- function(crs, path) {
     )
 }
 
-load_ma_hydro <- function(crs, thresh = 0.98, quiet=FALSE) {
-  if(!quiet) {
-    util_log_message("INPUT/OUTPUT: Downloading and processing Massachusetts Hydrology...")
-  }
-  df <- load_remote_shp(
-    "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/shapefiles/state/hydro25k.zip",
-    layer = "HYDRO25K_POLY.shp"
-  ) |>
-    st_preprocess(crs)
-  
-  ocean <- df |> 
-    dplyr::filter(poly_code == 8)
-  
-  rivers_lakes <- df |> 
-    dplyr::filter(poly_code == 6)
-  
-  union <- rivers_lakes |>
-    sf::st_union() |>
-    sf::st_cast("POLYGON") |>
-    sf::st_as_sf() |>
-    sf::st_set_geometry("geometry") |>
-    dplyr::mutate(
-      area = sf::st_area(geometry)
-    ) |>
-    dplyr::filter(area > quantile(area, 0.98))
-  
-  rivers_lakes |>
-    sf::st_filter(union, .predicate = sf::st_intersects) |>
-    dplyr::bind_rows(
-      ocean
-    )
-}
-
 load_zips <- function(munis, crs, thresh = 0.95) {
   #' Load ZIP Boundaries
   #' 
