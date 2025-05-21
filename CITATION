@@ -18,7 +18,7 @@ utils::bibentry(
     ),
     person(
       given = "Jiao", family = "Zhao", 
-      email = "aizman@mit.edu", 
+      email = "jiaoz17@mit.edu", 
       role = c("ctb")
     )
   ),
