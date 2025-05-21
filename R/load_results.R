@@ -1,8 +1,3 @@
-source("R/loaders.R")
-source("R/summarizers.R")
-source("R/utilities.R")
-source("config.R")
-
 load_results <- function(prefix, load_boundaries=TRUE, summarize=TRUE) {
   
   util_test_conn(prefix)

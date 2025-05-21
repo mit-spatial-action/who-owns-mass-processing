@@ -16,6 +16,7 @@ default:
   data_dir: 'data'
   corpanies_path: !expr file.path(data_dir, 'companies.csv')
   officers_path: !expr file.path(data_dir, 'officers.csv')
+  altnames_path: !expr file.path(data_dir, 'alternative_names.csv')
   parcel_gdb: "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip"
   assess_layer: 'L3_ASSESS'
   parcel_layer: 'L3_TAXPAR_POLY'

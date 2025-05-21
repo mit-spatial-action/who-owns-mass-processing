@@ -1,10 +1,10 @@
-source("R/loaders.R")
-source('R/standardizers.R')
-source('R/deduplicaters.R')
-source("R/processors.R")
-source("R/utilities.R")
-source("R/runner.R")
-source("config.R")
+# source("R/loaders.R")
+# source('R/standardizers.R')
+# source('R/deduplicaters.R')
+# source("R/processors.R")
+# source("R/utilities.R")
+# source("R/runner.R")
+# source("config.R")
 
 manage_run <- function() {
   
@@ -150,14 +150,14 @@ manage_run <- function() {
 }
 
 # This is like if __name__ == "__main__" in python.
-if (!interactive()) {
-  invisible(manage_run())
-  util_log_message("CLOSING R SESSION.", header=TRUE)
-} else {
-  results <- manage_run()
-  if (!is.null(results)) {
-    util_log_message("ASSIGNING R OBJECTS.", header=TRUE)
-    for(i in 1:length(results)) assign(names(results)[i], results[[i]])
-  }
-  rm(results)
-}
+# if (!interactive()) {
+#   invisible(manage_run())
+#   util_log_message("CLOSING R SESSION.", header=TRUE)
+# } else {
+#   results <- manage_run()
+#   if (!is.null(results)) {
+#     util_log_message("ASSIGNING R OBJECTS.", header=TRUE)
+#     for(i in 1:length(results)) assign(names(results)[i], results[[i]])
+#   }
+#   rm(results)
+# }

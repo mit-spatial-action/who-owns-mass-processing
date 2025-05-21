@@ -1,21 +1,20 @@
 # Load Helpers ====
 
-load_vintage_select <- function(gdb_path, most_recent = FALSE, muni_ids=NULL, recent = 3) {
-  #' Select Parcel Vintage
-  #' 
-  #' Decide which vintage to use per MA municipality based on a simple 
-  #' algorithm.
-  #'
-  #' @param gdb_path Path to collection of MassGIS parcel geodatabases.
-  #' @param recent Integer. How many years back algorithm should look in
-  #'    identifying most complete vintages.
-  #' 
-  #' @return A dataframe containing both `fy` and `cy`. Both are necessary
-  #'    because (strangely), there is no fixed relationship between them.
-  #' 
-  #' @export
+#' Select Parcel Vintage
+#' 
+#' Decide which vintage to use per MA municipality based on a simple 
+#' algorithm.
+#'
+#' @param path Path to collection of MassGIS parcel geodatabases.
+#' @param recent Integer. How many years back algorithm should look in
+#'    identifying most complete vintages.
+#' 
+#' @return A dataframe containing both `fy` and `cy`. Both are necessary
+#'    because (strangely), there is no fixed relationship between them.
+load_vintage_select <- function(path, most_recent = FALSE, muni_ids = NULL, recent = 3) {
   
-  gdb_list <- list.files(gdb_path)
+  gdb_list <- list.files(path)
+  
   vintages <- data.frame(
     muni_id = stringr::str_extract(gdb_list, "(?<=M)[0-9]{3}"),
     fy = as.numeric(stringr::str_extract(gdb_list, "(?<=_FY)[0-9]{2}")) + 2000,
@@ -100,7 +99,97 @@ load_gdb_type <- function(path) {
   type
 }
 
-# Database Functions ====
+load_sql_query <- function(from, select = NULL, where = NULL, limit = NULL) {
+  if (!is.null(select)) {
+    s <- stringr::str_c(select, collapse = ',')
+  } else {
+    s <- "*"
+  }
+  q <- glue::glue("SELECT {s}
+                FROM {from}")
+  if (!is.null(where)) {
+    q <- glue::glue("{q}
+                    WHERE {where}")
+  }
+  if (!is.null(limit)) {
+    q <- glue::glue("{q}
+                    LIMIT {limit}")
+  }
+  q
+}
+
+load_rename_with_cols <- function(df, from, to) {
+  df |>
+    dplyr::rename(
+      dplyr::any_of(
+        setNames(
+          from,
+          to
+        )
+      )
+    )
+}
+
+load_from_gdb <- function(path, from, select = NULL, where_ids = NULL, where_col = NULL) {
+  if (!is.null(where_ids)) {
+    where <- glue::glue(
+      "{where_col} IN ({stringr::str_c(where_ids, collapse = ',')})"
+    )
+  } else {
+    where <- NULL
+  }
+  sf::st_read(
+    path,
+    query = load_sql_query(
+      select = select, 
+      from = from, 
+      where = where
+    ),
+    quiet = TRUE
+  )
+}
+
+# **********************************************************
+# Copied from ographiesresearch/urbanplanr. 
+# Decided import was too heavy.
+# **********************************************************
+
+#' Read Remote ArcGIS Open Data Layer
+#'
+#' @param id Character. ArcGIS online ID.
+#'
+#' @returns Object of class `sf`.
+#' @export
+load_arc <- function(id) {
+  prefix <- "https://opendata.arcgis.com/api/v3/datasets/"
+  suffix <- "/downloads/data?format=geojson&spatialRefId=4326&where=1=1"
+  sf::st_read(
+    glue::glue("{prefix}{id}{suffix}")
+  )
+}
+
+load_remote <- function(url, path) {
+  httr::GET(
+    url, 
+    httr::write_disk(path, overwrite = TRUE)
+  )
+}
+
+load_zipped_shp <- function(path, layer) {
+  path <- stringr::str_c("/vsizip", path, layer, sep="/")
+  sf::st_read(path, quiet=TRUE)
+}
+
+load_remote_shp <- function(url, layer) {
+  temp <- base::tempfile(fileext = ".zip")
+  load_remote(
+    url = url,
+    path = temp
+  )
+  load_zipped_shp(temp, layer)
+}
+
+# Database Helpers ====
 
 load_column_name_lookup <- function(table_name) {
   if (table_name == "init_assess") {
@@ -499,7 +588,6 @@ load_nonboston_address_preprocess <- function(df, cols, munis) {
 }
 
 # Load Layers from Source ====
-
 load_sql_query <- function(select, from, where = NULL, limit = NULL) {
   q <- glue::glue("SELECT {stringr::str_c(select, collapse = ',')}
                 FROM {from}")
@@ -544,6 +632,27 @@ load_from_gdb <- function(path, from, select, where_ids, where_col) {
     quiet = TRUE
   )
 }
+
+## Lil' guys ====
+
+load_muni_helper <- function(path = file.path("data", "munis.csv")) { 
+  readr::read_csv(
+    path, 
+    progress=TRUE,
+    show_col_types = FALSE)
+}
+
+load_luc_crosswalk <- function(file = file.path("data", "mhp_luc_cw.csv")) {
+  readr::read_csv(file) |>
+    dplyr::select(muni_id, use_code, luc) |>
+    dplyr::mutate(
+      muni_id = stringr::str_pad(muni_id, width = 3, side="left", pad="0")
+    ) |>
+    dplyr::filter(!is.na(luc)) |>
+    dplyr::distinct()
+}
+
+## Primary ====
 
 # **********************************************************
 # Copied from ographiesresearch/urbanplanr. 
@@ -680,7 +789,6 @@ load_assess <- function(path,
 #' See https://www.mass.gov/info-details/massgis-data-property-tax-parcels
 #'
 #' @param gdb_path Path to collection of MassGIS Parcel GDBs or single GDB.
-#' @param crs Coordinate reference system for output.
 #' @param muni_ids Vector of municipality IDs.
 #' 
 #' @return An `sf` dataframe containing MULTIPOLYGON parcels for specified 
@@ -691,7 +799,6 @@ load_parcels <- function(path,
                          layer, 
                          col_cw, 
                          state, 
-                         crs, 
                          muni_ids=NULL, 
                          most_recent = FALSE
                          ) {
@@ -703,30 +810,18 @@ load_parcels <- function(path,
   col_list <- col_cw |> 
     tidyr::drop_na(dplyr::matches(state))
   
-  muni_col <- col_cw |>
-    dplyr::filter(name == "muni_id") |> 
-    dplyr::pull(dplyr::all_of(state))
-  
   type <- load_gdb_type(path)
   
   if (type == "gdb") {
-    
-    where <- NULL
-    if (!is.null(muni_ids)) {
-      where <- glue::glue(
-        "{muni_col} IN ({stringr::str_c(as.integer(muni_ids), collapse=',')})"
-      )
-    }
-    
-    df <- sf::st_read(
-      path, 
-      query = load_sql_query(
-        select = dplyr::pull(col_list, dplyr::matches(state)),
-        from = layer,
-        where = where
-      ), 
-      quiet = TRUE
-      )
+    df <- load_from_gdb(
+      path = path, 
+      select = dplyr::pull(col_list, dplyr::matches(state)),
+      from = layer, 
+      where_ids = muni_ids, 
+      where_col = col_cw |>
+        dplyr::filter(name == "site_muni_id") |> 
+        dplyr::pull(dplyr::all_of(state))
+    )
   } else if (type == "dir") {
     vintages <- load_vintage_select(path, muni_ids, most_recent=most_recent)
     

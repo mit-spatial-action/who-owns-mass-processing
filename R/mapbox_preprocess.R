@@ -1,5 +1,3 @@
-source('load_results.R')
-
 st_grid_sf <- function(df, cellsize) {
   sf::st_make_grid(
       df, 
@@ -292,24 +290,24 @@ mapbox_preprocess <- function(
   )
 }
 
-
-
-if (!interactive()) {
-  opts <- list(
-    optparse::make_option(
-      c("-l", "--load_prefix"), type = "character", default = NULL,
-      help = "Prefix of parameters for database containing deduplication 
-      results in .Renviron.", metavar = "character")
-  )
-  parser <- optparse::OptionParser(
-    option_list=opts
-  )
-  opt <- optparse::parse_args(parser)
-  
-  if (is.null(opt$load_prefix)) {
-    optparse::print_help(parser)
-    stop("Load database prefix must be specified.", call. = FALSE)
-  }
-  mapbox_preprocess(prefix=opt$load_prefix)
-}
+# 
+# 
+# if (!interactive()) {
+#   opts <- list(
+#     optparse::make_option(
+#       c("-l", "--load_prefix"), type = "character", default = NULL,
+#       help = "Prefix of parameters for database containing deduplication 
+#       results in .Renviron.", metavar = "character")
+#   )
+#   parser <- optparse::OptionParser(
+#     option_list=opts
+#   )
+#   opt <- optparse::parse_args(parser)
+#   
+#   if (is.null(opt$load_prefix)) {
+#     optparse::print_help(parser)
+#     stop("Load database prefix must be specified.", call. = FALSE)
+#   }
+#   mapbox_preprocess(prefix=opt$load_prefix)
+# }
   
