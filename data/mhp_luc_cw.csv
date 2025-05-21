@@ -1,4 +1,4 @@
-﻿TOWN_ID,USE_CODE,USE_DESC,standardized_LUC,standardized_LU_Description,BroadUse
+muni_id,use_code,use_desc,luc,desc,broad
 0,000,Use code not known or nor provided.,,,Other/Unknown
 23,007,Mixed Use,,,Other/Unknown
 169,0101,Single Fam,101,Single-family,Residential
