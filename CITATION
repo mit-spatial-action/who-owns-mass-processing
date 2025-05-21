@@ -1,0 +1,28 @@
+utils::citHeader("If you use this software, please cite it as follows:")
+
+utils::bibentry(
+  "Manual",
+  title = "Who Owns Mass Processing Workflow",
+  author = c(
+    person(
+      given = "Eric Robsky", family = "Huntley", 
+      email = "ehuntley@mit.edu", 
+      role = c("aut", "cph", "cre"),
+      comment = c(ORCID = "0000-0001-8497-0589")
+    ),
+    person(
+      given = "Asya", family = "Aizman", 
+      email = "aizman@mit.edu", 
+      role = c("aut"),
+      comment = c(ORCID = "0000-0002-7528-8585")
+    ),
+    person(
+      given = "Jiao", family = "Zhao", 
+      email = "jiaoz17@mit.edu", 
+      role = c("ctb")
+    )
+  ),
+  year = 2025,
+  doi = "10.5281/zenodo.15364560",
+  url = "https://github.com/mit-spatial-action/who-owns-mass-processing" 
+)
