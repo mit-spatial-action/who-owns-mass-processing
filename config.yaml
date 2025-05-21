@@ -1,42 +1,29 @@
 default:
-  refresh: TRUE
-  push_dbs:
-    load: ''
-    proc: ''
-    dedupe: ''
-  routines:
-    load: TRUE
-    proc: TRUE
-    dedupe: TRUE
+  result_name: 'who_owns_mass'
+  load_routine: TRUE
+  proc_routine: TRUE
+  dedupe_routine: TRUE
   state: "MA"
-  muni_ids: [274, 49, 35]
+  muni_ids: [274, 35]
   most_recent: FALSE
   return_intermediate: FALSE
   company_count: 50000
-  thresh:
-    cosine: 0.85
-    inds: 0.95
-    zip_int: 1
+  cosine_thresh: 0.85
   inds_thresh: 0.95
   zip_int_thresh: 1
   quiet: FALSE
   crs: 2249
-  data_path: 'data'
-  results_path: 'results'
-  oc:
-    path: '2024-04-12'
-    companies: "companies.csv"
-    officers: "officers.csv"
-  gdb: 
-    path: 'L3_AGGREGATE_FGDB_20240703'
-    assess: 'L3_ASSESS'
-    parcel: 'L3_TAXPAR_POLY'
+  data_dir: 'data'
+  corpanies_path: !expr file.path(data_dir, 'companies.csv')
+  officers_path: !expr file.path(data_dir, 'officers.csv')
+  parcel_gdb: "https://s3.us-east-1.amazonaws.com/download.massgis.digital.mass.gov/gdbs/l3parcels/MassGIS_L3_Parcels_gdb.zip"
+  assess_layer: 'L3_ASSESS'
+  parcel_layer: 'L3_TAXPAR_POLY'
 complete:
   inherits: default
   refresh: TRUE
   company_count: NULL
   muni_ids: NULL
-  routines:
-    load: TRUE
-    proc: TRUE
-    dedupe: TRUE
+  load_routine: TRUE
+  proc_routine: TRUE
+  dedupe_routine: TRUE
