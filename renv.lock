@@ -681,7 +681,7 @@
     },
     "cli": {
       "Package": "cli",
-      "Version": "3.6.4",
+      "Version": "3.6.5",
       "Source": "Repository",
       "Title": "Helpers for Developing Command Line Interfaces",
       "Authors@R": "c( person(\"Gábor\", \"Csárdi\", , \"gabor@posit.co\", role = c(\"aut\", \"cre\")), person(\"Hadley\", \"Wickham\", role = \"ctb\"), person(\"Kirill\", \"Müller\", role = \"ctb\"), person(\"Salim\", \"Brüggemann\", , \"salim-b@pm.me\", role = \"ctb\", comment = c(ORCID = \"0000-0002-5329-5987\")), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
@@ -724,7 +724,7 @@
       "NeedsCompilation": "yes",
       "Author": "Gábor Csárdi [aut, cre], Hadley Wickham [ctb], Kirill Müller [ctb], Salim Brüggemann [ctb] (<https://orcid.org/0000-0002-5329-5987>), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Gábor Csárdi <gabor@posit.co>",
-      "Repository": "CRAN"
+      "Repository": "RSPM"
     },
     "clipr": {
       "Package": "clipr",
@@ -810,6 +810,38 @@
       "NeedsCompilation": "no",
       "Author": "David Bosak [aut, cre], Duong Tran [ctb]",
       "Repository": "CRAN"
+    },
+    "config": {
+      "Package": "config",
+      "Version": "0.3.2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Manage Environment Specific Configuration Values",
+      "Authors@R": "c( person(\"JJ\", \"Allaire\", role = c(\"aut\"), email = \"jj@rstudio.com\"), person(\"Andrie\", \"de Vries\", role = \"cre\", email = \"apdevries@gmail.com\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Imports": [
+        "yaml (>= 2.1.19)"
+      ],
+      "Suggests": [
+        "testthat",
+        "knitr",
+        "rmarkdown",
+        "covr",
+        "spelling",
+        "withr"
+      ],
+      "Description": "Manage configuration values across multiple environments (e.g. development, test, production). Read values using a function that determines the current environment and returns the appropriate value.",
+      "License": "GPL-3",
+      "URL": "https://rstudio.github.io/config/, https://github.com/rstudio/config",
+      "BugReports": "https://github.com/rstudio/config/issues",
+      "RoxygenNote": "7.2.3",
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "Config/testthat/edition": "3",
+      "NeedsCompilation": "no",
+      "Author": "JJ Allaire [aut], Andrie de Vries [cre], Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Andrie de Vries <apdevries@gmail.com>",
+      "Repository": "RSPM"
     },
     "cpp11": {
       "Package": "cpp11",
@@ -924,7 +956,7 @@
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.17.0",
+      "Version": "1.17.2",
       "Source": "Repository",
       "Title": "Extension of `data.frame`",
       "Depends": [
@@ -952,7 +984,7 @@
       "ByteCompile": "TRUE",
       "Authors@R": "c( person(\"Tyson\",\"Barrett\",        role=c(\"aut\",\"cre\"), email=\"t.barrett88@gmail.com\", comment = c(ORCID=\"0000-0002-2137-1391\")), person(\"Matt\",\"Dowle\",           role=\"aut\",          email=\"mattjdowle@gmail.com\"), person(\"Arun\",\"Srinivasan\",      role=\"aut\",          email=\"asrini@pm.me\"), person(\"Jan\",\"Gorecki\",          role=\"aut\"), person(\"Michael\",\"Chirico\",      role=\"aut\", comment = c(ORCID=\"0000-0003-0787-087X\")), person(\"Toby\",\"Hocking\",         role=\"aut\", comment = c(ORCID=\"0000-0002-3146-0865\")), person(\"Benjamin\",\"Schwendinger\",role=\"aut\", comment = c(ORCID=\"0000-0003-3315-8114\")), person(\"Ivan\", \"Krylov\",         role=\"aut\",          email=\"ikrylov@disroot.org\",   comment = c(ORCID=\"0000-0002-0172-3812\")), person(\"Pasha\",\"Stetsenko\",      role=\"ctb\"), person(\"Tom\",\"Short\",            role=\"ctb\"), person(\"Steve\",\"Lianoglou\",      role=\"ctb\"), person(\"Eduard\",\"Antonyan\",      role=\"ctb\"), person(\"Markus\",\"Bonsch\",        role=\"ctb\"), person(\"Hugh\",\"Parsonage\",       role=\"ctb\"), person(\"Scott\",\"Ritchie\",        role=\"ctb\"), person(\"Kun\",\"Ren\",              role=\"ctb\"), person(\"Xianying\",\"Tan\",         role=\"ctb\"), person(\"Rick\",\"Saporta\",         role=\"ctb\"), person(\"Otto\",\"Seiskari\",        role=\"ctb\"), person(\"Xianghui\",\"Dong\",        role=\"ctb\"), person(\"Michel\",\"Lang\",          role=\"ctb\"), person(\"Watal\",\"Iwasaki\",        role=\"ctb\"), person(\"Seth\",\"Wenchel\",         role=\"ctb\"), person(\"Karl\",\"Broman\",          role=\"ctb\"), person(\"Tobias\",\"Schmidt\",       role=\"ctb\"), person(\"David\",\"Arenburg\",       role=\"ctb\"), person(\"Ethan\",\"Smith\",          role=\"ctb\"), person(\"Francois\",\"Cocquemas\",   role=\"ctb\"), person(\"Matthieu\",\"Gomez\",       role=\"ctb\"), person(\"Philippe\",\"Chataignon\",  role=\"ctb\"), person(\"Nello\",\"Blaser\",         role=\"ctb\"), person(\"Dmitry\",\"Selivanov\",     role=\"ctb\"), person(\"Andrey\",\"Riabushenko\",   role=\"ctb\"), person(\"Cheng\",\"Lee\",            role=\"ctb\"), person(\"Declan\",\"Groves\",        role=\"ctb\"), person(\"Daniel\",\"Possenriede\",   role=\"ctb\"), person(\"Felipe\",\"Parages\",       role=\"ctb\"), person(\"Denes\",\"Toth\",           role=\"ctb\"), person(\"Mus\",\"Yaramaz-David\",    role=\"ctb\"), person(\"Ayappan\",\"Perumal\",      role=\"ctb\"), person(\"James\",\"Sams\",           role=\"ctb\"), person(\"Martin\",\"Morgan\",        role=\"ctb\"), person(\"Michael\",\"Quinn\",        role=\"ctb\"), person(\"@javrucebo\",\"\",          role=\"ctb\"), person(\"@marc-outins\",\"\",        role=\"ctb\"), person(\"Roy\",\"Storey\",           role=\"ctb\"), person(\"Manish\",\"Saraswat\",      role=\"ctb\"), person(\"Morgan\",\"Jacob\",         role=\"ctb\"), person(\"Michael\",\"Schubmehl\",    role=\"ctb\"), person(\"Davis\",\"Vaughan\",        role=\"ctb\"), person(\"Leonardo\",\"Silvestri\",   role=\"ctb\"), person(\"Jim\",\"Hester\",           role=\"ctb\"), person(\"Anthony\",\"Damico\",       role=\"ctb\"), person(\"Sebastian\",\"Freundt\",    role=\"ctb\"), person(\"David\",\"Simons\",         role=\"ctb\"), person(\"Elliott\",\"Sales de Andrade\", role=\"ctb\"), person(\"Cole\",\"Miller\",          role=\"ctb\"), person(\"Jens Peder\",\"Meldgaard\", role=\"ctb\"), person(\"Vaclav\",\"Tlapak\",        role=\"ctb\"), person(\"Kevin\",\"Ushey\",          role=\"ctb\"), person(\"Dirk\",\"Eddelbuettel\",    role=\"ctb\"), person(\"Tony\",\"Fischetti\",       role=\"ctb\"), person(\"Ofek\",\"Shilon\",          role=\"ctb\"), person(\"Vadim\",\"Khotilovich\",    role=\"ctb\"), person(\"Hadley\",\"Wickham\",       role=\"ctb\"), person(\"Bennet\",\"Becker\",        role=\"ctb\"), person(\"Kyle\",\"Haynes\",          role=\"ctb\"), person(\"Boniface Christian\",\"Kamgang\", role=\"ctb\"), person(\"Olivier\",\"Delmarcell\",   role=\"ctb\"), person(\"Josh\",\"O'Brien\",         role=\"ctb\"), person(\"Dereck\",\"de Mezquita\",   role=\"ctb\"), person(\"Michael\",\"Czekanski\",    role=\"ctb\"), person(\"Dmitry\", \"Shemetov\",     role=\"ctb\"), person(\"Nitish\", \"Jha\",          role=\"ctb\"), person(\"Joshua\", \"Wu\",           role=\"ctb\"), person(\"Iago\", \"Giné-Vázquez\",   role=\"ctb\"), person(\"Anirban\", \"Chetia\",      role=\"ctb\"), person(\"Doris\", \"Amoakohene\",    role=\"ctb\"), person(\"Angel\", \"Feliz\",         role=\"ctb\"), person(\"Michael\",\"Young\",        role=\"ctb\"), person(\"Mark\", \"Seeto\",          role=\"ctb\"), person(\"Philippe\", \"Grosjean\",   role=\"ctb\"), person(\"Vincent\", \"Runge\",       role=\"ctb\"), person(\"Christian\", \"Wia\",       role=\"ctb\"), person(\"Elise\", \"Maigné\",        role=\"ctb\"), person(\"Vincent\", \"Rocher\",      role=\"ctb\"), person(\"Vijay\", \"Lulla\",         role=\"ctb\"), person(\"Aljaž\", \"Sluga\",         role=\"ctb\"), person(\"Bill\", \"Evans\",          role=\"ctb\") )",
       "NeedsCompilation": "yes",
-      "Author": "Tyson Barrett [aut, cre] (<https://orcid.org/0000-0002-2137-1391>), Matt Dowle [aut], Arun Srinivasan [aut], Jan Gorecki [aut], Michael Chirico [aut] (<https://orcid.org/0000-0003-0787-087X>), Toby Hocking [aut] (<https://orcid.org/0000-0002-3146-0865>), Benjamin Schwendinger [aut] (<https://orcid.org/0000-0003-3315-8114>), Ivan Krylov [aut] (<https://orcid.org/0000-0002-0172-3812>), Pasha Stetsenko [ctb], Tom Short [ctb], Steve Lianoglou [ctb], Eduard Antonyan [ctb], Markus Bonsch [ctb], Hugh Parsonage [ctb], Scott Ritchie [ctb], Kun Ren [ctb], Xianying Tan [ctb], Rick Saporta [ctb], Otto Seiskari [ctb], Xianghui Dong [ctb], Michel Lang [ctb], Watal Iwasaki [ctb], Seth Wenchel [ctb], Karl Broman [ctb], Tobias Schmidt [ctb], David Arenburg [ctb], Ethan Smith [ctb], Francois Cocquemas [ctb], Matthieu Gomez [ctb], Philippe Chataignon [ctb], Nello Blaser [ctb], Dmitry Selivanov [ctb], Andrey Riabushenko [ctb], Cheng Lee [ctb], Declan Groves [ctb], Daniel Possenriede [ctb], Felipe Parages [ctb], Denes Toth [ctb], Mus Yaramaz-David [ctb], Ayappan Perumal [ctb], James Sams [ctb], Martin Morgan [ctb], Michael Quinn [ctb], @javrucebo [ctb], @marc-outins [ctb], Roy Storey [ctb], Manish Saraswat [ctb], Morgan Jacob [ctb], Michael Schubmehl [ctb], Davis Vaughan [ctb], Leonardo Silvestri [ctb], Jim Hester [ctb], Anthony Damico [ctb], Sebastian Freundt [ctb], David Simons [ctb], Elliott Sales de Andrade [ctb], Cole Miller [ctb], Jens Peder Meldgaard [ctb], Vaclav Tlapak [ctb], Kevin Ushey [ctb], Dirk Eddelbuettel [ctb], Tony Fischetti [ctb], Ofek Shilon [ctb], Vadim Khotilovich [ctb], Hadley Wickham [ctb], Bennet Becker [ctb], Kyle Haynes [ctb], Boniface Christian Kamgang [ctb], Olivier Delmarcell [ctb], Josh O'Brien [ctb], Dereck de Mezquita [ctb], Michael Czekanski [ctb], Dmitry Shemetov [ctb], Nitish Jha [ctb], Joshua Wu [ctb], Iago Giné-Vázquez [ctb], Anirban Chetia [ctb], Doris Amoakohene [ctb], Angel Feliz [ctb], Michael Young [ctb], Mark Seeto [ctb], Philippe Grosjean [ctb], Vincent Runge [ctb], Christian Wia [ctb], Elise Maigné [ctb], Vincent Rocher [ctb], Vijay Lulla [ctb], Aljaž Sluga [ctb], Bill Evans [ctb]",
+      "Author": "Tyson Barrett [aut, cre] (ORCID: <https://orcid.org/0000-0002-2137-1391>), Matt Dowle [aut], Arun Srinivasan [aut], Jan Gorecki [aut], Michael Chirico [aut] (ORCID: <https://orcid.org/0000-0003-0787-087X>), Toby Hocking [aut] (ORCID: <https://orcid.org/0000-0002-3146-0865>), Benjamin Schwendinger [aut] (ORCID: <https://orcid.org/0000-0003-3315-8114>), Ivan Krylov [aut] (ORCID: <https://orcid.org/0000-0002-0172-3812>), Pasha Stetsenko [ctb], Tom Short [ctb], Steve Lianoglou [ctb], Eduard Antonyan [ctb], Markus Bonsch [ctb], Hugh Parsonage [ctb], Scott Ritchie [ctb], Kun Ren [ctb], Xianying Tan [ctb], Rick Saporta [ctb], Otto Seiskari [ctb], Xianghui Dong [ctb], Michel Lang [ctb], Watal Iwasaki [ctb], Seth Wenchel [ctb], Karl Broman [ctb], Tobias Schmidt [ctb], David Arenburg [ctb], Ethan Smith [ctb], Francois Cocquemas [ctb], Matthieu Gomez [ctb], Philippe Chataignon [ctb], Nello Blaser [ctb], Dmitry Selivanov [ctb], Andrey Riabushenko [ctb], Cheng Lee [ctb], Declan Groves [ctb], Daniel Possenriede [ctb], Felipe Parages [ctb], Denes Toth [ctb], Mus Yaramaz-David [ctb], Ayappan Perumal [ctb], James Sams [ctb], Martin Morgan [ctb], Michael Quinn [ctb], @javrucebo [ctb], @marc-outins [ctb], Roy Storey [ctb], Manish Saraswat [ctb], Morgan Jacob [ctb], Michael Schubmehl [ctb], Davis Vaughan [ctb], Leonardo Silvestri [ctb], Jim Hester [ctb], Anthony Damico [ctb], Sebastian Freundt [ctb], David Simons [ctb], Elliott Sales de Andrade [ctb], Cole Miller [ctb], Jens Peder Meldgaard [ctb], Vaclav Tlapak [ctb], Kevin Ushey [ctb], Dirk Eddelbuettel [ctb], Tony Fischetti [ctb], Ofek Shilon [ctb], Vadim Khotilovich [ctb], Hadley Wickham [ctb], Bennet Becker [ctb], Kyle Haynes [ctb], Boniface Christian Kamgang [ctb], Olivier Delmarcell [ctb], Josh O'Brien [ctb], Dereck de Mezquita [ctb], Michael Czekanski [ctb], Dmitry Shemetov [ctb], Nitish Jha [ctb], Joshua Wu [ctb], Iago Giné-Vázquez [ctb], Anirban Chetia [ctb], Doris Amoakohene [ctb], Angel Feliz [ctb], Michael Young [ctb], Mark Seeto [ctb], Philippe Grosjean [ctb], Vincent Runge [ctb], Christian Wia [ctb], Elise Maigné [ctb], Vincent Rocher [ctb], Vijay Lulla [ctb], Aljaž Sluga [ctb], Bill Evans [ctb]",
       "Maintainer": "Tyson Barrett <t.barrett88@gmail.com>",
       "Repository": "RSPM"
     },
@@ -1139,6 +1171,48 @@
       "Repository": "CRAN",
       "Encoding": "UTF-8"
     },
+    "fs": {
+      "Package": "fs",
+      "Version": "1.6.6",
+      "Source": "Repository",
+      "Title": "Cross-Platform File System Operations Based on 'libuv'",
+      "Authors@R": "c( person(\"Jim\", \"Hester\", role = \"aut\"), person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"), person(\"Gábor\", \"Csárdi\", , \"csardi.gabor@gmail.com\", role = c(\"aut\", \"cre\")), person(\"libuv project contributors\", role = \"cph\", comment = \"libuv library\"), person(\"Joyent, Inc. and other Node contributors\", role = \"cph\", comment = \"libuv library\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\")) )",
+      "Description": "A cross-platform interface to file system operations, built on top of the 'libuv' C library.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://fs.r-lib.org, https://github.com/r-lib/fs",
+      "BugReports": "https://github.com/r-lib/fs/issues",
+      "Depends": [
+        "R (>= 3.6)"
+      ],
+      "Imports": [
+        "methods"
+      ],
+      "Suggests": [
+        "covr",
+        "crayon",
+        "knitr",
+        "pillar (>= 1.0.0)",
+        "rmarkdown",
+        "spelling",
+        "testthat (>= 3.0.0)",
+        "tibble (>= 1.1.0)",
+        "vctrs (>= 0.3.0)",
+        "withr"
+      ],
+      "VignetteBuilder": "knitr",
+      "ByteCompile": "true",
+      "Config/Needs/website": "tidyverse/tidytemplate",
+      "Config/testthat/edition": "3",
+      "Copyright": "file COPYRIGHTS",
+      "Encoding": "UTF-8",
+      "Language": "en-US",
+      "RoxygenNote": "7.2.3",
+      "SystemRequirements": "GNU make",
+      "NeedsCompilation": "yes",
+      "Author": "Jim Hester [aut], Hadley Wickham [aut], Gábor Csárdi [aut, cre], libuv project contributors [cph] (libuv library), Joyent, Inc. and other Node contributors [cph] (libuv library), Posit Software, PBC [cph, fnd]",
+      "Maintainer": "Gábor Csárdi <csardi.gabor@gmail.com>",
+      "Repository": "RSPM"
+    },
     "fuzzyjoin": {
       "Package": "fuzzyjoin",
       "Version": "0.1.6",
@@ -1185,16 +1259,16 @@
     },
     "generics": {
       "Package": "generics",
-      "Version": "0.1.3",
+      "Version": "0.1.4",
       "Source": "Repository",
       "Title": "Common S3 Generics not Provided by Base R Methods Related to Model Fitting",
-      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@rstudio.com\", role = c(\"aut\", \"cre\")), person(\"Max\", \"Kuhn\", , \"max@rstudio.com\", role = \"aut\"), person(\"Davis\", \"Vaughan\", , \"davis@rstudio.com\", role = \"aut\"), person(\"RStudio\", role = \"cph\") )",
+      "Authors@R": "c( person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-4757-117X\")), person(\"Max\", \"Kuhn\", , \"max@posit.co\", role = \"aut\"), person(\"Davis\", \"Vaughan\", , \"davis@posit.co\", role = \"aut\"), person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"), comment = c(ROR = \"https://ror.org/03wc8by49\")) )",
       "Description": "In order to reduce potential package dependencies and conflicts, generics provides a number of commonly used S3 generics.",
       "License": "MIT + file LICENSE",
       "URL": "https://generics.r-lib.org, https://github.com/r-lib/generics",
       "BugReports": "https://github.com/r-lib/generics/issues",
       "Depends": [
-        "R (>= 3.2)"
+        "R (>= 3.6)"
       ],
       "Imports": [
         "methods"
@@ -1209,10 +1283,10 @@
       "Config/Needs/website": "tidyverse/tidytemplate",
       "Config/testthat/edition": "3",
       "Encoding": "UTF-8",
-      "RoxygenNote": "7.2.0",
+      "RoxygenNote": "7.3.2",
       "NeedsCompilation": "no",
-      "Author": "Hadley Wickham [aut, cre], Max Kuhn [aut], Davis Vaughan [aut], RStudio [cph]",
-      "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Author": "Hadley Wickham [aut, cre] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Max Kuhn [aut], Davis Vaughan [aut], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
+      "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "RSPM"
     },
     "geosphere": {
@@ -1247,31 +1321,6 @@
       "Maintainer": "Robert J. Hijmans <r.hijmans@gmail.com>",
       "Repository": "CRAN",
       "Encoding": "UTF-8"
-    },
-    "getopt": {
-      "Package": "getopt",
-      "Version": "1.20.4",
-      "Source": "Repository",
-      "Encoding": "UTF-8",
-      "Type": "Package",
-      "Title": "C-Like 'getopt' Behavior",
-      "Authors@R": "c(person(\"Trevor L\", \"Davis\", role=c(\"aut\", \"cre\"), email=\"trevor.l.davis@gmail.com\", comment = c(ORCID = \"0000-0001-6341-4639\")), person(\"Allen\", \"Day\", role=\"aut\", comment=\"Original package author\"), person(\"Roman\", \"Zenka\", role=\"ctb\"))",
-      "URL": "https://github.com/trevorld/r-getopt",
-      "Imports": [
-        "stats"
-      ],
-      "BugReports": "https://github.com/trevorld/r-getopt/issues",
-      "Description": "Package designed to be used with Rscript to write '#!' shebang scripts that accept short and long flags/options. Many users will prefer using instead the packages optparse or argparse which add extra features like automatically generated help option and usage, support for default values, positional argument support, etc.",
-      "License": "GPL (>= 2)",
-      "Suggests": [
-        "testthat"
-      ],
-      "RoxygenNote": "7.2.3",
-      "Config/testthat/edition": "3",
-      "NeedsCompilation": "no",
-      "Author": "Trevor L Davis [aut, cre] (<https://orcid.org/0000-0001-6341-4639>), Allen Day [aut] (Original package author), Roman Zenka [ctb]",
-      "Maintainer": "Trevor L Davis <trevor.l.davis@gmail.com>",
-      "Repository": "CRAN"
     },
     "glue": {
       "Package": "glue",
@@ -1921,39 +1970,6 @@
       "Author": "Jeroen Ooms [aut, cre] (<https://orcid.org/0000-0002-4035-0289>), Oliver Keyes [ctb]",
       "Maintainer": "Jeroen Ooms <jeroenooms@gmail.com>",
       "Repository": "RSPM"
-    },
-    "optparse": {
-      "Package": "optparse",
-      "Version": "1.7.5",
-      "Source": "Repository",
-      "Encoding": "UTF-8",
-      "Type": "Package",
-      "Title": "Command Line Option Parser",
-      "Authors@R": "c(person(\"Trevor L.\", \"Davis\", role=c(\"aut\", \"cre\"), email=\"trevor.l.davis@gmail.com\", comment = c(ORCID = \"0000-0001-6341-4639\")), person(\"Allen\", \"Day\", role=\"ctb\", comment=\"Some documentation and examples ported from the getopt package.\"), person(\"Python Software Foundation\", role=\"ctb\", comment=\"Some documentation from the optparse Python module.\"), person(\"Steve\", \"Lianoglou\", role=\"ctb\"), person(\"Jim\", \"Nikelski\", role=\"ctb\"), person(\"Kirill\", \"Müller\", role=\"ctb\"), person(\"Peter\", \"Humburg\", role=\"ctb\"),  person(\"Rich\", \"FitzJohn\", role=\"ctb\"), person(\"Gyu Jin\", \"Choi\", role=\"ctb\"))",
-      "Description": "A command line parser inspired by Python's 'optparse' library to be used with Rscript to write \"#!\" shebang scripts that accept short and long flag/options.",
-      "License": "GPL (>= 2)",
-      "Copyright": "See file (inst/)COPYRIGHTS.",
-      "URL": "https://github.com/trevorld/r-optparse",
-      "BugReports": "https://github.com/trevorld/r-optparse/issues",
-      "LazyLoad": "yes",
-      "Depends": [
-        "R (>= 3.6.0)"
-      ],
-      "Imports": [
-        "methods",
-        "getopt (>= 1.20.2)"
-      ],
-      "Suggests": [
-        "knitr (>= 1.15.19)",
-        "stringr",
-        "testthat"
-      ],
-      "VignetteBuilder": "knitr",
-      "RoxygenNote": "7.3.1",
-      "NeedsCompilation": "no",
-      "Author": "Trevor L. Davis [aut, cre] (<https://orcid.org/0000-0001-6341-4639>), Allen Day [ctb] (Some documentation and examples ported from the getopt package.), Python Software Foundation [ctb] (Some documentation from the optparse Python module.), Steve Lianoglou [ctb], Jim Nikelski [ctb], Kirill Müller [ctb], Peter Humburg [ctb], Rich FitzJohn [ctb], Gyu Jin Choi [ctb]",
-      "Maintainer": "Trevor L. Davis <trevor.l.davis@gmail.com>",
-      "Repository": "CRAN"
     },
     "pillar": {
       "Package": "pillar",
@@ -2609,16 +2625,16 @@
     },
     "s2": {
       "Package": "s2",
-      "Version": "1.1.7",
+      "Version": "1.1.8",
       "Source": "Repository",
       "Title": "Spherical Geometry Operators Using the S2 Geometry Library",
       "Authors@R": "c( person(given = \"Dewey\", family = \"Dunnington\", role = c(\"aut\"), email = \"dewey@fishandwhistle.net\", comment = c(ORCID = \"0000-0002-9415-4582\")), person(given = \"Edzer\", family = \"Pebesma\", role = c(\"aut\", \"cre\"), email = \"edzer.pebesma@uni-muenster.de\", comment = c(ORCID = \"0000-0001-8049-7069\")), person(\"Ege\", \"Rubak\", email=\"rubak@math.aau.dk\", role = c(\"aut\")), person(\"Jeroen\", \"Ooms\", , \"jeroen.ooms@stat.ucla.edu\", role = \"ctb\", comment = \"configure script\"), person(family = \"Google, Inc.\", role = \"cph\", comment = \"Original s2geometry.io source code\") )",
-      "Description": "Provides R bindings for Google's s2 library for geometric calculations on the sphere. High-performance constructors and exporters provide high compatibility with existing spatial packages, transformers construct new geometries from existing geometries, predicates provide a means to select geometries based on spatial  relationships, and accessors extract information about geometries.",
+      "Description": "Provides R bindings for Google's s2 library for geometric calculations on the sphere. High-performance constructors and exporters provide high compatibility with existing spatial packages, transformers construct new geometries from existing geometries, predicates provide a means to select geometries based on spatial relationships, and accessors extract information about geometries.",
       "License": "Apache License (== 2.0)",
       "Encoding": "UTF-8",
       "LazyData": "true",
-      "RoxygenNote": "7.2.3",
-      "SystemRequirements": "OpenSSL >= 1.0.1",
+      "RoxygenNote": "7.3.2",
+      "SystemRequirements": "OpenSSL >= 1.0.1, Abseil >= 20230802.0",
       "LinkingTo": [
         "Rcpp",
         "wk"
@@ -2639,7 +2655,7 @@
       ],
       "Config/testthat/edition": "3",
       "NeedsCompilation": "yes",
-      "Author": "Dewey Dunnington [aut] (<https://orcid.org/0000-0002-9415-4582>), Edzer Pebesma [aut, cre] (<https://orcid.org/0000-0001-8049-7069>), Ege Rubak [aut], Jeroen Ooms [ctb] (configure script), Google, Inc. [cph] (Original s2geometry.io source code)",
+      "Author": "Dewey Dunnington [aut] (ORCID: <https://orcid.org/0000-0002-9415-4582>), Edzer Pebesma [aut, cre] (ORCID: <https://orcid.org/0000-0001-8049-7069>), Ege Rubak [aut], Jeroen Ooms [ctb] (configure script), Google, Inc. [cph] (Original s2geometry.io source code)",
       "Maintainer": "Edzer Pebesma <edzer.pebesma@uni-muenster.de>",
       "Repository": "RSPM"
     },
@@ -2667,7 +2683,7 @@
     },
     "sf": {
       "Package": "sf",
-      "Version": "1.0-20",
+      "Version": "1.0-21",
       "Source": "Repository",
       "Title": "Simple Features for R",
       "Authors@R": "c(person(given = \"Edzer\", family = \"Pebesma\", role = c(\"aut\", \"cre\"), email = \"edzer.pebesma@uni-muenster.de\", comment = c(ORCID = \"0000-0001-8049-7069\")), person(given = \"Roger\", family = \"Bivand\", role = \"ctb\", comment = c(ORCID = \"0000-0003-2392-6140\")), person(given = \"Etienne\", family = \"Racine\", role = \"ctb\"), person(given = \"Michael\", family = \"Sumner\", role = \"ctb\"), person(given = \"Ian\", family = \"Cook\", role = \"ctb\"), person(given = \"Tim\", family = \"Keitt\", role = \"ctb\"), person(given = \"Robin\", family = \"Lovelace\", role = \"ctb\"), person(given = \"Hadley\", family = \"Wickham\", role = \"ctb\"), person(given = \"Jeroen\", family = \"Ooms\", role = \"ctb\", comment = c(ORCID = \"0000-0002-4035-0289\")), person(given = \"Kirill\", family = \"M\\u00fcller\", role = \"ctb\"), person(given = \"Thomas Lin\", family = \"Pedersen\", role = \"ctb\"), person(given = \"Dan\", family = \"Baston\", role = \"ctb\"), person(given = \"Dewey\", family = \"Dunnington\", role = \"ctb\", comment = c(ORCID = \"0000-0002-9415-4582\")) )",
@@ -2741,7 +2757,7 @@
       "SystemRequirements": "GDAL (>= 2.0.1), GEOS (>= 3.4.0), PROJ (>= 4.8.0), sqlite3",
       "Collate": "'RcppExports.R' 'init.R' 'import-standalone-s3-register.R' 'crs.R' 'bbox.R' 'read.R' 'db.R' 'sfc.R' 'sfg.R' 'sf.R' 'bind.R' 'wkb.R' 'wkt.R' 'plot.R' 'geom-measures.R' 'geom-predicates.R' 'geom-transformers.R' 'transform.R' 'proj.R' 'sp.R' 'grid.R' 'arith.R' 'tidyverse.R' 'tidyverse-vctrs.R' 'cast_sfg.R' 'cast_sfc.R' 'graticule.R' 'datasets.R' 'aggregate.R' 'agr.R' 'maps.R' 'join.R' 'sample.R' 'valid.R' 'collection_extract.R' 'jitter.R' 'sgbp.R' 'spatstat.R' 'stars.R' 'crop.R' 'gdal_utils.R' 'nearest.R' 'normalize.R' 'sf-package.R' 'defunct.R' 'z_range.R' 'm_range.R' 'shift_longitude.R' 'make_grid.R' 's2.R' 'terra.R' 'geos-overlayng.R' 'break_antimeridian.R'",
       "NeedsCompilation": "yes",
-      "Author": "Edzer Pebesma [aut, cre] (<https://orcid.org/0000-0001-8049-7069>), Roger Bivand [ctb] (<https://orcid.org/0000-0003-2392-6140>), Etienne Racine [ctb], Michael Sumner [ctb], Ian Cook [ctb], Tim Keitt [ctb], Robin Lovelace [ctb], Hadley Wickham [ctb], Jeroen Ooms [ctb] (<https://orcid.org/0000-0002-4035-0289>), Kirill Müller [ctb], Thomas Lin Pedersen [ctb], Dan Baston [ctb], Dewey Dunnington [ctb] (<https://orcid.org/0000-0002-9415-4582>)",
+      "Author": "Edzer Pebesma [aut, cre] (ORCID: <https://orcid.org/0000-0001-8049-7069>), Roger Bivand [ctb] (ORCID: <https://orcid.org/0000-0003-2392-6140>), Etienne Racine [ctb], Michael Sumner [ctb], Ian Cook [ctb], Tim Keitt [ctb], Robin Lovelace [ctb], Hadley Wickham [ctb], Jeroen Ooms [ctb] (ORCID: <https://orcid.org/0000-0002-4035-0289>), Kirill Müller [ctb], Thomas Lin Pedersen [ctb], Dan Baston [ctb], Dewey Dunnington [ctb] (ORCID: <https://orcid.org/0000-0002-9415-4582>)",
       "Maintainer": "Edzer Pebesma <edzer.pebesma@uni-muenster.de>",
       "Repository": "RSPM"
     },
@@ -2947,7 +2963,7 @@
     },
     "targets": {
       "Package": "targets",
-      "Version": "1.11.1",
+      "Version": "1.11.3",
       "Source": "Repository",
       "Title": "Dynamic Function-Oriented 'Make'-Like Declarative Pipelines",
       "Description": "Pipeline tools coordinate the pieces of computationally demanding analysis projects. The 'targets' package is a 'Make'-like pipeline tool for statistics and data science in R. The package skips costly runtime for tasks that are already up to date, orchestrates the necessary computation with implicit parallel computing, and abstracts files as R objects. If all the current output matches the current upstream code and data, then the whole pipeline is up to date, and the results are more trustworthy than otherwise. The methodology in this package borrows from GNU 'Make' (2015, ISBN:978-9881443519) and 'drake' (2018, <doi:10.21105/joss.00550>).",
@@ -3022,9 +3038,9 @@
       "Config/testthat/edition": "3",
       "RoxygenNote": "7.3.2",
       "NeedsCompilation": "no",
-      "Author": "William Michael Landau [aut, cre] (<https://orcid.org/0000-0003-1878-3253>), Matthew T. Warkentin [ctb], Mark Edmondson [ctb] (<https://orcid.org/0000-0002-8434-3881>), Samantha Oliver [rev] (<https://orcid.org/0000-0001-5668-1165>), Tristan Mahr [rev] (<https://orcid.org/0000-0002-8890-5116>), Eli Lilly and Company [cph, fnd]",
+      "Author": "William Michael Landau [aut, cre] (ORCID: <https://orcid.org/0000-0003-1878-3253>), Matthew T. Warkentin [ctb], Mark Edmondson [ctb] (ORCID: <https://orcid.org/0000-0002-8434-3881>), Samantha Oliver [rev] (ORCID: <https://orcid.org/0000-0001-5668-1165>), Tristan Mahr [rev] (ORCID: <https://orcid.org/0000-0002-8890-5116>), Eli Lilly and Company [cph, fnd]",
       "Maintainer": "William Michael Landau <will.landau.oss@gmail.com>",
-      "Repository": "CRAN"
+      "Repository": "RSPM"
     },
     "tibble": {
       "Package": "tibble",
@@ -3335,7 +3351,7 @@
     },
     "utf8": {
       "Package": "utf8",
-      "Version": "1.2.4",
+      "Version": "1.2.5",
       "Source": "Repository",
       "Title": "Unicode Text Processing",
       "Authors@R": "c(person(given = c(\"Patrick\", \"O.\"), family = \"Perry\", role = c(\"aut\", \"cph\")), person(given = \"Kirill\", family = \"M\\u00fcller\", role = \"cre\", email = \"kirill@cynkra.com\"), person(given = \"Unicode, Inc.\", role = c(\"cph\", \"dtc\"), comment = \"Unicode Character Database\"))",
@@ -3358,7 +3374,7 @@
       "VignetteBuilder": "knitr, rmarkdown",
       "Config/testthat/edition": "3",
       "Encoding": "UTF-8",
-      "RoxygenNote": "7.2.3",
+      "RoxygenNote": "7.3.2.9000",
       "NeedsCompilation": "yes",
       "Author": "Patrick O. Perry [aut, cph], Kirill Müller [cre], Unicode, Inc. [cph, dtc] (Unicode Character Database)",
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
