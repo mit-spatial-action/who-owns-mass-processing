@@ -29,53 +29,48 @@ util_log_message <- function(status, header=FALSE, timestamp=TRUE) {
   }
 }
 
-util_print_splash <- function() {
-  body <- c(
-    "",
-    "WHO OWNS MASSACHUSETTS?",
-    "====================",
-    "Assessor's database enrichment and property owner deduplication workflow ",
-    "https://github.com/mit-spatial-action/who-owns-mass-processing",
-    "",
-    "A project of the...",
-    "====================",
-    "MIT DUSP Spatial Action & Analysis Research Group",
-    "MIT DUSP Healthy Neighborhoods Study",
-    "",
-    "Primary Contributors",
-    "====================",
-    "Eric Robsky Huntley, PhD (ehuntley@mit.edu)",
-    "Asya Aizman (aizman@mit.edu)",
-    "",
-    "(c) 2024 Eric Robsky Huntley. Made available under an MIT License",
-    ""
-  )
-  
-  length <- ceiling(max(nchar(body)) / 2) * 2
-  body <- stringr::str_pad(body, width=length, side="both")
-  
-  util_log_message(
-    stringr::str_c(
-      stringr::str_c(
-        stringr::str_c(
-          "# ",
-          c(
-            strrep("# ", length / 2), 
-            body, 
-            strrep("# ", length / 2)
-          ),
-          "#"
-        ),
-        collapse = "\n"
-      ),
-      "\n\n",
-      sep=""
-    ),
-    timestamp = FALSE
-  )
+# Validation ====
+
+utils_validate_config <- function(config) {
+  # Validate CRS
+  if(suppressWarnings(is.na(sf::st_crs(config$crs)$input))) {
+    stop("You provided an invalid CRS. Check `config.yaml`.")
+  }
+  # Validate Thresholds
+  threshes <- c(config$cosine_thresh, config$inds_thresh, config$zip_int_thresh)
+  if (!all(dplyr::between(threshes, 0, 1)) & length(threshes) == 3) {
+    stop("`cosine_thresh`, `inds_thresh`, and `zip_int_thresh` must be between 1 and 0.
+         Check `config.yaml`.")
+  }
+  # Validate Municipality IDs
+  util_validate_muni_ids(config$muni_ids)
+  # Validate State
+  if (!(config$state %in% state.abb)) {
+    stop("You provided an invalid `state`. Check `config.yaml`.")
+  }
+  # Validate Data Directory
+  if (!dir.exists(config$data_dir)) {
+    stop("You provided an invalid `data_dir`. Check `config.yaml`.")
+  }
+  # Validate Remote Parcels
+  if(httr::HEAD(config$parcels_remote)$all_headers[[1]]$status != 200) {
+    stop("Your `parcels_remote` does not exist. Check `config.yaml`.")
+  }
+  # Validate OpenCorporates Files
+  if (!file.exists(config$companies_path)) {
+    stop("You provided an invalid `companies_path`. Check `config.yaml`.")
+  }
+  if (!file.exists(config$officers_path)) {
+    stop("You provided an invalid `officers_path`. Check `config.yaml`.")
+  }
+  if (!file.exists(config$alt_names_path)) {
+    stop("You provided an invalid `alt_names_path`. Check `config.yaml`.")
+  }
+  util_conn(test=TRUE)
+  config
 }
 
-util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
+util_validate_muni_ids <- function(muni_ids) {
   #' Test Validity of Muni IDs and Pad
   #' 
   #' Tests whether provided municipality ids are valid (`stop()` if they are 
@@ -88,17 +83,15 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
   #'     readr::write_csv("data/munis.csv")
   #'
   #' @param muni_ids Vector of municipality IDs.
-  #' @param path Path to data directory.
-  #' @param file CSV file containing municipality IDs.
   #' 
   #' @return A transformed vector of municipality IDs.
   #' 
   #' @export
-  muni_table <- load_muni_helper(path) 
+  muni_table <- load_muni_helper() 
   ids <- muni_table |>
     dplyr::pull(id)
   if (is.null(muni_ids)) {
-    muni_ids <- std_pad_muni_ids(ids) |>
+    muni_ids <- stringr::str_pad(ids, 3, side="left", pad="0") |>
       unique()
   } else if (all(muni_ids == "hns")) {
     muni_ids <- muni_table |>
@@ -111,48 +104,33 @@ util_test_muni_ids <- function(muni_ids, path, quiet=FALSE) {
       dplyr::pull(muni_id) |>
       unique()
   } else {
-    muni_ids <- std_pad_muni_ids(muni_ids)
+    muni_ids <- stringr::str_pad(muni_ids, 3, side="left", pad="0")
   }
-  if(all(muni_ids %in% ids)) {
-    if(!quiet) {
-      util_log_message("VALIDATION: Municipality IDs are valid. 🚀🚀🚀")
-    }
-  } else {
-    if(!quiet) {
-      stop("VALIDATION: Invalid municipality IDs provided.")
-    }
+  if(!all(muni_ids %in% ids)) {
+    stop("VALIDATION: Invalid municipality IDs provided.")
   }
-  muni_ids
 }
 
-util_test_conn <- function(prefix="") {
-  #' Load DBMS Connection
-  #' 
-  #' Creates connection to remote or local PostGIS connection. Requires a
-  #' variables to be set in `.Renviron`.
-  #'
-  #' @param remote If `TRUE`, creates connection to remote db. If `FALSE`,
-  #'    creates connection to local PostGIS instance.
-  #' 
-  #' @return dbConnect() returns an S4 object that inherits from DBIConnection.
-  #'    This object is used to communicate with the database engine.
-  #' 
-  #' @export
-  if (prefix=="") {
-    prefix <- "DB"
-  } else {
-    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
-  }
-  dbname <- Sys.getenv(stringr::str_c(prefix, "NAME", sep="_"))
-  host <- Sys.getenv(stringr::str_c(prefix, "HOST", sep="_"))
-  port <- Sys.getenv(stringr::str_c(prefix, "PORT", sep="_"))
-  user <- Sys.getenv(stringr::str_c(prefix, "USER", sep="_"))
-  pass <- Sys.getenv(stringr::str_c(prefix, "PASS", sep="_"))
-  ssl <- Sys.getenv(stringr::str_c(prefix, "SSL", sep="_"))
-  if (any(c(dbname, host, port, user) == "")) {
-    stop(glue::glue("VALIDATION: Can't find '{prefix}' credentials in .Renviron!"))
+#' Test DBMS Connection
+#' 
+#' Creates connection to remote or local PostGIS connection. Requires
+#' variables "DB_NAME", "DB_HOST", "DB_PORT", "DB_USER", "DB_PASS", "DB_SSL" 
+#' be set in `.Renviron`
+#' 
+#' @return Nothing
+util_conn <- function(test = FALSE) {
+  
+  dbname <- Sys.getenv("DB_NAME")
+  host <- Sys.getenv("DB_HOST")
+  port <- Sys.getenv("DB_PORT")
+  user <- Sys.getenv("DB_USER")
+  pass <- Sys.getenv("DB_PASS")
+  ssl <- Sys.getenv("DB_SSL")
+  
+  if (any(c(dbname, host, port, user, pass, ssl) == "")) {
+    stop(glue::glue("Can't find credentials in .Renviron!"))
   } 
-  test_connect <- DBI::dbCanConnect(
+  conn <- DBI::dbCanConnect(
       RPostgres::Postgres(),
       dbname = dbname,
       host = host,
@@ -161,55 +139,16 @@ util_test_conn <- function(prefix="") {
       password = pass,
       sslmode = ssl
     )
-  if(!test_connect) {
-    stop(glue::glue("VALIDATION: Couldn't make connection to {prefix} database."))
-  } else {
-    util_log_message(
-      glue::glue("VALIDATION: Successfully tested connection to '{dbname}' on '{host}'.")
-      )
+  
+  if(!conn) {
+    stop(glue::glue("Couldn't make connection to database `{dbname}`."))
   }
-}
-
-util_conn <- function(prefix="") {
-  #' Load DBMS Connection
-  #' 
-  #' Creates connection to remote or local PostGIS connection. Requires a
-  #' variables to be set in `.Renviron`.
-  #'
-  #' @param remote If `TRUE`, creates connection to remote db. If `FALSE`,
-  #'    creates connection to local PostGIS instance.
-  #' 
-  #' @return dbConnect() returns an S4 object that inherits from DBIConnection.
-  #'    This object is used to communicate with the database engine.
-  #' 
-  #' @export
-  if (prefix=="") {
-    prefix <- "DB"
+  if (test) {
+    DBI::dbDisconnect(conn)
+    return(invisible(NULL))
   } else {
-    prefix <- stringr::str_c(stringr::str_to_upper(prefix), "DB", sep="_")
+    return(conn)
   }
-  dbname <- Sys.getenv(stringr::str_c(prefix, "NAME", sep="_"))
-  host <- Sys.getenv(stringr::str_c(prefix, "HOST", sep="_"))
-  port <- Sys.getenv(stringr::str_c(prefix, "PORT", sep="_"))
-  user <- Sys.getenv(stringr::str_c(prefix, "USER", sep="_"))
-  pass <- Sys.getenv(stringr::str_c(prefix, "PASS", sep="_"))
-  ssl <- Sys.getenv(stringr::str_c(prefix, "SSL", sep="_"))
-  DBI::dbConnect(
-    RPostgres::Postgres(),
-    dbname = dbname,
-    host = host,
-    port = port,
-    user = user,
-    password = pass,
-    sslmode = ssl
-  )
-}
-
-util_check_for_results <- function() {
-  results_dfs <- c("addresses", "block_groups", "companies", "metacorps_network", 
-                   "munis", "officers", "owners", "parcels_point", "sites",
-                   "sites_to_owners", "tracts", "zips")
-  all(sapply(results_dfs, exists))
 }
 
 util_check_for_tables <- function(conn, table_names) {
