@@ -5,6 +5,22 @@
 # Decided import was too heavy.
 # **********************************************************
 
+st_is_type <- function(df, type, exact=FALSE, by_geometry = FALSE, ...) {
+  df_type <- sf::st_geometry_type(df, by_geometry = FALSE, ...)
+  if (exact) {
+    type <- stringr::str_c("^", type, "$")
+  }
+  stringr::str_detect(df_type, type)
+}
+
+st_is_polygon <- function(df, by_geometry = FALSE, ...) {
+  st_is_type(df = df, type = "POLYGON", by_geometry = by_geometry, ...)
+}
+
+st_is_linestring <- function(df, by_geometry = FALSE, ...) {
+  st_is_type(df = df, type = "LINESTRING", by_geometry = by_geometry, ...)
+}
+
 #' Return Geometry Centers for Multiple Types.
 #'
 #' @inheritParams st_check_for_proj
@@ -90,40 +106,6 @@ st_geom_to_xy <- function(df,
   df
 }
 
-#' Upgrade Geometry Type
-#' 
-#' Given an input `sf` object that is made up "POINT"s, "POLYLINE"s, etc.,
-#' upcasts that object to "MULTIPOINT", "MULTIPOLYLINE", etc.
-#'
-#' @inheritParams st_check_for_proj
-#'
-#' @returns An `sf` object, with upcast geometry.
-#' @export
-st_upgrade_type <- function(df) {
-  t <- list(
-    pt = c("POINT", "MULTIPOINT"),
-    ln = c("LINESTRING", "MULTILINESTRING"),
-    pl = c("POLYGON", "MULTIPOLYGON")
-  )
-  
-  in_type <- df |>
-    sf::st_geometry_type() |> 
-    unique() |>
-    as.character()
-  
-  if (length(in_type) > 1) {
-    cast_to <- dplyr::case_when(
-      all(in_type %in% t$pt) ~ t$pt[2],
-      all(in_type %in% t$ln) ~ t$ln[2],
-      all(in_type %in% t$pl) ~ t$pl[2]
-    )
-  } else {
-    cast_to <- in_type
-  }
-  df |>
-    sf::st_cast(cast_to)
-}
-
 #' Standard preprocessing operations for spatial data.
 #'
 #' @inheritParams st_check_for_proj
@@ -133,7 +115,6 @@ st_upgrade_type <- function(df) {
 #' @export
 st_preprocess <- function(df, crs, name="geometry") {
   df <- df |> 
-    st_upgrade_type() |>
     sf::st_transform(crs) |>
     dplyr::rename_with(tolower) |>
     sf::st_set_geometry(name) |>
@@ -325,11 +306,6 @@ proc_address_postal <- function(df, col, state_col, muni_col, zips, state_constr
       )
   }
   df |>
-    std_fill_zip_by_muni(
-      col, 
-      muni_col=muni_col, 
-      zips
-    ) |>
     std_fill_muni_by_zip(
       muni_col, 
       postal_col=col, 
@@ -618,56 +594,8 @@ proc_oc_companies <- function(df, zips, places, type_name="company", quiet = FAL
     proc_oc_generic(zips=zips, places=places, type=type_name, quiet=quiet, retain = FALSE) |>
     dplyr::filter(!is.na(name)) |>
     dplyr::select(-id) |>
-    tibble::rowid_to_column("id")
+   tibble::rowid_to_column("id")
 }
-
-# Parcels ====
-
-proc_parcels_to_dry_points <- function(parcels, hydro, crs, quiet = FALSE) {
-  
-  if(!quiet) {
-    util_log_message("PROCESSING: Relocating points that lie within water bodies.")
-  }
-  
-  if(missing(hydro)) {
-    hydro <- load_ma_hydro(crs, quiet=quiet)
-  }
-  
-  points <- parcels |>
-    sf::st_set_agr("constant") |>
-    sf::st_point_on_surface()
-  
-  wet_points <- points |>
-    sf::st_filter(hydro, .predicate = sf::st_intersects)
-  
-  wet_polys <- parcels |>
-    dplyr::mutate(
-      wet = loc_id %in% wet_points$loc_id
-    ) |>
-    dplyr::filter(wet)
-  
-  dry_points <- wet_polys |>
-    sf::st_set_agr("constant") |>
-    sf::st_difference(
-      hydro |>
-        sf::st_set_agr("constant") |>
-        sf::st_union()
-      ) |>
-    sf::st_set_agr("constant") |>
-    sf::st_point_on_surface()
-  
-  points |>
-    dplyr::filter(
-      !(loc_id %in% wet_points$loc_id)
-    ) |>
-    dplyr::bind_rows(
-      dry_points,
-      wet_points |>
-        dplyr::filter(!(loc_id %in% dry_points$loc_id))
-    )
-}
-
-
 
 # Assessor's Database ====
 
@@ -1125,7 +1053,7 @@ proc_assess_luc <- function(df, quiet = FALSE, path=DATA_PATH) {
 #     dplyr::select(-c(addr_num, full_str)) |>
 #     # All parcels are in MA, in the US...
 #     dplyr::mutate(
-#       site_muni_id = std_pad_muni_ids(site_muni_id),
+#       site_muni_id = stringr::str_pad(site_muni_id, 3, side="left", pad="0"),
 #       site_ls_date = lubridate::fast_strptime(site_ls_date, "%Y%m%d", lt=FALSE),
 #       site_state = state, 
 #       site_country = "US"
