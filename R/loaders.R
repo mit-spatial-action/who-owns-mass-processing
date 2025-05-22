@@ -678,6 +678,7 @@ load_remote <- function(url, path) {
     url, 
     httr::write_disk(path, overwrite = TRUE)
   )
+  invisible(path)
 }
 
 load_zipped_shp <- function(path, layer) {
@@ -903,8 +904,7 @@ load_massgis_addresses <- function(muni_ids=NULL) {
         )
       }
     }) |>
-    purrr::list_rbind() |>
-    dplyr::rename_with(tolower)
+    purrr::list_rbind()
 }
 
 #' Load Massachusetts Geographic Place Names
@@ -928,43 +928,11 @@ load_geonames <- function() {
   )
 }
 
-load_munis <- function(crs, path) {
-  #' Load Massachusetts Municipal Boundaries
-  #' 
-  #' Downloads MA municipalities from MassGIS ArcGIS Hub and flags
-  #' HNS municipalities.
-  #'
-  #' @param crs Coordinate reference system for output.
-  #' 
-  #' @return An `sf` dataframe containing municipal boundaries as MULTIPOLYGONs.
-  #' 
-  #' @export
-  
-  load_arc("43664de869ca4b06a322c429473c65e5_0") |>
-    sf::st_preprocess() |>
-    dplyr::select(
-      id = town_id, 
-      muni = town
-      ) |>
-    dplyr::mutate(
-      dplyr::across(
-        dplyr::where(is.character), 
-        stringr::str_to_upper
-        ),
-      id = std_pad_muni_ids(id)
-      ) |>
-    dplyr::mutate(
-      muni = dplyr::case_when(
-        muni == "MANCHESTER" ~ "MANCHESTER-BY-THE-SEA",
-        .default = muni
-      ),
-      muni = stringr::str_replace(muni, "BORO$", "BOROUGH")
-    ) |>
-    dplyr::left_join(
-      load_muni_helper() |> 
-        dplyr::select(id, hns, mapc),
-      by = dplyr::join_by(id == id)
-    )
+#' Load Massachusetts Municipal Boundaries
+#' 
+#' @return An `sf` dataframe containing municipal boundaries as MULTIPOLYGONs.
+load_munis <- function() {
+  load_arc("43664de869ca4b06a322c429473c65e5_0")
 }
 
 load_zips <- function(munis, crs, thresh = 0.95) {

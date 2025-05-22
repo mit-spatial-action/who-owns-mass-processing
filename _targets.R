@@ -25,11 +25,11 @@ list(
   targets::tar_target(
     name = gdb_zip,
     {
-      # This causes the process to re-run when the remote metadata changes.
       dummy <- parcel_meta
-      out <- base::file.path(config$data_dir, "parcels.zip")
-      utils::download.file(config$parcel_gdb, out, mode = "wb")
-      out
+      load_remote(
+        url = config$parcel_gdb, 
+        path = base::file.path(config$data_dir, "parcels.zip")
+      )
     },
     format = "file"
   ),
@@ -102,5 +102,9 @@ list(
   targets::tar_target(
     name = altnames,
     command = readr::read_csv(altnames_file)
+  ),
+  targets::tar_target(
+    name = munis_init,
+    command = load_munis()
   )
 )
