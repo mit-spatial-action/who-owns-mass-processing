@@ -45,5 +45,6 @@ _targets/
 !data/luc_cw.csv
 !data/README.csv
 !data/unit_cw.csv
+!data/luc_to_unit_cw.csv
 !data/col_cw.csv
-!data/mhp_luc_cw.csv
+!data/luc_cw_mhp.csv

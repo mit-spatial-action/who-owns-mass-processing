@@ -25,5 +25,6 @@
 "assess","own_state","OWN_STATE","ownstate"
 "assess","own_postal","OWN_ZIP","ownerzip"
 "assess","own_country","OWN_CO",
-"parcel","loc_id","LOC_ID",
-"parcel","muni_id","TOWN_ID",
+"parcels","loc_id","LOC_ID",
+"parcels", "last_edit", "LAST_EDIT",
+"parcels","muni_id","TOWN_ID",
