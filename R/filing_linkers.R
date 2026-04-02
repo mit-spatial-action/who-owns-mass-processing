@@ -227,8 +227,10 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
   # also found a case of METHUNION MANOR COOP CORPORATION vs. METHUNION MANOR COOPERATIVE CORPORATION
   # TRYING FUZZY MATCH 
   
+  
+  # THIS IS STILL A WORK IN PROGRESS - TIMES OUT BEFORE IT FINISHES RUNNING
   unmatched_plantiff <- filings_spatial_clean |>
-    # filter evistions already matched 
+    # filter evictions already matched 
     dplyr::anti_join(owners, by = c("name")) |>
     # Fuzzy match left join based on names 
     fuzzyjoin::stringdist_left_join(owners, by = c("name"), max_dist = 1, method = "dl") 
