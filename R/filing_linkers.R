@@ -14,6 +14,7 @@ source("R/loaders.R")
 # STEP 2A: Direct string match of plantiff and owner name
 # STEP 2B: Fuzzy match plantiff and owner name 
 # STEP 2C: For plantiffs unmatched in 2A-C, match by name within parcel.
+# STEP 2D: Filter by date range to make sure that eviction falls within when the owner owned the property
 # 
 # STEP 3: Combine into one file 
 
