@@ -2,23 +2,19 @@ source("R/standardizers.R")
 source("R/loaders.R")
 
 # OVERVIEW 
-# The goal of this script is to link eviction filings and their plaintiffs to property owners
+# The goal of this script is to link eviction filings and their plaintiffs to assessor property records and their owners
 
 # STEP 1: Match eviction filing addresses to assessor records addresses
-# STEP 1A: Match on address, city, zip, or address, city
+# STEP 1A: Direct string match on address, city, zip, or address, city
 # STEP 1B: For evictions that don't match directly on address, do a 
 #          spatial nearest neighbor join (defined in match_nearby_filings() helper function)
 #          to parcel data and then try to match addresses. 
 # STEP 2: Match eviction plantiffs to owners
+# STEP 2A: Direct string match eviction plantiff name to owner name 
+# STEP 2B: Cosine similarity fuzzy match eviction plantiff name to owner name 
+# STEP 2C: Match evictions and owners based on loc_id and if filing_date is within fy and ls_date of assessors data
 
-
-# NEW WORKFLOW - 
-# 1. tie address to address in addresses table (or append if not found).
-# 2. if address not found (or if existing address has no location), associate parcel loc_id with address.
-# 3. join to owners on name/address.
-# 4. join to owners on name (cosine similarity)/address.
-# 5. for those filings unmatched in 3-4, match by name within parcel.
-
+# TO DO: Add log messages 
 
 # HELPER FUNCTIONS --------------------------------------------------------
 
@@ -94,7 +90,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
              "muni_id" = "muni_id"),
       na_matches = "never")
   
-  # PART 1A - MATCH EVICTION FILINGS TO ASSESSORS RECORDS ADDRESSES BASED ON A COMBINATION OF ADDRESS, CITY, ZIP 
+  # STEP 1A - DIRECT STRING MATCH EVICTION FILINGS TO ASSESSORS RECORDS ADDRESSES BASED ON A COMBINATION OF ADDRESS, CITY, ZIP 
   # Join eviction filings to assessors data by address, city, and zip code 
   filings_clean <- filings |>
     # clean and standardize eviction filings addresses 
@@ -148,7 +144,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     dplyr::filter(loc_id %in% dplyr::pull(assessor, loc_id)) 
   
   
-  # PART 1B - FOR EVICTIONS WITHOUT A DIRECT ADDRESS MATCH, TRY TO SPATIALLY JOIN TO PARCEL DATA  
+  # STEP 1B - FOR EVICTIONS WITHOUT A DIRECT ADDRESS MATCH, TRY TO SPATIALLY JOIN TO PARCEL DATA  
   # AND THEN FUZZY MATCH ADDRESSES  
   
   # Filter to eviction filings unmatched on address - 27,606 records
@@ -221,73 +217,84 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
   # join assessors records to owners 
   con <- duckdb::dbConnect(duckdb::duckdb())
   
-  # Register your R dataframes as virtual tables in DuckDB
+  # Register owners and assessor dataframes as virtual tables in DuckDB
   duckdb::duckdb_register(con, "owners", owners)
   duckdb::duckdb_register(con, "assessor", assessor)
+  
+  # NOTE: IT LOOKS LIKE CONDOS ARE STILL A PROBLEM - WHEN YOU JOIN ASSESSOR TO OWNERS BASED 
+  # ON ADDR_ID, EVERY RECORD FOR A CONDO IS LINKED TO EACH OWNER - CAN'T DISCERN BETWEEN INDIVIDUAL 
+  # SELL DATES 
   
   # Join them using dplyr syntax (executed via DuckDB)
   owners_assess <- dplyr::tbl(con, "owners") |>
     dplyr::distinct(name, addr_id, cosine_group, network_group) |>
-    tidylog::left_join(dplyr::tbl(con, "assessor")|> dplyr::select(c(loc_id, addr, addr_id, muni, postal)) |> dplyr::distinct(), by = "addr_id") |>
+    tidylog::left_join(dplyr::tbl(con, "assessor")|> dplyr::select(c(loc_id, ls_date, fy, addr, addr_id, muni, postal)) |> dplyr::distinct(), by = "addr_id") |>
     dplyr::collect() |># Pulls the final result back into R
-    dplyr::distinct(name, addr_id, cosine_group, network_group,.keep_all= TRUE) # get one record per name and address
+    dplyr::arrange(desc(ls_date)) |> # arrange so that only most recent assessor data is kept for each owner
+    dplyr::distinct(name, addr_id,cosine_group, network_group,.keep_all= TRUE) |> # get one record per name and address
+    dplyr::mutate(fy = lubridate::make_date(year = fy, month = 6, day = 30)) |> # turn fy to month day value
+    # filter out condo owners where it's not possible to directly link owner to eviction 
+    dplyr::group_by(loc_id) |>
+    dplyr::mutate(has_multiple_owners = dplyr::n_distinct(name) > 1)
   
   # STEP 2A - DIRECT STRING MATCH TO OWNERS -  3,136 plaintiffs match owners + loc_id, 33,341 don't 
   filings_spatial_owners <- filings_spatial_clean |>
-    tidylog::left_join(owners_assess, by = c("name", "loc_id")) 
+    tidylog::left_join(owners_assess, by = c("name", "loc_id"), suffix = c("_evic", "_assess")) 
   # TRYING FUZZY MATCH 
   
   # data frame of matched 
   filings_direct_own_match <- filings_spatial_owners |>
     dplyr::filter(!is.na(addr_id)) |>
-    dplyr::mutate(owner_link = "name_loc_id")
+    dplyr::mutate(owner_link = "name_loc_id", 
+                  name_evic = name)
+  
+  # list of matched loc_id
+  direct_match_loc_id <- filings_direct_own_match |>
+    dplyr::pull("loc_id")
   
   # STEP 2b: FUZZY MATCH USING COSINE SIMILARITY 
   # Filter out plaintiffs that matched - 1,718 new matches 
   fuzzy_match_plantiff <- filings_spatial_clean |>
     # filter evictions already matched 
-    dplyr::anti_join(owners_assess, by = c("name")) |>
-    tidylog::left_join(owners_assess, by = c("loc_id")) |>
+    dplyr::filter(!loc_id %in% direct_match_loc_id) |>
+    tidylog::left_join(owners_assess, by = c("loc_id"),suffix = c("_evic", "_assess")) |>
     # calculate stringdit using cosine similarity and character level overlap 
     dplyr::mutate(
       # 1. Cosine Similarity (q=2 captures "chunks" of names)
       # This prevents "Jon" and "Ian" from looking too similar 
-      cosine_sim = stringdist::stringsim(name.x, name.y, method = "cosine", q = 2),
+      cosine_sim = stringdist::stringsim(name_evic, name_assess, method = "cosine", q = 2),
       
       # 2. Character-level overlap (how many characters they share)
       # Using q=1 makes it a "bag of characters" comparison
-      char_overlap = stringdist::stringsim(name.x, name.y, method = "cosine", q = 1)
+      char_overlap = stringdist::stringsim(name_evic, name_assess, method = "cosine", q = 1)
     ) |>
-    dplyr::filter(cosine_sim > 0.5)
+    dplyr::filter(cosine_sim > 0.5) |> #BUMP UP - CHECK 
+    dplyr::mutate(owner_link = "fuzzy_loc_id") |> 
+    dplyr::select(-c(cosine_sim, char_overlap))
   
-  # STEP 2C - FOR REMAINING UNMATCHED - MATCH BY NAME WITHIN PARCEL 
-  filin
+  # fuzzy matched filings - 1,487 match
+  filings_own_unmatched <- fuzzy_match_plantiff |>
+    dplyr::pull(loc_id)
   
-  # match cleaned plantiff names toMatc eviction filings by docket_id
-  filings_spatial_names <- filings_spatial_clean |>
-    tidylog::left_join(plantiff_clean, by = c("docket_id"))
+  # STEP 2C - MATCH ON ADDRESS AND DATE RANGE
+  filings_own_date <- filings_spatial_clean |> 
+    #filter out already matches names 
+    dplyr::filter(!loc_id %in% direct_match_loc_id & !loc_id %in% filings_own_unmatched) |>
+    tidylog::left_join(owners_assess, by = c("loc_id"),suffix = c("_evic", "_assess")) |>
+    dplyr::filter(file_date <= fy & file_date >= ls_date) |># filing falls between last sell date and fy of assessor data as proxy for current ownership
+    dplyr::mutate(owner_link = "date_range")
   
-  # filings_spatial <- filings_no_match |>
-  #   sf::st_as_sf() |>
-  #   sf::st_transform(2249) |>
-  #   sf::st_join(parcels, join=sf::st_intersects) |>
-  #   dplyr::mutate(
-  #     link_type = dplyr::case_when(
-  #       !is.na(loc_id) ~ "spatial"
-  #       )
-  #   ) |>
-  #   dplyr::bind_rows(filings_address_match, filings_zip_match, filings_unmatchable) 
-  # 
-  # sf::st_drop_geometry() |>
-  # dplyr::select(docket_id, loc_id, city, zip, link_type) |>
-  # write_multi(FILINGS_OUT_NAME)
   
-  filings_by_parcel <- filings |>
-    dplyr::group_by(loc_id) |>
-    dplyr::summarize(
-      filing_count = dplyr::n()
-    ) |>
-    write_multi("filings_per_parcel")
-  filings
+  # COMBINE INTO ONE DF - 
+  evictions_owners <- dplyr::bind_rows(filings_own_date|> sf::st_as_sf() |> sf::st_transform(2249) , 
+                                       fuzzy_match_plantiff |> sf::st_as_sf() |> sf::st_transform(2249) , 
+                                       filings_direct_own_match |> sf::st_as_sf() |> sf::st_transform(2249))
+  
+  # BEST WAY TO WRITE OUT? 
+  
+  return(evictions_owners)
+  
 }
 
+# test calling function 
+process_link_filings()
