@@ -1,5 +1,7 @@
 source("R/standardizers.R")
+source('load_results.R')
 source("R/loaders.R")
+source("R/processors.R")
 
 # OVERVIEW 
 # The goal of this script is to link eviction filings and their plaintiffs to assessor property records and their owners
@@ -14,7 +16,18 @@ source("R/loaders.R")
 # STEP 2B: Cosine similarity fuzzy match eviction plantiff name to owner name 
 # STEP 2C: Match evictions and owners based on loc_id and if filing_date is within fy and ls_date of assessors data
 
-# TO DO: Add log messages 
+
+# LOAD DATA ---------------------------------------------------------------
+
+# load owner/parcel data
+load_results("", load_boundaries=TRUE, summarize=TRUE)
+
+# plaintiffs - landlord bringing filing 
+# docket id if unique identifier from filings to plantiff
+load_evic_results("EVICTION")
+
+# load places data
+places <- load_places(munis = munis, zips, crs = 2249)
 
 # HELPER FUNCTIONS --------------------------------------------------------
 
@@ -92,6 +105,8 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
   
   # STEP 1A - DIRECT STRING MATCH EVICTION FILINGS TO ASSESSORS RECORDS ADDRESSES BASED ON A COMBINATION OF ADDRESS, CITY, ZIP 
   # Join eviction filings to assessors data by address, city, and zip code 
+  message("LOG:Join eviction filings to assessors data by address, city, and zip code")
+  
   filings_clean <- filings |>
     # clean and standardize eviction filings addresses 
     process_filings() |>
@@ -108,6 +123,8 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     )
   
   # if didn't match on addr, city, and zip - match just on addr and zip
+  message("LOG:Join eviction filings to assessors data by address and zip code")
+  
   filings_no_address <- filings_clean |>
     dplyr::filter(is.na(loc_id)) |>
     dplyr::select(-c(loc_id)) |>
@@ -154,6 +171,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     ) 
   
   # spatial join with parcel data
+  message("LOG:Spatial join fillings to assessors data")
   filings_spatial <- match_nearby_filings(parcel_points_df=parcels, filings_df =filings_no_match) |> # helper function defined above
     # filter out unmatched rows 
     dplyr::filter(!is.na(loc_id)) |>
@@ -202,6 +220,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
       link_type = "spatial_fuzzy")
   
   # COMBINE INTO ONE DF - 35,756 records - all values from filings match, but not all plaintiffs are in eviction records
+  message("LOG:Combine all eviction filings with assessors data into one dataframe")
   filings_spatial_clean <- dplyr::bind_rows(filings_spatial_direct |> sf::st_as_sf() |> sf::st_transform(2249) , 
                                             filings_spatial_fuzzy |> sf::st_as_sf() |> sf::st_transform(2249),
                                             filings_address_match |> sf::st_as_sf() |> sf::st_transform(2249), 
@@ -226,6 +245,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
   # SELL DATES 
   
   # Join them using dplyr syntax (executed via DuckDB)
+  message("LOG:Join owners and assessors data")
   owners_assess <- dplyr::tbl(con, "owners") |>
     dplyr::distinct(name, addr_id, cosine_group, network_group) |>
     tidylog::left_join(dplyr::tbl(con, "assessor")|> dplyr::select(c(loc_id, ls_date, fy, addr, addr_id, muni, postal)) |> dplyr::distinct(), by = "addr_id") |>
@@ -236,6 +256,8 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     # filter out condo owners where it's not possible to directly link owner to eviction 
     dplyr::group_by(loc_id) |>
     dplyr::mutate(has_multiple_owners = dplyr::n_distinct(name) > 1)
+  
+  message("LOG: Match evictions to owners")
   
   # STEP 2A - DIRECT STRING MATCH TO OWNERS -  3,136 plaintiffs match owners + loc_id, 33,341 don't 
   filings_spatial_owners <- filings_spatial_clean |>
@@ -285,7 +307,8 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     dplyr::mutate(owner_link = "date_range")
   
   
-  # COMBINE INTO ONE DF - 
+  # COMBINE INTO ONE DF 
+  message("LOG: Combine eviction filings and owners into one dataframe")
   evictions_owners <- dplyr::bind_rows(filings_own_date|> sf::st_as_sf() |> sf::st_transform(2249) , 
                                        fuzzy_match_plantiff |> sf::st_as_sf() |> sf::st_transform(2249) , 
                                        filings_direct_own_match |> sf::st_as_sf() |> sf::st_transform(2249))
@@ -297,4 +320,4 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
 }
 
 # test calling function 
-process_link_filings()
+final_results <- process_link_filings()
