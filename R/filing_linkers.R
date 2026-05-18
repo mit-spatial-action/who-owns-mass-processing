@@ -275,7 +275,7 @@ process_link_filings <- function(assess_df, evic_df = filings, parcels_points, t
     dplyr::pull("loc_id")
   
   # STEP 2b: FUZZY MATCH USING COSINE SIMILARITY 
-  # Filter out plaintiffs that matched - 1,718 new matches 
+  # Filter out plaintiffs that matched - 1,487 new matches 
   fuzzy_match_plantiff <- filings_spatial_clean |>
     # filter evictions already matched 
     dplyr::filter(!loc_id %in% direct_match_loc_id) |>
