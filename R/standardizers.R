@@ -263,7 +263,7 @@ std_remove_special <- function(df, cols, rm_commas=TRUE) {
         "(?<=[0-9]) *\\. *(?!5)" = "\\-",
         "(?<![0-9]) *\\. *(?!5)" = " ",
         "(\\b[0-9]+O\\b)|(\\b[0-9]+O\\b)|(\\b[0-9]+O[0-9]+\\b)" = "0"
-        )
+      )
     ) |>
     std_replace_generic(
       cols, 
@@ -374,7 +374,7 @@ std_replace_blank <- function(df, cols) {
           stringr::str_detect(., "^(SAME|NONE|UNKNOWN)(?=\\s|\\,|$)") ~ NA_character_,
           .default = .
         )
-    )
+      )
     )
 }
 
@@ -386,7 +386,7 @@ std_replace_newline <- function(df, cols) {
   #' @export
   newline <- c(
     ",?\\\\n"
-    ) |>
+  ) |>
     std_collapse_regex(full_string = FALSE)
   std_replace_generic(
     df,
@@ -408,7 +408,7 @@ std_fix_concatenated_ranges <- function(df, cols) {
     pattern = c(
       "^([0-9]{3,4})[A-Z]?(?=(\\1){1})" = "",
       "(?<=^([0-9]{2,3})[0-9][A-Z]?)(?=(\\1){1}[0-9])" = "-"
-      )
+    )
   )
 }
 
@@ -636,17 +636,17 @@ std_remove_counties <- function(df, col, state_col, places, state_val="MA") {
     std_collapse_regex() |>
     suppressMessages()
   
-    df |>
-      dplyr::filter(.data[[state_col]] == state_val) |>
-      std_replace_generic(
-        col,
-        stringr::str_c("(?<=[A-Z] )(", counties, ")$", collapse=""),
-        ""
-      ) |>
-      dplyr::bind_rows(
-        df |>
-          dplyr::filter(.data[[state_col]] != state_val | is.na(.data[[state_col]]))
-      )
+  df |>
+    dplyr::filter(.data[[state_col]] == state_val) |>
+    std_replace_generic(
+      col,
+      stringr::str_c("(?<=[A-Z] )(", counties, ")$", collapse=""),
+      ""
+    ) |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(.data[[state_col]] != state_val | is.na(.data[[state_col]]))
+    )
 }
 
 std_match_state_and_zips <- function(df, state_col, zip_col, zips, state_val = "MA") {
@@ -1000,7 +1000,7 @@ std_test_units <- function(df, col, luc_col, muni_id_col) {
           FALSE,
         # BOSTON, 112: 7-30 Unit
         .data[[luc_col]] == '112' & !dplyr::between(.data[[col]], 7, 30) ~
-          FALSE,s
+          FALSE,
         # BOSTON, 113: 31-99 Unit
         .data[[luc_col]] == '113' & !dplyr::between(.data[[col]], 31, 99) ~
           FALSE,
@@ -1063,7 +1063,7 @@ std_estimate_units <- function(df, col, luc_col, muni_id_col, count_col, address
     ) |>
     dplyr::mutate(
       units_by_area = ceiling(res_area / est_size)
-      )
+    )
   
   boston <- df |>
     dplyr::filter(.data[[muni_id_col]] == '035') |>
@@ -1302,8 +1302,8 @@ std_addr2_parser <- function(df, cols, regex, from_end = TRUE) {
           !is.na(.x) & 
             !is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
           ~ stringr::str_c(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp")),
-            .x,
-            sep=" "
+                           .x,
+                           sep=" "
           ),
           is.na(.x) & 
             !is.na(get(stringr::str_replace(dplyr::cur_column(), "_addr2", "_temp"))) 
@@ -1442,8 +1442,8 @@ std_hyphenate_range <- function (df, cols) {
           ., 
           "(?<=^[0-9]{1,6}[A-Z]{0,2}) (?=[0-9]{1,6}[A-Z]{0,1} )", 
           "-"
-          )
-        ),
+        )
+      ),
       
       dplyr::across(
         dplyr::all_of(cols),
@@ -1535,7 +1535,7 @@ std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
   df <- df |>
     dplyr::filter(
       is.na(.data[[col]]) & !is.na(.data[[muni_col]])
-      ) |>
+    ) |>
     dplyr::left_join(
       zips |>
         sf::st_drop_geometry() |>
@@ -1544,7 +1544,7 @@ std_fill_zip_by_muni <- function(df, col, muni_col, zips) {
         dplyr::distinct(),
       by = dplyr::join_by(
         !!muni_col == muni_unambig_to
-        )
+      )
     ) |>
     dplyr::mutate(
       !!col := dplyr::case_when(
@@ -1625,7 +1625,7 @@ std_munis_by_places <- function(df,
       state |>
         dplyr::filter(match | is.na(.data[[col]]))
     )
-
+  
   state <- state |>
     dplyr::filter(!match & !is.na(.data[[col]])) |>
     fuzzyjoin::stringdist_left_join(
@@ -1651,7 +1651,7 @@ std_munis_by_places <- function(df,
       state |>
         dplyr::filter(match | is.na(.data[[col]]))
     )
-
+  
   state |>
     dplyr::group_by(temp_id) |>
     dplyr::mutate(
@@ -1759,8 +1759,8 @@ std_multiname <- function(df, col) {
       stringr::str_count(.data[[col]], "([A-Z]{2,}\\s)") > 0) |>
     dplyr::select(-last) |>
     dplyr::bind_rows(
-    df |>
-      dplyr::filter(!name_and | trust | inst)
+      df |>
+        dplyr::filter(!name_and | trust | inst)
     ) |>
     dplyr::select(-c(name_and, temp_id))
 }
@@ -1824,7 +1824,7 @@ std_separate_and_label <- function(df,
         .default = type
       )
     )
-
+  
   if(target_col != col) {
     match <- match |>
       dplyr::mutate(
@@ -1873,7 +1873,99 @@ std_separate_and_label <- function(df,
         dplyr::filter(!flag)
     ) |>
     dplyr::select(-c(row, count, flag, t_id))
-    
+  
+}
+
+# Std Plantiff 
+std_separate_and_label_plant <- function(df, 
+                                         col, 
+                                         regex, 
+                                         label = "",
+                                         target_col = "name",
+                                         clear_cols = c(),
+                                         retain = TRUE) {
+  regex = stringr::regex(regex)
+  df <- df |>
+    tibble::rowid_to_column("t_id") |>
+    dplyr::mutate(
+      flag = dplyr::case_when(
+        stringr::str_detect(.data[[col]], regex) ~ TRUE,
+        .default = FALSE
+      )
+    )
+  
+  match <- df |>
+    dplyr::filter(flag) |>
+    tidyr::separate_longer_delim(
+      tidyselect::all_of(col),
+      regex
+    ) |>
+    dplyr::mutate(
+      !!col := dplyr::na_if(.data[[col]], "")
+    ) |>
+    dplyr::group_by(dplyr::across(-dplyr::all_of(col))) |>
+    dplyr::mutate(
+      row = dplyr::row_number(),
+      count = dplyr::n()
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      type = dplyr::case_when(
+        nchar(label) == 0 ~ type,
+        row > 1 | row == count ~ label,
+        .default = type
+      )
+    )
+  
+  if(target_col != col) {
+    match <- match |>
+      dplyr::mutate(
+        !!target_col := dplyr::case_when(
+          type == label ~ .data[[col]],
+          .default = .data[[target_col]]
+        ),
+        !!col := dplyr::case_when(
+          type == label ~ NA_character_,
+          .default = .data[[col]]
+        )
+      )
+  } else {
+    match <- match |>
+      dplyr::group_by(t_id) |>
+      dplyr::arrange(.data[[col]]) |>
+      dplyr::mutate(
+        rm_test = sum(!is.na(.data[[col]])) == 1,
+        type = dplyr::first(type)
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::filter(!(rm_test & is.na(.data[[col]]))) |>
+      dplyr::select(-rm_test)
+  }
+  
+  match <- match |> 
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::any_of(clear_cols) & tidyselect::where(is.character),
+        ~ dplyr::case_when(
+          type != label ~
+            NA_character_,
+          .default = .x
+        )
+      )
+    ) 
+  
+  if (!retain) {
+    match <- match |>
+      dplyr::filter(type != label)
+  }
+  
+  match |>
+    dplyr::bind_rows(
+      df |>
+        dplyr::filter(!flag)
+    ) |>
+    dplyr::select(-c(row, count, flag, t_id))
+  
 }
 
 
@@ -1960,12 +2052,12 @@ std_flag_inst <- function(df, col) {
     dplyr::mutate(
       inst := dplyr::case_when(
         stringr::str_detect(
-        .data[[col]],
-        stringr::str_c(
-          "\\b(",
-          stringr::str_c(SEARCH$inst, collapse = "|"),
-          ")\\b",
-          sep = "")
+          .data[[col]],
+          stringr::str_c(
+            "\\b(",
+            stringr::str_c(SEARCH$inst, collapse = "|"),
+            ")\\b",
+            sep = "")
         ) ~ TRUE,
         .default = FALSE
       )
@@ -1985,13 +2077,13 @@ std_flag_trust <- function(df, col) {
       trust = dplyr::case_when(
         stringr::str_detect(.data[[col]], "TRUST(?!EES)") ~ TRUE,
         stringr::str_detect(.data[[col]], "^TRUSTEES OF ")
-          & !stringr::str_detect(.data[[col]], "UNIVERSITY|COLLEGE|INSTITUTE") ~ TRUE,
+        & !stringr::str_detect(.data[[col]], "UNIVERSITY|COLLEGE|INSTITUTE") ~ TRUE,
         stringr::str_detect(.data[[col]], 
-          stringr::str_c(
-            "\\b(",
-            stringr::str_c(SEARCH$trust_definite, collapse = "|"),
-            ")\\b",
-            sep = "")
+                            stringr::str_c(
+                              "\\b(",
+                              stringr::str_c(SEARCH$trust_definite, collapse = "|"),
+                              ")\\b",
+                              sep = "")
         ) ~ TRUE,
         .default = FALSE
       ),
@@ -2115,14 +2207,14 @@ std_fill_ma_zip_sp <- function(df, col, site_loc_id, site_muni_id, parcels_point
       by=dplyr::join_by(
         !!site_loc_id == loc_id,
         !!site_muni_id == muni_id
-        ),
+      ),
       na_matches="never",
       multiple="any"
-      ) |>
+    ) |>
     sf::st_as_sf() |>
     sf::st_join(
       dplyr::select(ma_zips, zip)
-      ) |>
+    ) |>
     dplyr::mutate(
       !!col := zip
     ) |>

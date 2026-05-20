@@ -79,7 +79,7 @@ proc_address_to_range <- function(df, cols, prefixes=c()) {
               stringr::str_extract(
                 get(paste0(dplyr::cur_column(), "_num_")), 
                 "[0-9\\.]+(?=[A-Z]?$)"
-                )
+              )
             ),
             .default = NA
           )
@@ -187,11 +187,11 @@ proc_address_postal <- function(df, col, state_col, muni_col, zips, state_constr
 }
 
 proc_address_muni <- function(df,
-                      col, 
-                      state_col,
-                      postal_col,
-                      places,
-                      state_val = "MA") {
+                              col, 
+                              state_col,
+                              postal_col,
+                              places,
+                              state_val = "MA") {
   
   df <- df |>
     std_directions(col) |>
@@ -299,7 +299,7 @@ proc_name <- function(df, col, multiname = TRUE, type="") {
     dplyr::filter(!inst & !trust) |>
     # This also removes roman numerals.
     std_remove_titles(c(col))
-    
+  
   if (multiname) {
     inds <- inds |>
       std_multiname(col) 
@@ -319,6 +319,7 @@ proc_name <- function(df, col, multiname = TRUE, type="") {
 }
 
 proc_name_co_dba_attn <- function(df, col, target, clear_cols = c(), retain = TRUE) {
+  # look at string - if there is the label (e.g. CO / ATTN - split text after into a new row )
   df |>
     std_separate_and_label(
       col = col,
@@ -495,7 +496,7 @@ proc_parcels_to_dry_points <- function(parcels, hydro, crs, quiet = FALSE) {
       hydro |>
         sf::st_set_agr("constant") |>
         sf::st_union()
-      ) |>
+    ) |>
     sf::st_set_agr("constant") |>
     sf::st_point_on_surface()
   
@@ -508,6 +509,94 @@ proc_parcels_to_dry_points <- function(parcels, hydro, crs, quiet = FALSE) {
       wet_points |>
         dplyr::filter(!(loc_id %in% dry_points$loc_id))
     )
+}
+
+# Eviction Filings ====
+proc_evic_address_postal <- function(df, col, state_col, muni_col, zips, state_constraint = "") {
+  if (state_constraint != "") {
+    df <- df |>
+      dplyr::filter(.data[[state_col]] == state_constraint) |>
+      std_zip_format(
+        col, 
+        state_col=state_col,
+        zips=zips, 
+        state_constraint=state_constraint
+      ) |>
+      dplyr::bind_rows(
+        df |>
+          dplyr::filter(.data[[state_col]] != state_constraint | is.na(.data[[state_col]])) |>
+          std_zip_format(
+            col,
+            state_col=state_col,
+            zips=zips
+          )
+      )
+  } else {
+    df <- df |>
+      std_zip_format(
+        col,
+        state_col=state_col,
+        zips=zips
+      )
+  }
+}
+
+# run full processing on evictions file
+proc_evic <- function(df, col, postal_col, muni_col, state_col, zips, places, po_pmb = FALSE, state_constraint = "") {
+  
+  df |>
+    load_generic_preprocess(c(col, state_col, muni_col, postal_col)) |>
+    proc_address_text(col) |>
+    proc_address_addr2(
+      col, 
+      po_pmb=po_pmb
+    ) |>
+    proc_address_to_range(col) |>
+    proc_evic_address_postal(
+      postal_col, 
+      state_col=state_col, 
+      muni_col=muni_col,
+      zips, 
+      state_constraint
+    ) |>
+    proc_address_muni(
+      muni_col, 
+      state_col=state_col, 
+      postal_col=postal_col,
+      places=places
+    ) 
+}
+
+# process plantiff names 
+
+
+proc_evic_plantiff <- function(df = plaintiffs, name_col = "name", address_col= "name", type = "owners", quiet=FALSE) {
+  # df <- df |>
+  #   dplyr::mutate(
+  #     type = "owners"
+  #   ) |>
+  #   std_uppercase("name") |>
+  #   std_remove_special("name") |>
+  #   proc_name("name") |> 
+  #   proc_name_co_dba_attn(
+  #     "name",
+  #     "name"
+  #   ) 
+  
+  plaintiffs |>
+    dplyr::mutate(type = "plantiff") |>
+    std_uppercase("name") |>
+    std_remove_special("name") |>
+    proc_name_co_dba_attn(
+      "name",
+      "name",
+      retain = TRUE
+    ) |>
+    proc_name(
+      "name",
+      multiname = FALSE,
+      type="plantiff"
+    ) 
 }
 
 
@@ -538,7 +627,7 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
     dplyr::rename(
       match_site_id = own_site_id,
       match_muni_id = own_muni_id
-      ) |>
+    ) |>
     dplyr::select(
       c(site_id, site_muni_id, match_site_id, match_muni_id, dplyr::starts_with(own_prefix))
     ) |>
@@ -558,7 +647,7 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
       by = dplyr::join_by(
         match_site_id == id,
         match_muni_id == muni_id
-        ),
+      ),
       multiple="any",
       na_matches="never"
     ) |>
@@ -567,7 +656,7 @@ proc_assess_split <- function(df, site_prefix, own_prefix, quiet = FALSE) {
         dplyr::filter(!(!is.na(match_site_id) & !is.na(match_muni_id)))
     ) |>
     dplyr::select(-c(match_site_id, match_muni_id))
-
+  
   list(
     sites = sites,
     owners = owners
@@ -619,7 +708,7 @@ proc_assess_sites_units <- function(df, luc_col, addresses) {
       muni_id_col="muni_id",
       count_col="addr_count",
       addresses=addresses
-      ) |>
+    ) |>
     dplyr::bind_rows(
       df |>
         dplyr::filter(units_valid)
@@ -636,7 +725,7 @@ proc_assess_sites <- function(df, addresses, quiet=FALSE) {
       luc_col="luc", 
       id_cols=c("loc_id", "body"), 
       units_col="units"
-      ) |>
+    ) |>
     proc_assess_sites_units(
       "luc",
       addresses
@@ -805,7 +894,7 @@ proc_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE
       "site_addr", 
       po_pmb = FALSE, 
       prefixes=c(site_prefix)
-      )
+    )
   
   df |>
     dplyr::filter(is.na(own_site_id) | is.na(own_muni_id)) |>
@@ -813,7 +902,7 @@ proc_assess_address_addr2 <- function(df, site_prefix, own_prefix, quiet = FALSE
       c("site_addr", "own_addr"),
       prefixes=c(site_prefix, own_prefix),
       po_pmb = TRUE
-      ) |>
+    ) |>
     proc_address_match_simp(c("site_addr", "own_addr")) |>
     dplyr::mutate(
       own_site_id = dplyr::case_when(
@@ -877,7 +966,7 @@ proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
       muni_col="site_muni", 
       zips=zips,
       state_constraint=state_constraint
-      )
+    )
   
   df <- df |>
     dplyr::mutate(
@@ -891,7 +980,7 @@ proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
       state_col="own_state", 
       muni_col="own_muni", 
       zips=zips
-      ) |>
+    ) |>
     dplyr::mutate(
       site_postal = dplyr::case_when(
         is.na(site_postal) &
@@ -904,7 +993,7 @@ proc_assess_address_postal <- function(df, site_prefix, own_prefix, zips, parcel
     dplyr::group_by(site_loc_id) |>
     tidyr::fill(site_postal) |>
     dplyr::ungroup()
-
+  
   df |>
     dplyr::filter(is.na(site_postal)) |>
     std_fill_ma_zip_sp(
@@ -969,6 +1058,7 @@ proc_assess <- function(df,
   places <- places |>
     dplyr::select(-id)
   
+  # THIS IS THE FLOW TO COPY 
   df <- df |>
     proc_assess_address_text(
       site_prefix = site_prefix,
@@ -1027,7 +1117,7 @@ proc_all <- function(assess,
                      push_db = "",
                      refresh = FALSE,
                      quiet = FALSE
-                     ) {
+) {
   
   if (is.null(tables)) {
     if (!quiet) {
@@ -1055,7 +1145,7 @@ proc_all <- function(assess,
       loader=proc_parcels_to_dry_points(
         parcels, 
         crs=crs
-        ),
+      ),
       id_col="loc_id",
       refresh=refresh
     )
@@ -1113,7 +1203,7 @@ proc_all <- function(assess,
       ),
       id_col=c("id", "muni_id"),
       refresh=refresh
-      )
+    )
     
     # load_add_fk(util_conn(push_db), "proc_sites", "munis", "muni_id", "muni_id")
     # load_add_fk(util_conn(push_db), "proc_sites", "parcels_point", "loc_id", "loc_id")
